@@ -234,11 +234,15 @@ public class Bots
 
 	public static void initialize(int gameNumber){
 		switch (gameNumber){
-		case 1:snarkInit(1);
+		case 1:
+			snarkInit(1);
 			break;
-		case 2:testbedInit(1);
+		case 2:
+			testbedInit(1);
 			break;
-		default: snarkInit(1);
+		default: 
+			snarkInit(1);
+			break;
 		}
 	}
 
@@ -399,36 +403,65 @@ public class Bots
 		// Bub.Node pushVegNode(Vector2 position, float radius = 1.0f, string clan="")
 		float small = normalBubRadius/8; float normal = normalBubRadius; float large = normalBubRadius*8;
 
-		pushVegNode(new Vector2(0,0),small);
+		pushVegNode(new Vector2(17.5f,0),small);
 		pushVegNode(new Vector2(20,0),normal);
 		pushVegNode(new Vector2(40,0),large);
 
 		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = 0;
 
-		pushVegNode(new Vector2(0,20),small);
+		pushVegNode(new Vector2(17.5f,20),small);
 		pushVegNode(new Vector2(20,20),normal);
 		pushVegNode(new Vector2(40,20),large);
 
 		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].minBurden;
 
-		pushVegNode(new Vector2(0,40),small);
+		pushVegNode(new Vector2(17.5f,40),small);
 		pushVegNode(new Vector2(20,40),normal);
 		pushVegNode(new Vector2(40,40),large);
 
 		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/2;
 
-		pushVegNode(new Vector2(0,60),small);
+		pushVegNode(new Vector2(17.5f,60),small);
 		pushVegNode(new Vector2(20,60),normal);
 		pushVegNode(new Vector2(40,60),large);
 
 		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph;
 
+		/////animal
+
+		pushVegNode(new Vector2(70+17.5f,0),small).setDna(CScommon.vegetableBit,false);
+		pushVegNode(new Vector2(70+20,0),normal).setDna(CScommon.vegetableBit,false);
+		pushVegNode(new Vector2(70+40,0),large).setDna(CScommon.vegetableBit,false);
+		
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = 0;
+		
+		pushVegNode(new Vector2(70+17.5f,20),small).setDna(CScommon.vegetableBit,false);
+		pushVegNode(new Vector2(70+20,20),normal).setDna(CScommon.vegetableBit,false);
+		pushVegNode(new Vector2(70+40,20),large).setDna(CScommon.vegetableBit,false);
+		
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].minBurden;
+		
+		pushVegNode(new Vector2(70+17.5f,40),small).setDna(CScommon.vegetableBit,false);
+		pushVegNode(new Vector2(70+20,40),normal).setDna(CScommon.vegetableBit,false);
+		pushVegNode(new Vector2(70+40,40),large).setDna(CScommon.vegetableBit,false);
+		
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/2;
+		
+		pushVegNode(new Vector2(70+17.5f,60),small).setDna(CScommon.vegetableBit,false);
+		pushVegNode(new Vector2(70+20,60),normal).setDna(CScommon.vegetableBit,false);
+		pushVegNode(new Vector2(70+40,60),large).setDna(CScommon.vegetableBit,false);
+		
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph;
+
+		//mountable
+
+
 		Bub.Node head;
-		head = pushVegNode(new Vector2(-25,0),small).setDna(CScommon.vegetableBit, false);
+		head = pushVegNode(new Vector2(-25,17.5f),small).setDna(CScommon.vegetableBit, false);
 		Rules.installHunterPCRule(head);
-		head = pushVegNode(new Vector2(-25,0),normal).setDna(CScommon.vegetableBit, false);
+		head = pushVegNode(new Vector2(-25,20),normal).setDna(CScommon.vegetableBit, false);
 		Rules.installHunterPCRule(head);
-		head = pushVegNode(new Vector2(-25,0),large).setDna(CScommon.vegetableBit, false);
+		head = pushVegNode(new Vector2(-25,40),large).setDna(CScommon.vegetableBit, false);
 		Rules.installHunterPCRule(head);
 
 		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/3;

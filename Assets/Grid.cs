@@ -42,7 +42,7 @@ public class Grid {
 	{	float basis = 55.5f/uvSquareSize;
 		setAtlas (0, basis, 1, 17); //animal
 		setAtlas (1, basis, 17, 13); //vegetable
-		setAtlas (2, basis, 3, 3); //aura
+		setAtlas (2, basis, 9, 1); //aura was 3,3
 
 		//link
 		atlasUVPositions [3, 0] = new Vector2 (955.5f/uvSquareSize, 520.0f/uvSquareSize);
@@ -96,9 +96,9 @@ public class Grid {
 			anode = Engine.nodes[i];
 
 			//r = 0.1f* Mathf.Pow (anode.oomph,1/3.0f)*anode.radius; 
-
+			float sqrtMax = Mathf.Sqrt (CScommon.maxOomph (anode.radius, 0L));
 			// thickness of aura "skin" denotes fraction of your maxOomph you are carrying
-			diameter = 2*anode.radius*(1.0f + anode.oomph/CScommon.maxOomph (anode.radius, 0L)); //calibrate by non-veg maxOomph
+			diameter = 2*anode.radius*Mathf.Sqrt(anode.oomph)/sqrtMax; //calibrate by non-veg maxOomph
 
 			vix = makeTriangle(
 				new Vector3 (anode.x+x0*diameter, anode.y+y0*diameter),

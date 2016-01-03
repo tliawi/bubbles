@@ -166,9 +166,11 @@ public class bubbleServer : MonoBehaviour {
 		//the one thing I DON'T do is disconnect everyone, they can stay connected for next game.
 		//Their connectionId and name are still valid. Their node assignments are off.
 		foreach (int cId in connectionIdPlayerInfo.Keys) { 
-			nodeIdPlayerInfo.Remove(connectionIdPlayerInfo[cId].nodeId);
 			connectionIdPlayerInfo[cId].nodeId = -1; //disassociate from nodeId
 		}
+
+		//remove NPC and PC registrations
+		nodeIdPlayerInfo.Clear();
 
 		GC.Collect(); //while I'm at it...
 
