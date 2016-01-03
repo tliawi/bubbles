@@ -33,7 +33,7 @@ public class bubbleServer : MonoBehaviour {
 	private bool xing = false;
 
 	private bool paused = true;
-	private bool newGameStart = true;
+	private int gamePhase = 1; //1 if paused start of new game, 2 if game running
 
 	
 	private CScommon.InitMsg referenceInitMsg;
@@ -189,7 +189,7 @@ public class bubbleServer : MonoBehaviour {
 	void FixedUpdate(){ if (!paused) Engine.step();}
 
 	string reminder(){
-		string s = "arrows Zz s d g 1 0";
+		string s = "arrows Zz s d g 1 2 0";
 		foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.nodeId;
 		s += "  "+(paused?"(PAUSED)":"")+(xing?"(xing)":"");
 		return s;
@@ -197,10 +197,10 @@ public class bubbleServer : MonoBehaviour {
 
 	void togglePause(){
 		paused = !paused; 
-		if (newGameStart){
-			newGameStart = false;
+		if (gamePhase == 1){
+			gamePhase = 2;
 			Bots.startRace();
-			foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGamePhase(2,connectionId);
+			foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGamePhase(connectionId);
 		}
 	}
 		
@@ -215,7 +215,7 @@ public class bubbleServer : MonoBehaviour {
 		}
 
 		if (Input.GetKeyDown (KeyCode.Alpha1)) quitGame(1);
-		//if (Input.GetKeyDown (KeyCode.Alpha2)) quitGame(2);
+		if (Input.GetKeyDown (KeyCode.Alpha2)) quitGame(2);
 
 
 		//		if (Input.GetKeyDown (KeyCode.X)) { 
@@ -280,7 +280,7 @@ public class bubbleServer : MonoBehaviour {
 	void initGame(int gameNumber)
 	{	
 		paused = true;
-		newGameStart = true;
+		gamePhase = 1;
 
 		Bub.initialize();
 		Bots.initialize(gameNumber);
@@ -289,7 +289,7 @@ public class bubbleServer : MonoBehaviour {
 
 		generateReferences();
 
-		foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGamePhase(1,connectionId); //and so do any clients who are still connected
+		foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGamePhase(connectionId); //and so do any clients who are still connected
 
 		Camera.main.orthographicSize = Bub.worldRadius/2;
 	
@@ -339,7 +339,7 @@ public class bubbleServer : MonoBehaviour {
 	void OnConnectedS(NetworkMessage netMsg) 
 	{	connectionIdPlayerInfo[netMsg.conn.connectionId] = new PlayerInfo();
 		connectionIdPlayerInfo[netMsg.conn.connectionId].connectionId = netMsg.conn.connectionId;
-		sendGamePhase(1,netMsg.conn.connectionId);
+		sendGamePhase(netMsg.conn.connectionId);
 	}
 
 
@@ -368,14 +368,14 @@ public class bubbleServer : MonoBehaviour {
 	}
 	
 
-	void sendGamePhase(int phase, int connectionId){
+	void sendGamePhase(int connectionId){
 		CScommon.GamePhaseMsg gamePhaseMsg = new CScommon.GamePhaseMsg();
-		gamePhaseMsg.gamePhase = phase;
+		gamePhaseMsg.gamePhase = gamePhase;
 		gamePhaseMsg.numNodes = Engine.nodes.Count;
 		gamePhaseMsg.numLinks = referenceLinkJK.Count;
 		gamePhaseMsg.worldRadius = Bub.worldRadius;
 		safeSendToClient(connectionId,CScommon.gamePhaseMsgType,gamePhaseMsg);
-		debugDisplay("sent game phase "+phase);
+		//debugDisplay("sent game phase "+phase);
 	}
 
 	// // // handlers
@@ -546,19 +546,6 @@ public class bubbleServer : MonoBehaviour {
 			NetworkServer.SendToAll (CScommon.nameNodeIdMsgType,nameNode);
 		}
 	}
-
-//	private void onInitRequest(NetworkMessage netMsg){
-//
-//		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
-//
-//		debugDisplay("Client "+nixMsg.value+" initRequest connectionId "+netMsg.conn.connectionId+" "+NetworkServer.connections.Count);
-//		
-//		generateInitMsg();
-//
-//		netMsg.conn.Send(CScommon.initMsgType, initMsg);
-//
-//		debugDisplay("Client "+netMsg.channelId+" initialized.");
-//	}
 
 	//allocate an updateMsg to cover a segment of the total message
 	private CScommon.UpdateMsg allocateUpdateMsg(int size){

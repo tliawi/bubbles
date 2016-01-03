@@ -233,7 +233,13 @@ public class Bots
 	// initialization
 
 	public static void initialize(int gameNumber){
-			snarkInit(1);
+		switch (gameNumber){
+		case 1:snarkInit(1);
+			break;
+		case 2:testbedInit(1);
+			break;
+		default: snarkInit(1);
+		}
 	}
 
 	//called from bubbleServer whenever it enters second game phase
@@ -386,6 +392,46 @@ public class Bots
 			if (CScommon.testBit(Engine.nodes[i].dna,CScommon.vegetableBit)) Engine.nodes[i].oomph = Engine.nodes[i].maxOomph; //start veggies off full
 			else Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/3f; //start animals off hungrier
 		}
+	}
+
+
+	public static void testbedInit(float normalBubRadius){
+		// Bub.Node pushVegNode(Vector2 position, float radius = 1.0f, string clan="")
+		float small = normalBubRadius/8; float normal = normalBubRadius; float large = normalBubRadius*8;
+
+		pushVegNode(new Vector2(0,0),small);
+		pushVegNode(new Vector2(20,0),normal);
+		pushVegNode(new Vector2(40,0),large);
+
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = 0;
+
+		pushVegNode(new Vector2(0,20),small);
+		pushVegNode(new Vector2(20,20),normal);
+		pushVegNode(new Vector2(40,20),large);
+
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].minBurden;
+
+		pushVegNode(new Vector2(0,40),small);
+		pushVegNode(new Vector2(20,40),normal);
+		pushVegNode(new Vector2(40,40),large);
+
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/2;
+
+		pushVegNode(new Vector2(0,60),small);
+		pushVegNode(new Vector2(20,60),normal);
+		pushVegNode(new Vector2(40,60),large);
+
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph;
+
+		Bub.Node head;
+		head = pushVegNode(new Vector2(-25,0),small).setDna(CScommon.vegetableBit, false);
+		Rules.installHunterPCRule(head);
+		head = pushVegNode(new Vector2(-25,0),normal).setDna(CScommon.vegetableBit, false);
+		Rules.installHunterPCRule(head);
+		head = pushVegNode(new Vector2(-25,0),large).setDna(CScommon.vegetableBit, false);
+		Rules.installHunterPCRule(head);
+
+		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/3;
 	}
 
 
