@@ -16,10 +16,10 @@ public class Bub {
 	// photoyield should be slow enough that inchworms that don't eat should be very slow. 
 	// That makes solos that don't eat minBurdenMuliplier/2 as fast, i.e. snail pace, since they can't shiftBurden, and there's not two photosynthesizers
 	public static readonly float photoYield = 0.04f;
-
+	public static readonly float baseMetabolicRate = 0.0035f;
 	
 	public static float worldRadius = 400f;
-	private static float gGravity;//see resetGravity. Occasional large perterbations in gravity can have a pleasing and disruptive effect on circling
+	private static float gGravity;//see resetGravity. OccaSsional large perterbations in gravity can have a pleasing and disruptive effect on circling
 	private static Vector2 gCG = new Vector2(0.0f,0.0f); //Center of world is 0,0, but CG, Center of Gravity, can be moved about a bit to give a nice effect
 	
 	public static void resetGravity(){
@@ -110,15 +110,15 @@ public class Bub {
 		
 		public Bub.Node source { get; protected set; }
 		public Bub.Node target;
-		
-		public bool enabled {get; protected set;}
-		public bool disabled { get {return !enabled;}}
-		public Muscle enable(){ enabled = true; return this;}
-		public Muscle disable(){ enabled = false; return this; }
 
-		//for calcs internal to .actionDemand and .action
-		private float demand; 
-		
+		public float demand {get; protected set;}
+		public bool enabled {get{ return demand > 0;}} //deprecated
+		public bool disabled { get {return demand == 0;}} //deprecated
+		public Muscle enable(int percent = 100){
+			if (percent>=0 && percent < 300) demand = source.radius2*baseMetabolicRate * percent;//some day * CScommon.testBit(source.dna, CScommon.strengthBit)?10:1; 
+			return this;}
+		public Muscle disable(){ demand = 0; return this; }
+
 		private bool pulling;
 		public bool isPuller() {return pulling;}
 		public bool isPusher() { return !pulling;}
@@ -131,7 +131,7 @@ public class Bub {
 			source = source0;
 			target = target0;
 			
-			enabled = true;
+			enable();
 			pulling = true;
 		}
 		
@@ -144,7 +144,7 @@ public class Bub {
 		// units: is oomp is d*b
 		
 		public float strength() { 
-			return enabled?CScommon.rawStrength(source.oomph,source.maxOomph,source.dna,source.radius2,length2()):0f;
+			return demand*CScommon.efficiency(length2(),source.radius2);
 		}
 		
 		// friction narrative: the force of a link operates independently on both ends. 
@@ -159,54 +159,42 @@ public class Bub {
 		private float displacementToOomph(float disp){
 			return 2*disp/(1/source.burden + 1/target.burden);
 		}
-		
-		
-		// Executes the muscle action given sources's perhaps limited ability to power the muscle
-		// Since metabolicOutput is at most 10*baseMetabolicRate, 
-		// a node can run up to 1/(10*baseMetabolicRate) muscles without being in danger
-		// of driving its oomph below zero in one go.
-		// BUT must not debit oomph finally until all muscles have partaken, else later muscles would have less oomph than earlier muscles
-		public float actionDemand()
-		{	
-			if (disabled) return 0;
 
-			float length, displacement;
-			
-			//avoid zerodivide by length below. Anyhow can't know which way to pull or push
-			length = this.length();
-			if (length == 0) return 0;
-			
+		//don't want to waste energy on pulling when you've already pulled
+		//don't want to pull until nodes have identical x and y
+		private float ceasePullDistance() {return 0.95f*source.radius;}
+
+		// must not debit oomph finally until all muscles have partaken, else later muscles would have less oomph than earlier muscles
+		public float actionDemand()
+		{	if (isPuller() && length() < ceasePullDistance()) return 0;
+			return demand;
+		}
+
+		// Executes the muscle action given sources's perhaps limited ability to power the muscle
+		public void action(float fraction){
+			float dx, dy, displacement, effect;
+
+			if ( fraction*demand == 0) return;
+
+			dx = target.x - source.x;
+			dy = target.y - source.y;
+
 			// Effect on one end is independent of effect on the other.
 			// Each experiences the same 'force', they react to it in inverse proportion to their burden.
 			// Strength == oomph is change on a unit burden,
 			// but in general both ends don't have unit burden, so
 			// actual change in distance between nodes is
-			displacement = oomphToDisplacement(strength()); //magnitude of how much this link will lengthen or shorten
-			
+			displacement = oomphToDisplacement(fraction*demand)*efficiency(); //magnitude of how much this link will lengthen or shorten
+
 			// insure that puller doesn't overshoot zero.
 			// Further, ensure that length stays north of an epsilon:
 			// if length gets too close to zero, numerical effects can result in node superposition
 			// Further, ensure that puller never pulls you closer than you need to eat, to keep nodes from being
 			// so confounded that it's difficult for players to distinguish them.
 			// Also, Perfect superposition is hard on voronoi, and you can't start pushing on it with any notion of direction of push, etc.
-
-			if (isPuller()) displacement = Mathf.Min (length - 0.95f*source.radius, displacement);
+			
+			if (isPuller()) displacement = Mathf.Min (length() - ceasePullDistance(), displacement);
 			if (displacement < 0) displacement = 0; 
-
-
-			demand = displacementToOomph(displacement)/efficiency(); //pay for displacement actually used. Units: d*b is o
-			return demand;
-		}
-
-		public void action(float fraction){
-			float 	dx = target.x - source.x,
-			dy = target.y - source.y;
-			float displacement, effect;
-
-			if (disabled) return;
-
-			demand = demand*fraction;
-			displacement = oomphToDisplacement(demand)*efficiency();
 
 			// give a sign to displacement-- pos if pushing (trying to increase length), neg if pulling
 			if (isPuller()) displacement = -displacement; 
@@ -593,7 +581,7 @@ public class Bub {
 
 			for (int i=0;i< rules.Count;i++) totDemand += rules[i].muscleActionDemand();
 			if (oomph < totDemand) fraction = oomph/totDemand;
-			if (fraction < 1) bubbleServer.debugDisplay("rMA fraction < 1");
+			//if (fraction < 1) bubbleServer.debugDisplay("rMA fraction < 1");
 			for (int i=0;i< rules.Count;i++) rules[i].muscleAction(fraction);
 
 			oomph -= fraction*totDemand; //pay for oomph dispensed. Cannot drive oomph below zero.

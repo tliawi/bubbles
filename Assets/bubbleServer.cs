@@ -594,7 +594,7 @@ public class bubbleServer : MonoBehaviour {
 		foreach (NetworkConnection conn in NetworkServer.connections){
 			s += conn == null?"null":conn.connectionId+", ";
 		}
-		if (!s.Equals (oldConnections)){ debugDisplay(s); oldConnections = s;}
+		if (!s.Equals (oldConnections)){ debugDisplay(oldConnections + " /"); debugDisplay(s); oldConnections = s;}
 
 		while ( start+segmentLength <= Engine.nodes.Count ){
 			NetworkServer.SendByChannelToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(segmentLength), start), Channels.DefaultUnreliable);

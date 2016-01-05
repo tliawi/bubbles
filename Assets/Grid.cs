@@ -95,10 +95,7 @@ public class Grid {
 
 			anode = Engine.nodes[i];
 
-			//r = 0.1f* Mathf.Pow (anode.oomph,1/3.0f)*anode.radius; 
-			float sqrtMax = Mathf.Sqrt (CScommon.maxOomph (anode.radius, 0L));
-			// thickness of aura "skin" denotes fraction of your maxOomph you are carrying
-			diameter = 2*anode.radius*Mathf.Sqrt(anode.oomph)/sqrtMax; //calibrate by non-veg maxOomph
+			diameter = 2*anode.radius*Mathf.Sqrt(anode.oomph/CScommon.maxOomph(anode.radius, 0L)); //calibrate by non-veg maxOomph
 
 			vix = makeTriangle(
 				new Vector3 (anode.x+x0*diameter, anode.y+y0*diameter),

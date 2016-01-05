@@ -137,7 +137,6 @@ public static class CScommon {
 	public static readonly float maxOomphFactor = 200;
 	public static readonly float inefficientLink = 60; // distance/radius at which link efficiency first term drops to 1/e ~ 0.36788
 	public static readonly float inefficientLink2 = inefficientLink*inefficientLink;
-	public static readonly float baseMetabolicRate = 0.0035f;
 
 	public static float maxOomph(float radius, long dna){ return maxOomphFactor*radius*radius*(testBit(dna,vegetableBit)?0.2f:1.0f);}
 
@@ -157,34 +156,15 @@ public static class CScommon {
 		//So they're "proportionately" (to their radius) slower but more efficient,
 		//though absolutely the same speed but more efficient.
 	}
-	
 
-	//since metabolicOutput is at most 10*baseMetabolicRate, 
-	//a node can run up to 1/(10*baseMetabolicRate) muscles without being in danger
-	//of driving its oomph below zero in one go.
-
-	private static float metabolicRate(float oomph, float maxOomph){
-		return Mathf.Pow(oomph/maxOomph, 0.25f) * baseMetabolicRate;
-	}
-	private static float metabolicOutput(float oomph, float maxOomph, long dna){
-			return oomph*(testBit(dna, CScommon.strengthBit)?10.0f*metabolicRate(oomph,maxOomph): metabolicRate(oomph,maxOomph)); // units: o
-	}
-
-	//metabolicOutput is the oomph consumed by an enabled muscle.
-	//rawStrength is the oomph actually delivered into movement by the enabled muscle, as degraded by the efficiency of the muscle.
+	//demand is the oomph consumed by a muscle every fixedframe.
+	//(with one exception: if the muscle isPuller(), and the pulled node's center is already within the source's radius, 
+	//demand * efficiency(linkLengthSquared,sourceRadiusSquared) is the oomph actually delivered into movement by the enabled muscle, as degraded by the efficiency of the muscle.
 	//The units of both are units of oomph.
+	//i.e., disabled muscles (demand == 0) don't do anything and don't draw any oomph.
+	//Note that a node running n equally enabled muscles is consuming its oomph n times faster than a node running just 1 such muscle, 
 
-	//muscle link strength = enabled?rawstrength(oomph, etc etc):0f; i.e., disenabled muscles don't do anything and don't draw any oomph.
-	// *** bone link strength is a constant, whatever displays well. Bones are never disabled, and do not change with distance or oomph ***
-	
-	//Note that a node running n enabled muscles is consuming its oomph n times faster than a node running just 1 muscle, 
-	//i.e. metabolicOutput is per enabled muscle, not per 'digestive system' of the organism as a whole.
-
-	//the first four parameters of rawStrength are properties of the link source, not the link target.
-	public static float rawStrength(float oomph, float maxOomph, long dna, float radiusSquared , float linkLengthSquared){
-		return metabolicOutput(oomph, maxOomph, dna)*efficiency(linkLengthSquared,radiusSquared);
-	}
-
+	//Bone link strength is a constant, whatever displays well. Bones are never disabled, and do not change with distance or oomph ***
 
 
 	//dna
