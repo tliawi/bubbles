@@ -382,4 +382,64 @@ public class Rules {
 	}
 
 
+	//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
+	public static void installSegmentPulltokenServo(Bub.Node source0, Bub.Node target0){
+		source0.rules.Add (new SegmentPulltokenServo(source0, target0));
+	}
+	
+	public class SegmentPulltokenServo: Rule {
+		
+		Bub.Node target;
+		
+		public SegmentPulltokenServo( Bub.Node source0, Bub.Node target0):base(source0){
+			target = target0; //next in line
+			addMuscle(target);
+			if (source.trustHead == source){ //pulling starts with trustHead
+					source.setState("push1Pull2",2);
+			}
+			else source.setState("push1Pull2",0);
+		}
+
+		//someday add forward0Reverse1 to these considerations, will reverse giveBurden/retakeBurden
+		public override void accion() {
+			int push1Pull2 = source.getState ("push1Pull2");
+
+			if (push1Pull2 == 0){ muscles(0).disable(); return; }
+
+			if (push1Pull2 == 2) {
+
+				//I am the puller. Check for transition
+				if (muscles(0).relativeLength() < 1) {
+					target.retakeBurden();
+					source.setState("push1Pull2",0);
+					//pass the token to next, but not to the tail which has no rule at all
+					if (target.getState("push1Pull2")==0){
+						target.setState("push1Pull2",2);
+					} else {
+						source.trustHead.setState("push1Pull2",1); //set head to pushing!
+					}
+				}
+				else { //normal pulling
+					target.giveBurden(source);
+					muscles(0).makePuller().enable();
+				}
+				return;
+			}
+
+			if (push1Pull2 == 1){ //only the head pushes
+
+				//check for transition to pull
+				if (muscles(0).relativeLength () > 10){
+					source.retakeBurden();
+					source.setState("push1Pull2",2);
+
+				}
+				else { //normal pushing
+					source.giveBurden (target);
+					muscles(0).makePusher().enable();
+				}
+			}
+		}
+	}
+
 }

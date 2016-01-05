@@ -111,9 +111,9 @@ public class Bots
 			tail = pushVegNode(tailPosition, radius, clan).setDna(CScommon.vegetableBit, tailVeg);
 			tail.trust (priorTail);
 
-			Rules.installSegmentPushPullServo(priorTail,tail, n);
-			Rules.installNearFarPush1Pull2Cmdr(priorTail,Rules.nodeList(tail), 3,10);//6.5 is avg of 3 and 10...
-
+			//Rules.installSegmentPushPullServo(priorTail,tail, n);
+			//Rules.installNearFarPush1Pull2Cmdr(priorTail,Rules.nodeList(tail), 3,10);//6.5 is avg of 3 and 10...
+			Rules.installSegmentPulltokenServo(priorTail,tail);
 		}
 
 		//make final tail tiny, so is light to push, since that weight won't be shifted off it
