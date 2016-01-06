@@ -34,14 +34,14 @@ public class Rules {
 			return muscle;
 		}
 
-		protected void disableMuscles(){
+		public void disableMuscles(){
 			for (int i = 0; i< _muscles.Count; i++) _muscles[i].disable ();
 		}
 
-		protected void enableMuscles(){
-			for (int i = 0; i< _muscles.Count; i++) _muscles[i].enable ();
+		public void enableMuscles(int percent = 100){
+			for (int i = 0; i< _muscles.Count; i++) _muscles[i].enable (percent);
 		}
-
+		
 		abstract public void accion(); //rule condition, state changes, muscle property changes
 
 		public float muscleActionDemand(){ //rule muscle actions

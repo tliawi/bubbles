@@ -8,7 +8,7 @@ using System.Collections.Generic;
 public class Bub {
 	
 	public static readonly float minRadius = 0.0001f;  //bottom of fractal possibilities, don't want to push float representation
-
+	public static readonly float minPosValue = 0.000001f;
 	//physics fundamental tuning constants
 	public static readonly float minBurdenMultiplier = 0.1f; //governs how more efficient use of shiftBurden is, than solo movement. If 1, inchworms more comperable to solos.
 
@@ -115,7 +115,7 @@ public class Bub {
 		public bool enabled {get{ return demand > 0;}} //deprecated
 		public bool disabled { get {return demand == 0;}} //deprecated
 		public Muscle enable(int percent = 100){
-			if (percent>=0 && percent < 300) demand = source.radius2*baseMetabolicRate * percent;//some day * CScommon.testBit(source.dna, CScommon.strengthBit)?10:1; 
+			if (percent>=0 && percent <= 300) demand = source.radius2*baseMetabolicRate * percent;//some day * CScommon.testBit(source.dna, CScommon.strengthBit)?10:1; 
 			return this;}
 		public Muscle disable(){ demand = 0; return this; }
 
@@ -175,6 +175,7 @@ public class Bub {
 			float dx, dy, displacement, effect;
 
 			if ( fraction*demand == 0) return;
+			if (length()==0) return;
 
 			dx = target.x - source.x;
 			dy = target.y - source.y;
@@ -355,11 +356,11 @@ public class Bub {
 			if (trustHead == head.trustHead) return; //I already do
 
 			//everyone who trusted me now trusts whoever head trusts
-			foreach (Node n in trusters){
+			foreach (Node n in trustHead.trusters){
 				head.trustHead.addTruster(n);
 			}
 
-			trusters.Clear();
+			trustHead.trusters.Clear();
 
 			//and I trust whoever head trusts
 			trustHead = head.trustHead;
@@ -373,19 +374,23 @@ public class Bub {
 		}
 
 		public void breakTrust(){
-			if (trustHead == this) return; //don't break trust in self
+			if (trustHead == this) return; //don't break trust in self. Implies that a trustHead can't leave an org
 			trustHead.trusters.Remove(this);
 			trustHead = this;
 		}
 
 		//set of nodes that trust each other to shift burden and share oomph and make bones.
-		private List<Node> trustGroup()
+		public List<Node> trustGroup()
 		{	if (trustHead != this)return trustHead.trustGroup();
 
 			List<Node> group = new List<Node>();
 			group.Add (this);
 			foreach (Node n in trusters) group.Add (n);
 			return group;
+		}
+
+		public void enableMuscles(int percent){
+			for (int i = 0; i<rules.Count; i++) rules[i].enableMuscles(percent);
 		}
 
 		public void setState(string key, int value){
@@ -525,7 +530,7 @@ public class Bub {
 				retakeBurden(); 
 				givenTarget = target;
 				float givenBurden = naiveAvailableBurden();
-				if (givenBurden > availableBurden()){
+				if (givenBurden > availableBurden()+0.00001){
 					Debug.Log ("giveBurden loss" + givenBurden + " " + availableBurden ());
 					givenBurden = availableBurden ();
 				}
@@ -583,11 +588,12 @@ public class Bub {
 			float fraction = 1;
 
 			for (int i=0;i< rules.Count;i++) totDemand += rules[i].muscleActionDemand();
-			if (oomph < totDemand) fraction = oomph/totDemand;
+			if (totDemand>0 && oomph < totDemand) fraction = oomph/totDemand;
 			//if (fraction < 1) bubbleServer.debugDisplay("rMA fraction < 1");
 			for (int i=0;i< rules.Count;i++) rules[i].muscleAction(fraction);
 
 			oomph -= fraction*totDemand; //pay for oomph dispensed. Cannot drive oomph below zero.
+			if (oomph < minPosValue) oomph = 0;
 		}
 
 		public void activateBones(){
@@ -679,7 +685,7 @@ public class Bub {
 			return sum;
 		}
 
-		//reserver capacity, the amount of oomph the org could absorb in becoming completely maxd out.
+		//reserve capacity, the amount of oomph the org could absorb in becoming completely maxd out.
 		private float orgHunger(){
 			float sum = 0;
 			foreach (var node in trustGroup ()) sum += node.maxOomph - node.oomph;
@@ -697,12 +703,22 @@ public class Bub {
 	                if (this.clan != node.clan && this.overlaps(node))
 	                {
 	                    //take all the org you can
-						float thisOrgCanAbsorb = this.orgHunger ();
+						float thisOrgCanEat = this.orgHunger ();
 						float nodeOrgCanGive = node.orgOomph ();
-						float canTransfer = Mathf.Min (thisOrgCanAbsorb, nodeOrgCanGive);
-						foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanAbsorb;
-						foreach (var orgN in node.trustGroup()) orgN.oomph -= canTransfer*(orgN.oomph/nodeOrgCanGive);
+						float canTransfer = Mathf.Min(thisOrgCanEat, nodeOrgCanGive);
+						
+//						Debug.Log ("eat "+thisOrgCanEat+" "+nodeOrgCanGive+" " + canTransfer);
+//						Debug.Log (this.trustGroup ().Count+":"+node.trustGroup().Count);
+//						Debug.Log ("this(0) " + this.trustGroup()[0].maxOomph + "-" + this.trustGroup()[0].oomph);
+//						Debug.Log ("that(0) " + node.trustGroup()[0].maxOomph + "-" + node.trustGroup()[0].oomph);
 
+						if (canTransfer > 0){ //guard against zeroDivide by zero thisOrgCanEat or nodeOrgCanGive
+							foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanEat;
+							foreach (var orgN in node.trustGroup()) { 
+								orgN.oomph -= canTransfer*(orgN.oomph/nodeOrgCanGive);
+								if (orgN.oomph < minPosValue) orgN.oomph = 0;
+							}
+						}
 						//could take all their burden too
 
 						thisOrgBeats(node);

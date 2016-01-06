@@ -34,7 +34,7 @@ public class bubbleServer : MonoBehaviour {
 
 	private bool paused = true;
 	private int gamePhase = 1; //1 if paused start of new game, 2 if game running
-	private float normScale = 1;
+	private float normScale = 2.5f;
 	private int currentGame = 1;
 
 	private CScommon.InitMsg referenceInitMsg;
@@ -225,7 +225,7 @@ public class bubbleServer : MonoBehaviour {
 		}
 
 		for (int i = 1; i<10; i++){
-			if (Input.GetKeyDown(""+i)) { normScale = 1; quitGame(i); }
+			if (Input.GetKeyDown(""+i)) { normScale = 2.5f; quitGame(i); }
 		}
 
 		//		if (Input.GetKeyDown (KeyCode.X)) { 
@@ -339,6 +339,7 @@ public class bubbleServer : MonoBehaviour {
 		NetworkServer.RegisterHandler (CScommon.turnMsgType, onTurnMsg);
 		NetworkServer.RegisterHandler (CScommon.forward0Reverse1Type, onForward0Reverse1);
 		NetworkServer.RegisterHandler (CScommon.restartMsgType, onRestartMsg);
+		NetworkServer.RegisterHandler (CScommon.speedMsgType, onSpeedMsg);
 	}
 	
 
@@ -439,9 +440,18 @@ public class bubbleServer : MonoBehaviour {
 	private void onRestartMsg(NetworkMessage netMsg){
 		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
 		if (intMsg.value == 0) togglePause();
+		else if (intMsg.value == 21) { normScale /= Mathf.Sqrt (2); quitGame(currentGame); }
+		else if (intMsg.value == 22) { normScale *= Mathf.Sqrt (2); quitGame(currentGame); }
 		else quitGame(intMsg.value);
 	}
-	
+
+	private void onSpeedMsg(NetworkMessage netMsg){
+		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
+		if ( connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId < 0 ) return;
+		List<Bub.Node> orgNodes = Engine.nodes[connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId].trustGroup ();
+		foreach (var node in orgNodes) node.enableMuscles(intMsg.value);
+	}
+
 	private void onInitRequest(NetworkMessage netMsg){
 		CScommon.stringMsg strMsg = netMsg.ReadMessage<CScommon.stringMsg>();
 		strMsg.value += ":"+netMsg.conn.connectionId; //so even if multiple identical names are requested, all names are unique
@@ -513,12 +523,12 @@ public class bubbleServer : MonoBehaviour {
 		sendInitToClient(connectionId);
 		sendUpdateToClient(connectionId);
 		sendLinksToClient(connectionId);
-		sendRegisteredNPCsToClient(connectionId);
+		sendRegisteredToClient(connectionId);
 		                                               
 	}
 
-	private void sendRegisteredNPCsToClient(int connectionId){
-		foreach (int nodeId in nodeIdPlayerInfo.Keys) if (nodeIdPlayerInfo[nodeId].connectionId < 0) sendNameNodeToClient(nodeId, connectionId);
+	private void sendRegisteredToClient(int connectionId){
+		foreach (int nodeId in nodeIdPlayerInfo.Keys) sendNameNodeToClient(nodeId, connectionId); //if (nodeIdPlayerInfo[nodeId].connectionId < 0) 
 	}
 
 	private static void sendNameNodeToClient(int nodeId, int connectionId){

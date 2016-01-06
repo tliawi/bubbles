@@ -23,7 +23,9 @@ public static class CScommon {
 	public const short turnMsgType = 313; //intMsg, -1 means change direction a bit to the left, +1 means a bit to the right, 0 indicates go straight.
 	public const short forward0Reverse1Type = 314; //intMsg, 0 means forward, 1 means reverse. 2 means toggle.
 	public const short linksMsgType = 315; //linksMsg
-	public const short restartMsgType = 316; //intMsg, sent from client to restart server, value determines which game is launched, currently there is only one (game 1)
+	public const short restartMsgType = 316; //intMsg, sent from client to restart server, value 1-9 determines which game is launched, 0 restarts current game, 21/22 do minus/plus normScale
+	public const short speedMsgType = 317; //intMsg, sent from client to change percent (0 to 300) of it's muscles demand
+
 	//use value of zero to toggle server "pause" state without changing game.
 
 //  Summary of messagery:
