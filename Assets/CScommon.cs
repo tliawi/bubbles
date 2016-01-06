@@ -138,7 +138,7 @@ public static class CScommon {
 	public static readonly float inefficientLink = 60; // distance/radius at which link efficiency first term drops to 1/e ~ 0.36788
 	public static readonly float inefficientLink2 = inefficientLink*inefficientLink;
 
-	public static float maxOomph(float radius, long dna){ return maxOomphFactor*radius*radius*(testBit(dna,vegetableBit)?0.2f:1.0f);}
+	public static float maxOomph(float radius){ return maxOomphFactor*radius*radius;}
 
 	private static float distance2(Vector2 source, Vector2 target){
 		return (target.x-source.x)*(target.x-source.x) + (target.y-source.y)*(target.y-source.y);
@@ -158,13 +158,17 @@ public static class CScommon {
 	}
 
 	//demand is the oomph consumed by a muscle every fixedframe.
-	//(with one exception: if the muscle isPuller(), and the pulled node's center is already within the source's radius, 
-	//demand * efficiency(linkLengthSquared,sourceRadiusSquared) is the oomph actually delivered into movement by the enabled muscle, as degraded by the efficiency of the muscle.
+	//(with one exception: if the muscle isPuller(), and the pulled node's center is already within the source's radius, it draws no power and does nothing)
+	//link strength = demand * efficiency(linkLengthSquared,sourceRadiusSquared) is the oomph actually delivered into movement by the enabled muscle, as degraded by the efficiency of the muscle.
 	//The units of both are units of oomph.
 	//i.e., disabled muscles (demand == 0) don't do anything and don't draw any oomph.
 	//Note that a node running n equally enabled muscles is consuming its oomph n times faster than a node running just 1 such muscle, 
 
-	//Bone link strength is a constant, whatever displays well. Bones are never disabled, and do not change with distance or oomph ***
+	//If we don't send the client the full info on "demand", but rather only the boolean "enabled" which is demand>0, the compromised display
+	//could be to render links with width proportional to 
+	//		strength = enabled? someFactor * sourceRadiusSquared * efficiency(linkLengthSquared,sourceRadiusSquared) : 0;
+
+	//Bone link strength is a constant, whatever displays well. Bones are never disabled, and do not change with distance or oomph 
 
 
 	//dna

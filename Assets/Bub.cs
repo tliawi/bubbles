@@ -477,7 +477,7 @@ public class Bub {
 			radius2 = radius*radius;
 			//oomph has a max, burden has a min, both dependent on radius^2
 			burden = naiveBurden();
-			maxOomph = CScommon.maxOomph(radius,dna);
+			maxOomph = CScommon.maxOomph(radius);
 			minBurden = naiveBurden()*minBurdenMultiplier;
 		}
 
@@ -486,7 +486,10 @@ public class Bub {
 		//these functions return this to support function chaining
 		public Node setClan(string c){ clan = c; return this; }
 		public Node setOomph(float mph){ if (mph>=0) if (mph <= maxOomph) oomph = mph; else oomph = maxOomph; return this;}
-		public Node setDna(int bitNumber, bool value) { dna = setBit(dna, bitNumber, value); maxOomph = CScommon.maxOomph(radius,dna); return this;}
+		public Node setDna(int bitNumber, bool value) { 
+			dna = setBit(dna, bitNumber, value); 
+			//maxOomph = CScommon.maxOomph(radius,dna); 
+			return this;}
 		public bool testDna(int bitNumber) { return testBit(dna, bitNumber);}
 
 		public bool overlaps(Node node) { return distance(node) < radius + node.radius; }
@@ -633,14 +636,14 @@ public class Bub {
 			return registeredIds;
 		}
 
-		private void thisOrgLosesTo(Node winner){
-			List<int> registeredWinners = winner.registeredOrgNodes();
+		private void thisOrgBeats(Node loser){
+			List<int> registeredWinners = this.registeredOrgNodes();
 			if (registeredWinners.Count > 0){
-				List<int> registeredLosers = this.registeredOrgNodes();
+				List<int> registeredLosers = loser.registeredOrgNodes();
 				if (registeredLosers.Count > 0 ) {
 					foreach (int loserId in registeredLosers) foreach (int winnerId in registeredWinners) bubbleServer.playerWinLose(winnerId, loserId);
 					
-					randomRelocateOrganism();
+					loser.randomRelocateOrganism();
 				}
 			}
 		}
@@ -667,7 +670,20 @@ public class Bub {
 				node.nx = node.x; node.ny = node.y;
 			}
 			trustHead.x = newPos.x; trustHead.y = newPos.y;
-			nx = x; ny = y;
+			trustHead.nx = trustHead.x; trustHead.ny = trustHead.y;
+		}
+
+		private float orgOomph(){
+			float sum = 0;
+			foreach (var node in trustGroup ()) sum += node.oomph;
+			return sum;
+		}
+
+		//reserver capacity, the amount of oomph the org could absorb in becoming completely maxd out.
+		private float orgHunger(){
+			float sum = 0;
+			foreach (var node in trustGroup ()) sum += node.maxOomph - node.oomph;
+			return sum;
 		}
 
 		public bool isEater(){return (!CScommon.testBit(dna, CScommon.vegetableBit));} 
@@ -680,20 +696,16 @@ public class Bub {
 	            {
 	                if (this.clan != node.clan && this.overlaps(node))
 	                {
-	                    //if you take their burden down to their minBurden, then the field becomes littered with
-	                    //creatures that wiggle but can't move because they've no excess burden to shift.
+	                    //take all the org you can
+						float thisOrgCanAbsorb = this.orgHunger ();
+						float nodeOrgCanGive = node.orgOomph ();
+						float canTransfer = Mathf.Min (thisOrgCanAbsorb, nodeOrgCanGive);
+						foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanAbsorb;
+						foreach (var orgN in node.trustGroup()) orgN.oomph -= canTransfer*(orgN.oomph/nodeOrgCanGive);
 
-						float canEat = this.maxOomph - this.oomph;
-						canEat = Mathf.Min (canEat, node.oomph);
-						this.oomph += canEat;
-						node.oomph -= canEat;
+						//could take all their burden too
 
-//						if ((this == this.trustHead && node == node.trustHead) 
-//						    && (bubbleServer.registered(this.id) && bubbleServer.registered(node.id))
-//						     //&& (this.clan == "snark" || node.clan == "snark" )
-//						    ) node.loserOrganism(this);
-
-						thisOrgLosesTo(node);
+						thisOrgBeats(node);
 					
 						/*
 						switch (this.eatPolicy)

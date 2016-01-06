@@ -95,7 +95,7 @@ public class Grid {
 
 			anode = Engine.nodes[i];
 
-			diameter = 2*anode.radius*Mathf.Sqrt(anode.oomph/CScommon.maxOomph(anode.radius, 0L)); //calibrate by non-veg maxOomph
+			diameter = 2*anode.radius*Mathf.Pow(anode.oomph/anode.maxOomph, 0.6f);
 
 			vix = makeTriangle(
 				new Vector3 (anode.x+x0*diameter, anode.y+y0*diameter),

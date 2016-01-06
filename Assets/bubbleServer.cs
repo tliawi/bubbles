@@ -34,8 +34,9 @@ public class bubbleServer : MonoBehaviour {
 
 	private bool paused = true;
 	private int gamePhase = 1; //1 if paused start of new game, 2 if game running
+	private float normScale = 1;
+	private int currentGame = 1;
 
-	
 	private CScommon.InitMsg referenceInitMsg;
 	private CScommon.LinksMsg referenceLinkMsg;
 
@@ -100,19 +101,23 @@ public class bubbleServer : MonoBehaviour {
 
 	private static GameObject dbgdsply;
 	
+	private static float zoom = 1;
+	private static float zoomSpeed = 1.05f;
 
 	void zoomCameraIn() {
-		Camera.main.orthographicSize /= Mathf.Sqrt (2.0f);
+		zoom /= zoomSpeed;
+		Camera.main.orthographicSize /= zoomSpeed;
 	}
 	
 	void zoomCameraOut() {
-		Camera.main.orthographicSize *= Mathf.Sqrt (2.0f);
+		zoom *= zoomSpeed;
+		Camera.main.orthographicSize *= zoomSpeed;
 	}
 	
 	void stepCamera( float x, float y) {
 		Vector3 temp = Camera.main.transform.position;
-		temp.x += x;
-		temp.y += y;
+		temp.x += x*zoomSpeed;
+		temp.y += y*zoomSpeed;
 		Camera.main.transform.position = temp;
 	}
 
@@ -138,7 +143,7 @@ public class bubbleServer : MonoBehaviour {
 //		create.password = "";
 //		networkMatch.CreateMatch(create, OnMatchCreate);
 
-		initGame(1);
+		initCurrentGame();
 
 		//masterserver
 //		bool useNat = !Network.HavePublicAddress();
@@ -152,7 +157,7 @@ public class bubbleServer : MonoBehaviour {
 	}
 
 	void quitGame(int newgame){
-
+		
 		paused = true;
 		dbgdsply.SetActive(true);
 
@@ -174,7 +179,8 @@ public class bubbleServer : MonoBehaviour {
 
 		GC.Collect(); //while I'm at it...
 
-		initGame(newgame);
+		currentGame = newgame;
+		initCurrentGame();
 	}
 
 
@@ -190,8 +196,10 @@ public class bubbleServer : MonoBehaviour {
 
 	void FixedUpdate(){ if (!paused) Engine.step();}
 
+	public static string gameName = "";
+
 	string reminder(){
-		string s = "arrows Zz s d g 1 2 0";
+		string s = gameName+": arrows Zz s d g 1 2 3 4 +- 0";
 		foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.nodeId;
 		s += "  "+(paused?"(PAUSED)":"")+(xing?"(xing)":"");
 		return s;
@@ -216,23 +224,14 @@ public class bubbleServer : MonoBehaviour {
 			togglePause();
 		}
 
-		if (Input.GetKeyDown (KeyCode.Alpha1)) quitGame(1);
-		if (Input.GetKeyDown (KeyCode.Alpha2)) quitGame(2);
-
+		for (int i = 1; i<10; i++){
+			if (Input.GetKeyDown(""+i)) { normScale = 1; quitGame(i); }
+		}
 
 		//		if (Input.GetKeyDown (KeyCode.X)) { 
 //			xing = !xing; 
 //		}
 
-		//backdoor
-//		if (Input.GetKeyDown (KeyCode.Alpha7)){
-//			Bots.onTurn (8,-1);
-//
-//		}
-//		//backdoor
-//		if (Input.GetKeyDown (KeyCode.Alpha9)){
-//			Bots.onTurn (8,1);
-//		}
 
 		if (Input.GetKeyDown (KeyCode.S) && paused){ //step
 			togglePause();
@@ -250,14 +249,17 @@ public class bubbleServer : MonoBehaviour {
 			if (dbgdsply.activeSelf) debugDisplay(""); //to render annotations made while it was inactive
 		}
 
-		if (Input.GetKeyDown(KeyCode.Z)){
-			if (Input.GetKey (KeyCode.LeftShift)) zoomCameraIn ();
+		if (Input.GetKey(KeyCode.Z)){
+			if (Input.GetKey(KeyCode.LeftShift)) zoomCameraIn ();
 			else zoomCameraOut ();
 		}
 		if (Input.GetKey(KeyCode.UpArrow)) stepCamera(0,1);
 		if (Input.GetKey(KeyCode.DownArrow)) stepCamera(0,-1);
 		if (Input.GetKey(KeyCode.LeftArrow)) stepCamera(-1,0);
 		if (Input.GetKey(KeyCode.RightArrow)) stepCamera(1,0);
+
+		if (Input.GetKeyDown(KeyCode.Equals)) { normScale *= Mathf.Sqrt (2); quitGame(currentGame);}
+		if (Input.GetKeyDown(KeyCode.Minus)) { normScale /= Mathf.Sqrt (2);quitGame(currentGame);}
 
 		execute();
 	}
@@ -279,13 +281,14 @@ public class bubbleServer : MonoBehaviour {
 	}
 
 
-	void initGame(int gameNumber)
+
+	void initCurrentGame()
 	{	
 		paused = true;
 		gamePhase = 1;
 
 		Bub.initialize();
-		Bots.initialize(gameNumber);
+		Bots.initialize(currentGame, normScale);
 		Grid.initialize ();
 		Grid.display(); //since start paused, want to be able to see the paused initial game state.
 
@@ -294,6 +297,7 @@ public class bubbleServer : MonoBehaviour {
 		foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGamePhase(connectionId); //and so do any clients who are still connected
 
 		Camera.main.orthographicSize = Bub.worldRadius/2;
+		Camera.main.transform.position = new Vector3(0,0,-100);
 	
 	}
 
