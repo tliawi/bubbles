@@ -12,13 +12,12 @@ public class Bub {
 	//physics fundamental tuning constants
 	public static readonly float minBurdenMultiplier = 0.1f; //governs how more efficient use of shiftBurden is, than solo movement. If 1, inchworms more comperable to solos.
 
-
-	// photoyield should be slow enough that inchworms that don't eat should be very slow. 
-	// That makes solos that don't eat minBurdenMuliplier/2 as fast, i.e. snail pace, since they can't shiftBurden, and there's not two photosynthesizers
-	public static readonly float photoYield = 0.04f;
-	public static readonly float baseMetabolicRate = 0.0035f;
-	
+	// photoyield should be slow enough that inchworms that don't eat should be slow. 
+	// That makes solos that don't eat minBurdenMuliplier/2 as fast, since they can't shiftBurden, and there's not two photosynthesizers
+	public static float photoYield = 0.08f;
+	public static float baseMetabolicRate = 0.0035f;
 	public static float worldRadius = 400f;
+
 	private static float gGravity;//see resetGravity. OccaSsional large perterbations in gravity can have a pleasing and disruptive effect on circling
 	private static Vector2 gCG = new Vector2(0.0f,0.0f); //Center of world is 0,0, but CG, Center of Gravity, can be moved about a bit to give a nice effect
 	
@@ -226,7 +225,7 @@ public class Bub {
 
 	//////////////////////////////////////////////////////////////// bones
 
-	public static float boneStiffness = 0.05f;
+	public static float boneStiffness = 0.4f;
 
 	public class Bone{
 

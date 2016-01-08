@@ -23,7 +23,17 @@ public static class CScommon {
 	public const short turnMsgType = 313; //intMsg, -1 means change direction a bit to the left, +1 means a bit to the right, 0 indicates go straight.
 	public const short forward0Reverse1Type = 314; //intMsg, 0 means forward, 1 means reverse. 2 means toggle.
 	public const short linksMsgType = 315; //linksMsg
-	public const short restartMsgType = 316; //intMsg, sent from client to restart server, value 1-9 determines which game is launched, 0 restarts current game, 21/22 do minus/plus normScale
+	public const short restartMsgType = 316; //intMsg, sent from client to restart server game.
+	// value 0 is the exception, it pauses/unpauses current game without restarting it.
+	// value -1 relaunches the current game, without changing current scale values.
+	// Values 1-9 select a particular predefined game setup to be launched with its default scale values.
+	// Other values scale and restart the current game:
+	// 21/22 scale down/up the average size (radius) of nodes, 
+	// 31/32 scale down/up the ratio between the size of hunter organisms and the size of other organisms,
+	// 41/42 scale down/up photoYield, the rate energy trickles into everyone's tanks, i.e. the 'starved' speed of everything
+	// 51/52 scale down/up baseMetabolicRate, the base rate at which muscles consume energy, i.e. the 'fed' speed of everything
+	// 61/62 scale down/up the worldRadius (which scales up/down the relative lengths of links in the world, i.e. the size of organisms )
+
 	public const short speedMsgType = 317; //intMsg, sent from client to change percent (0 to 300) of it's muscles demand
 
 	//use value of zero to toggle server "pause" state without changing game.

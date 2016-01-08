@@ -190,12 +190,12 @@ public class Rules {
 	
 	//A Servo is a rule with muscles.
 	//A Cmdr is a rule with musclesCount == 0 that takes the place of a user via manipulating state only, thereby controlling a servo rule
-	
+	//near and far are in terms of link gap, i.e. distance - sum of radii of source and target
 	public static void installNearFarPush1Pull2Cmdr(Bub.Node source0, List<Bub.Node> targets0, float near0, float far0){
 		source0.rules.Add (new NearFarPush1Pull2Cmdr(source0, targets0, near0, far0));
 	}
 	
-	//Controls push1Pull2Servo via push1Pull2 state. Near and Far are in relativeLength, i.e length/source.radius
+	//Controls push1Pull2Servo via push1Pull2 state.
 	//Integer versions of Near and Far could be kept in state if we want to make this rule modifyable by other rules or actions.
 	public class NearFarPush1Pull2Cmdr:Rule {
 
@@ -212,17 +212,17 @@ public class Rules {
 
 		}
 
-		public float avgRelativeLength() {
+		public float avgGap() {
 			float sum = 0;
-			for (int i = 0; i< targets.Count; i++) sum += source.relativeDistance(targets[i]);
+			for (int i = 0; i< targets.Count; i++) sum += source.distance(targets[i]) - (source.radius + targets[i].radius);
 			return sum/targets.Count;
 		}
 
 		public override void accion() {
 			if (source.getState ("nearFarSwitch01") == 1){ //can be suppressed by setting nearFarSwitch01 to 0
-				float avgRelLen = avgRelativeLength();
-				if ( avgRelLen <= near) source.setState ("push1Pull2",1);
-				else if (avgRelLen >= far) source.setState ("push1Pull2",2);
+				float avgLen = avgGap();
+				if ( avgLen <= near) source.setState ("push1Pull2",1);
+				else if (avgLen >= far) source.setState ("push1Pull2",2);
 			}
 		}
 

@@ -1,5 +1,4 @@
-﻿//version 001
-
+﻿
 using UnityEngine;
 using System; // for GC
 using System.Collections;
@@ -34,7 +33,28 @@ public class bubbleServer : MonoBehaviour {
 
 	private bool paused = true;
 	private int gamePhase = 1; //1 if paused start of new game, 2 if game running
-	private float normScale = 2.5f;
+	private float normScale, abnormScale;
+
+	private void resetDefaultScales(int newGame){
+		switch (newGame) {
+		case 2: // race
+			normScale = 1.44f; //1.2^2
+			abnormScale = 1.2f;
+			Bub.photoYield = 0.04f;
+			Bub.baseMetabolicRate = 0.007f;
+			Bub.worldRadius = 400f;
+			break;
+		default:
+			normScale = 2.985984f; // 1.2^6
+			abnormScale = 1.2f;
+			Bub.photoYield = 0.08f;
+			Bub.baseMetabolicRate = 0.0035f;
+			Bub.worldRadius = 400f;
+			break;
+		}
+		quitGame(newGame);
+	}
+
 	private int currentGame = 1;
 
 	private CScommon.InitMsg referenceInitMsg;
@@ -143,7 +163,8 @@ public class bubbleServer : MonoBehaviour {
 //		create.password = "";
 //		networkMatch.CreateMatch(create, OnMatchCreate);
 
-		initCurrentGame();
+
+		quitGame(1);
 
 		//masterserver
 //		bool useNat = !Network.HavePublicAddress();
@@ -219,14 +240,7 @@ public class bubbleServer : MonoBehaviour {
 //		if (gameChosen>0){
 
 		reminderText.text = reminder();
-		
-		if (Input.GetKeyDown (KeyCode.Alpha0)) { 
-			togglePause();
-		}
 
-		for (int i = 1; i<10; i++){
-			if (Input.GetKeyDown(""+i)) { normScale = 2.5f; quitGame(i); }
-		}
 
 		//		if (Input.GetKeyDown (KeyCode.X)) { 
 //			xing = !xing; 
@@ -258,8 +272,36 @@ public class bubbleServer : MonoBehaviour {
 		if (Input.GetKey(KeyCode.LeftArrow)) stepCamera(-1,0);
 		if (Input.GetKey(KeyCode.RightArrow)) stepCamera(1,0);
 
-		if (Input.GetKeyDown(KeyCode.Equals)) { normScale *= Mathf.Sqrt (2); quitGame(currentGame);}
-		if (Input.GetKeyDown(KeyCode.Minus)) { normScale /= Mathf.Sqrt (2);quitGame(currentGame);}
+
+		if (Input.GetKeyDown (KeyCode.Alpha0)) restartGame(0);
+		
+		for (int i = 1; i<10; i++){
+			if (Input.GetKeyDown(""+i)) { restartGame(i); }
+		}
+
+		if (Input.GetKeyDown(KeyCode.BackQuote)) restartGame(-1);
+
+		if (Input.GetKeyDown(KeyCode.Minus)) { 
+			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(22);
+			else restartGame(21);
+		}
+		if (Input.GetKeyDown(KeyCode.Equals)) {
+			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(32);
+			else restartGame(31);
+		}
+		if (Input.GetKeyDown(KeyCode.LeftBracket)) { 
+			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(42);
+			else restartGame(41);
+		}
+		if (Input.GetKeyDown(KeyCode.RightBracket)) {
+			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(52);
+			else restartGame(51);
+		}
+		if (Input.GetKeyDown(KeyCode.Backslash)) {
+			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(62);
+			else restartGame(61);
+		}
+
 
 		execute();
 	}
@@ -288,7 +330,7 @@ public class bubbleServer : MonoBehaviour {
 		gamePhase = 1;
 
 		Bub.initialize();
-		Bots.initialize(currentGame, normScale);
+		Bots.initialize(currentGame, normScale, normScale*abnormScale);
 		Grid.initialize ();
 		Grid.display(); //since start paused, want to be able to see the paused initial game state.
 
@@ -439,10 +481,28 @@ public class bubbleServer : MonoBehaviour {
 
 	private void onRestartMsg(NetworkMessage netMsg){
 		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
-		if (intMsg.value == 0) togglePause();
-		else if (intMsg.value == 21) { normScale /= Mathf.Sqrt (2); quitGame(currentGame); }
-		else if (intMsg.value == 22) { normScale *= Mathf.Sqrt (2); quitGame(currentGame); }
-		else quitGame(intMsg.value);
+		restartGame(intMsg.value);
+	}
+
+	private void restartGame(int v){
+
+		if (v == 0) { togglePause(); return; }
+		if (v == -1) { quitGame(currentGame); return;}
+
+		if (v>0 && v<10) { resetDefaultScales(v); return; } //quits to a different game with its default scales
+
+		else if (v == 21) normScale /= 1.2f;
+		else if (v == 22) normScale *= 1.2f;
+		else if (v == 31) abnormScale /= 1.2f;
+		else if (v == 32) abnormScale *= 1.2f;
+		else if (v == 41) Bub.photoYield /= 1.2f;
+		else if (v == 42) Bub.photoYield *= 1.2f;
+		else if (v == 51) Bub.baseMetabolicRate /= 1.2f;
+		else if (v == 52) Bub.baseMetabolicRate *= 1.2f;
+		else if (v == 61) Bub.worldRadius /= 1.2f;
+		else if (v == 62) Bub.worldRadius *= 1.2f;
+
+		quitGame(currentGame); // relaunches the current game
 	}
 
 	private void onSpeedMsg(NetworkMessage netMsg){
