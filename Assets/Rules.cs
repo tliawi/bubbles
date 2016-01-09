@@ -214,7 +214,7 @@ public class Rules {
 
 		public float avgGap() {
 			float sum = 0;
-			for (int i = 0; i< targets.Count; i++) sum += source.distance(targets[i]) - (source.radius + targets[i].radius);
+			for (int i = 0; i< targets.Count; i++) sum += Mathf.Max(0f,source.distance(targets[i]) - (source.radius + targets[i].radius));
 			return sum/targets.Count;
 		}
 

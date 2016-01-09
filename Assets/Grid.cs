@@ -133,7 +133,7 @@ public class Grid {
 
 					targetNode = anode.rules[j].muscles(k).target;
 					dist = anode.distance (targetNode);
-					r = 3.0f*anode.rules[j].muscles(k).strength();//the constant factor is purely display taste
+					r = 3.0f*Mathf.Sqrt(anode.rules[j].muscles(k).strength());//the constant factor is purely display taste
 					dx = r*(targetNode.y - anode.y)/dist;
 					dy = r*(targetNode.x - anode.x)/dist;
 

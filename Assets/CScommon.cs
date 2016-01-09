@@ -33,8 +33,10 @@ public static class CScommon {
 	// 41/42 scale down/up photoYield, the rate energy trickles into everyone's tanks, i.e. the 'starved' speed of everything
 	// 51/52 scale down/up baseMetabolicRate, the base rate at which muscles consume energy, i.e. the 'fed' speed of everything
 	// 61/62 scale down/up the worldRadius (which scales up/down the relative lengths of links in the world, i.e. the size of organisms )
-
 	public const short speedMsgType = 317; //intMsg, sent from client to change percent (0 to 300) of it's muscles demand
+	public const short broadCastMsgType = 318; //stringMsg, sent from client to server, and rebroadcast by server to all clients.
+	public const short scaleMsgType = 319; //stringMsg, sent from server to all clients whenever scales are set or changed, a very succinct summary of scales
+
 
 	//use value of zero to toggle server "pause" state without changing game.
 

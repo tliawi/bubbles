@@ -25,36 +25,52 @@ public class bubbleServer : MonoBehaviour {
 		}
 	}
 
-	private bool displayGrid;
+	private static bool displayGrid;
 
 	//Bubbles will spawn with radii approximately 1 (i.e. from let's say 1/10 to 10).
 
-	private bool xing = false;
+	//private bool xing = false;
 
-	private bool paused = true;
-	private int gamePhase = 1; //1 if paused start of new game, 2 if game running
-	private float normScale, abnormScale;
+	private static bool paused = true;
+	private static int gamePhase = 1; //1 if paused start of new game, 2 if game running
+
+	private static float normScale, abnormScale;
+	private static int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
 
 	private void resetDefaultScales(int newGame){
 		switch (newGame) {
 		case 2: // race
-			normScale = 1.44f; //1.2^2
-			abnormScale = 1.2f;
-			Bub.photoYield = 0.04f;
-			Bub.baseMetabolicRate = 0.007f;
-			Bub.worldRadius = 400f;
+			normScaleI = 2; //1.2^2
+			abnormScaleI = 1;
+			photoYieldI = -4;
+			baseMetabolicRateI = -9;
+			worldRadiusI = 0;
 			break;
 		default:
-			normScale = 2.985984f; // 1.2^6
-			abnormScale = 1.2f;
-			Bub.photoYield = 0.08f;
-			Bub.baseMetabolicRate = 0.0035f;
-			Bub.worldRadius = 400f;
+			normScaleI = 6; // 1.2^6
+			abnormScaleI = 1;
+			photoYieldI = 0;
+			baseMetabolicRateI = 0;
+			worldRadiusI = 0;
 			break;
 		}
+		setScales();
 		quitGame(newGame);
 	}
 
+	private static string scaleString(){
+		return "| "+normScaleI+" "+abnormScaleI+"   "+photoYieldI+" "+baseMetabolicRateI+" "+worldRadiusI ;
+	}
+
+	private void setScales(){
+		normScale = Mathf.Pow(1.2f, normScaleI);
+		abnormScale = Mathf.Pow(1.2f, abnormScaleI);
+		Bub.photoYield =0.08f* Mathf.Pow(1.2f, photoYieldI);
+		Bub.baseMetabolicRate = 0.0035f * Mathf.Pow (1.2f, baseMetabolicRateI);
+		Bub.worldRadius = 400f * Mathf.Pow(1.2f, worldRadiusI);
+		sendScalesToAll();
+	}
+	
 	private int currentGame = 1;
 
 	private CScommon.InitMsg referenceInitMsg;
@@ -163,8 +179,7 @@ public class bubbleServer : MonoBehaviour {
 //		create.password = "";
 //		networkMatch.CreateMatch(create, OnMatchCreate);
 
-
-		quitGame(1);
+		resetDefaultScales(1);
 
 		//masterserver
 //		bool useNat = !Network.HavePublicAddress();
@@ -222,7 +237,7 @@ public class bubbleServer : MonoBehaviour {
 	string reminder(){
 		string s = gameName+": arrows Zz s d g 1 2 3 4 +- 0";
 		foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.nodeId;
-		s += "  "+(paused?"(PAUSED)":"")+(xing?"(xing)":"");
+		s += "  "+(paused?"(PAUSED)":"")+scaleString();
 		return s;
 	}
 
@@ -382,6 +397,8 @@ public class bubbleServer : MonoBehaviour {
 		NetworkServer.RegisterHandler (CScommon.forward0Reverse1Type, onForward0Reverse1);
 		NetworkServer.RegisterHandler (CScommon.restartMsgType, onRestartMsg);
 		NetworkServer.RegisterHandler (CScommon.speedMsgType, onSpeedMsg);
+		NetworkServer.RegisterHandler (CScommon.broadCastMsgType, onBroadCastMsg);
+
 	}
 	
 
@@ -484,6 +501,12 @@ public class bubbleServer : MonoBehaviour {
 		restartGame(intMsg.value);
 	}
 
+	private static void onBroadCastMsg(NetworkMessage netMsg){
+		CScommon.stringMsg chatMsg = netMsg.ReadMessage<CScommon.stringMsg>();
+		chatMsg.value = connectionIdPlayerInfo[netMsg.conn.connectionId].name + ": " + chatMsg.value;
+		NetworkServer.SendToAll(CScommon.broadCastMsgType, chatMsg);
+	}
+
 	private void restartGame(int v){
 
 		if (v == 0) { togglePause(); return; }
@@ -491,17 +514,18 @@ public class bubbleServer : MonoBehaviour {
 
 		if (v>0 && v<10) { resetDefaultScales(v); return; } //quits to a different game with its default scales
 
-		else if (v == 21) normScale /= 1.2f;
-		else if (v == 22) normScale *= 1.2f;
-		else if (v == 31) abnormScale /= 1.2f;
-		else if (v == 32) abnormScale *= 1.2f;
-		else if (v == 41) Bub.photoYield /= 1.2f;
-		else if (v == 42) Bub.photoYield *= 1.2f;
-		else if (v == 51) Bub.baseMetabolicRate /= 1.2f;
-		else if (v == 52) Bub.baseMetabolicRate *= 1.2f;
-		else if (v == 61) Bub.worldRadius /= 1.2f;
-		else if (v == 62) Bub.worldRadius *= 1.2f;
+		else if (v == 21) normScaleI -= 1;
+		else if (v == 22) normScaleI += 1;
+		else if (v == 31) abnormScaleI -= 1;
+		else if (v == 32) abnormScaleI += 1;
+		else if (v == 41) photoYieldI -= 1;
+		else if (v == 42) photoYieldI += 1;
+		else if (v == 51) baseMetabolicRateI -= 1;
+		else if (v == 52) baseMetabolicRateI += 1;
+		else if (v == 61) worldRadiusI -= 1;
+		else if (v == 62) worldRadiusI += 1;
 
+		setScales();
 		quitGame(currentGame); // relaunches the current game
 	}
 
@@ -610,6 +634,13 @@ public class bubbleServer : MonoBehaviour {
 			debugDisplay("sent nameNodeId |"+nameNode.name+"|"+nameNode.nodeIndex+" to all.");
 		}
 	}
+
+	private static void sendScalesToAll(){
+		CScommon.stringMsg scaleMsg = new CScommon.stringMsg();
+		scaleMsg.value = scaleString();
+		NetworkServer.SendToAll (CScommon.scaleMsgType,scaleMsg);
+	}
+	
 
 	private static void sendScoreToAll(int nodeId, bool winner){
 		if (nodeIdPlayerInfo.ContainsKey(nodeId)){

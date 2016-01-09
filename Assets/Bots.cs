@@ -318,14 +318,15 @@ public class Bots
 		for (int i=0; i<30; i++) pushVegNode( randomRectPosition(0.17f),Random.Range(0.5f, 2.0f)*norm); //random clans
 		
 		
-		head = spawnInchworm(new Vector2(0,10),norm*0.6f,false,
-		                     new Vector2(8,0),norm*0.5f,false,"pest");
+		head = spawnInchworm(new Vector2(0,10),abnorm*0.6f,false,
+		                     new Vector2(8,0),abnorm*0.5f,false,"pest");
 		Rules.installHunterNPCRule(head);
+		bubbleServer.registerNPC(head.id,"inchworm pest");
 		
-		head = spawnTricycle(new Vector2(0,-10),norm*0.8f,false,
-		                     new Vector2(8,0),7, norm*0.6f, false,"pest");
-		Rules.installHunterNPCRule(head);
-		
+		//head = spawnTricycle(new Vector2(0,-10),abnorm*0.8f,false,
+		//                     new Vector2(8,0),7, abnorm*0.6f,false,"pest");
+		//Rules.installHunterNPCRule(head);
+		//bubbleServer.registerNPC(head.id,"tricycle pest");
 		
 		for (int i = 0; i<7; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*norm,true,true,"bots");
 		
@@ -349,7 +350,7 @@ public class Bots
 
 		head = spawnTapeworm(new Vector2(100,100),false, 7, abnorm*0.8f, false ,"tapeworm");
 		Rules.installHunterNPCRule(head);
-
+		// don't track his score on snarks... bubbleServer.registerNPC(head.id,"tapeworm");
 
 		head = spawnInchworm(new Vector2(-3,-3), abnorm*1.2f, false, 
 		                     new Vector2(7,7), abnorm*1f, false,"snark"); 

@@ -243,24 +243,19 @@ public class Bub {
 		public void boneAction()
 		{	float 	dx = target.x - source.x,
 			dy = target.y - source.y;
-			float length, effect;
-			
-			//avoid zerodivide by length below. Anyhow can't know which way to pull or push
-			length = source.distance(target);
-			if (length == 0) return;
+			float dislocation, effect;
+
+			dislocation = boneLength - source.distance(target);
 			
 			// Effect on one end is independent of effect on the other.
 			// Each experiences the same 'force', they react to it in inverse proportion to their burden.
-			effect = boneStiffness*(boneLength - length); // - if too long, + if too short.
-			
-			// effect is signed oomph: displacement of a unit burden, energy that's been stored in the elastic bone.  Units: bd == o
-			//Units of effect change from gd to g, i.e. express it as a fraction of length, and cut it in half to equally apply it to both ends
-			effect = effect/(2*length);
-			
-			// has full effect on unit burden
+			effect = boneStiffness*dislocation; // - if too long, + if too short.
+
 			//A smaller burden moves more than a bigger burden.
-			source.nx -= dx*effect/source.burden;
-			source.ny -= dy*effect/source.burden;
+			effect = 0.5f * effect * target.burden /(source.burden + target.burden);
+
+			source.nx -= dx*effect;
+			source.ny -= dy*effect;
 			
 			//target will be moved when target processes this bone's twin
 			//			target.nx += dx*effect/target.burden;
@@ -588,11 +583,10 @@ public class Bub {
 
 			for (int i=0;i< rules.Count;i++) totDemand += rules[i].muscleActionDemand();
 			if (totDemand>0 && oomph < totDemand) fraction = oomph/totDemand;
-			//if (fraction < 1) bubbleServer.debugDisplay("rMA fraction < 1");
 			for (int i=0;i< rules.Count;i++) rules[i].muscleAction(fraction);
 
-			oomph -= fraction*totDemand; //pay for oomph dispensed. Cannot drive oomph below zero.
-			if (oomph < minPosValue) oomph = 0;
+			oomph -= fraction*totDemand; //pay for oomph dispensed. Cannot logically drive oomph below zero
+			if (oomph < minPosValue) oomph = 0; //but numerically, si.
 		}
 
 		public void activateBones(){
