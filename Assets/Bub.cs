@@ -110,13 +110,22 @@ public class Bub {
 		public Bub.Node source { get; protected set; }
 		public Bub.Node target;
 
-		public float demand {get; protected set;}
+		public float demand {get; private set;}
+		private float pastDemand;
+
 		public bool enabled {get{ return demand > 0;}} //deprecated
 		public bool disabled { get {return demand == 0;}} //deprecated
-		public Muscle enable(int percent = 100){
-			if (percent>=0 && percent <= 300) demand = source.radius2*baseMetabolicRate * percent;//some day * CScommon.testBit(source.dna, CScommon.strengthBit)?10:1; 
-			return this;}
-		public Muscle disable(){ demand = 0; return this; }
+
+		public Muscle enable(int percent){
+			if (percent>=0 && percent <= 300) {
+				demand = source.radius2 * baseMetabolicRate * percent;//some day * CScommon.testBit(source.dna, CScommon.strengthBit)?10:1; 
+				pastDemand = demand; //so that a subsequent reEnable will do nothing.
+			}
+			return this;
+		}
+
+		public Muscle disable(){ if (demand > 0) pastDemand = demand; demand = 0; return this; }
+		public Muscle reEnable(){demand = pastDemand; return this;}
 
 		private bool pulling;
 		public bool isPuller() {return pulling;}
@@ -129,8 +138,7 @@ public class Bub {
 		public Muscle( Bub.Node source0, Bub.Node target0) {
 			source = source0;
 			target = target0;
-			
-			enable();
+			enable(100);
 			pulling = true;
 		}
 		

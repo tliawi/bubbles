@@ -21,7 +21,6 @@ public class Rules {
 	public abstract class Rule {
 
 		public Bub.Node source {get; protected set;}
-
 		private List<Bub.Muscle> _muscles;
 
 		public Bub.Muscle muscles( int i) { return _muscles[i]; }
@@ -38,8 +37,12 @@ public class Rules {
 			for (int i = 0; i< _muscles.Count; i++) _muscles[i].disable ();
 		}
 
-		public void enableMuscles(int percent = 100){
+		public void enableMuscles(int percent){
 			for (int i = 0; i< _muscles.Count; i++) _muscles[i].enable (percent);
+		}
+
+		public void reEnableMuscles(){
+			for (int i = 0; i< _muscles.Count; i++) _muscles[i].reEnable ();
 		}
 		
 		abstract public void accion(); //rule condition, state changes, muscle property changes
@@ -100,7 +103,7 @@ public class Rules {
 				if (turn < 0) { muscles(0).makePuller(); muscles(1).makePusher();} //L 
 				else {muscles(0).makePusher(); muscles(1).makePuller ();} //R
 
-				enableMuscles();
+				reEnableMuscles();
 
 				countDown = 6;
 			}
@@ -158,7 +161,7 @@ public class Rules {
 				}
 
 				if (push1Pull2 != priorPushPull) {
-					enableMuscles();
+					reEnableMuscles();
 					priorPushPull = push1Pull2;
 					forwardReverse = source.getState ("forward0Reverse1");
 
@@ -176,9 +179,9 @@ public class Rules {
 				//Pulling has the opposite effect, so need to counteract
 				if (musclesCount >= 2 && push1Pull2 == 2 ) {
 					if (muscles(0).efficiency() > muscles(musclesCount-1).efficiency()){ 
-						muscles(0).disable(); muscles(musclesCount-1).enable ();
+						muscles(0).disable(); muscles(musclesCount-1).reEnable ();
 					} else {
-						muscles(0).enable(); muscles(musclesCount-1).disable ();
+						muscles(0).reEnable(); muscles(musclesCount-1).disable ();
 					}
 				}
 			} else { disableMuscles(); priorPushPull = 0; } //so will reinitialize pushPull after turn is finished
@@ -246,7 +249,7 @@ public class Rules {
 		
 		protected void startFighting(Bub.Node target, State newState){ //newState must be either attacking or fleeing
 			fightingMuscle.target = target; //whether or not it already was
-			fightingMuscle.enable ();
+			fightingMuscle.reEnable ();
 			
 			if (newState == State.attacking) fightingMuscle.makePuller ();
 			else if (newState == State.fleeing) fightingMuscle.makePusher ();
@@ -361,7 +364,7 @@ public class Rules {
 				return; 
 			}
 			if (push1Pull2 != priorPushPull) {
-				enableMuscles();
+				reEnableMuscles();
 				priorPushPull = push1Pull2;
 				forward0Reverse1 = source.getState ("forward0Reverse1");
 
@@ -421,7 +424,7 @@ public class Rules {
 				}
 				else { //normal pulling
 					target.giveBurden(source);
-					muscles(0).makePuller().enable();
+					muscles(0).makePuller().reEnable();
 				}
 				return;
 			}
@@ -436,7 +439,7 @@ public class Rules {
 				}
 				else { //normal pushing
 					source.giveBurden (target);
-					muscles(0).makePusher().enable();
+					muscles(0).makePusher().reEnable();
 				}
 			}
 		}

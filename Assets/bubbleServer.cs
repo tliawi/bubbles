@@ -36,15 +36,18 @@ public class bubbleServer : MonoBehaviour {
 
 	private static float normScale, abnormScale;
 	private static int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
+	private static float vegStartFuel, nonvegStartFuel;
 
 	private void resetDefaultScales(int newGame){
 		switch (newGame) {
 		case 2: // race
 			normScaleI = 2; //1.2^2
 			abnormScaleI = 1;
-			photoYieldI = -4;
-			baseMetabolicRateI = -9;
+			photoYieldI = -3;
+			baseMetabolicRateI = -1;
 			worldRadiusI = 0;
+			vegStartFuel = 1.0f;
+			nonvegStartFuel = 0f;
 			break;
 		default:
 			normScaleI = 6; // 1.2^6
@@ -52,6 +55,8 @@ public class bubbleServer : MonoBehaviour {
 			photoYieldI = 0;
 			baseMetabolicRateI = 0;
 			worldRadiusI = 0;
+			vegStartFuel = 1.0f;
+			nonvegStartFuel = 0f;
 			break;
 		}
 		setScales();
@@ -59,7 +64,9 @@ public class bubbleServer : MonoBehaviour {
 	}
 
 	private static string scaleString(){
-		return "| "+normScaleI+" "+abnormScaleI+"   "+photoYieldI+" "+baseMetabolicRateI+" "+worldRadiusI ;
+		return "| "+normScaleI+" "+abnormScaleI+"   "+
+			photoYieldI+" "+baseMetabolicRateI+" "+worldRadiusI+"   "+
+			Mathf.Round(vegStartFuel*10)+" "+Mathf.Round (nonvegStartFuel*10);
 	}
 
 	private void setScales(){
@@ -68,6 +75,10 @@ public class bubbleServer : MonoBehaviour {
 		Bub.photoYield =0.08f* Mathf.Pow(1.2f, photoYieldI);
 		Bub.baseMetabolicRate = 0.0035f * Mathf.Pow (1.2f, baseMetabolicRateI);
 		Bub.worldRadius = 400f * Mathf.Pow(1.2f, worldRadiusI);
+		if (vegStartFuel < 0) vegStartFuel = 0;
+		if (vegStartFuel > 1) vegStartFuel = 1;
+		if (nonvegStartFuel < 0) nonvegStartFuel = 0;
+		if (nonvegStartFuel > 1) nonvegStartFuel = 1;
 		sendScalesToAll();
 	}
 	
@@ -316,8 +327,14 @@ public class bubbleServer : MonoBehaviour {
 			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(62);
 			else restartGame(61);
 		}
-
-
+		if (Input.GetKeyDown(KeyCode.Semicolon)) {
+			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(72);
+			else restartGame(71);
+		}
+		if (Input.GetKeyDown(KeyCode.Quote)) {
+			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(82);
+			else restartGame(81);
+		}
 		execute();
 	}
 
@@ -337,7 +354,12 @@ public class bubbleServer : MonoBehaviour {
 		}
 	}
 
-
+	public static void startFuel(){
+		for (int i = 1; i< Engine.nodes.Count; i++) {
+			if (CScommon.testBit (Engine.nodes[i].dna,CScommon.vegetableBit)) Engine.nodes[i].oomph = Engine.nodes[i].maxOomph*vegStartFuel; 
+			else Engine.nodes[i].oomph = Engine.nodes[i].maxOomph*nonvegStartFuel;
+		}
+	}
 
 	void initCurrentGame()
 	{	
@@ -346,6 +368,7 @@ public class bubbleServer : MonoBehaviour {
 
 		Bub.initialize();
 		Bots.initialize(currentGame, normScale, normScale*abnormScale);
+		startFuel();
 		Grid.initialize ();
 		Grid.display(); //since start paused, want to be able to see the paused initial game state.
 
@@ -524,7 +547,10 @@ public class bubbleServer : MonoBehaviour {
 		else if (v == 52) baseMetabolicRateI += 1;
 		else if (v == 61) worldRadiusI -= 1;
 		else if (v == 62) worldRadiusI += 1;
-
+		else if (v == 71) vegStartFuel -= 0.1f;
+		else if (v == 72) vegStartFuel += 0.1f;
+		else if (v == 71) nonvegStartFuel -= 0.1f;
+		else if (v == 72) nonvegStartFuel += 0.1f;
 		setScales();
 		quitGame(currentGame); // relaunches the current game
 	}
@@ -621,7 +647,7 @@ public class bubbleServer : MonoBehaviour {
 		nameNode.name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
 		nameNode.nodeIndex = pi.nodeId;
 		NetworkServer.SendToClient(connectionId,CScommon.nameNodeIdMsgType,nameNode);
-		debugDisplay("sent nameNodeId |"+nameNode.name+"|"+nameNode.nodeIndex+" to connId "+connectionId);
+		debugDisplay("|name|nodeId connId |"+nameNode.name+"|"+nameNode.nodeIndex+" "+connectionId);
 	}
 
 	private static void sendNameNodeToAll(int connectionId){

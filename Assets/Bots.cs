@@ -79,8 +79,8 @@ public class Bots
 		Rules.installPush1Pull2Servo(head,tailList);
 		Rules.installTurnServo(head,tailL,tailR);
 
-		float relWidthBetweenTails = widthBetweenTails/headRadius; // make equilateral triangle at near end
-		Rules.installNearFarPush1Pull2Cmdr(head,tailList, 0.75f*relWidthBetweenTails ,1.4f*relWidthBetweenTails);
+		// make equilateral triangle at near end
+		Rules.installNearFarPush1Pull2Cmdr(head,tailList, 0.75f*widthBetweenTails ,1.4f*widthBetweenTails);
 
 		return head;
 	}
@@ -329,13 +329,8 @@ public class Bots
 		//bubbleServer.registerNPC(head.id,"tricycle pest");
 		
 		for (int i = 0; i<7; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*norm,true,true,"bots");
-		
-		for (int i = 1; i< Engine.nodes.Count; i++) {
-			if (CScommon.testBit (Engine.nodes[i].dna,CScommon.vegetableBit)) Engine.nodes[i].oomph = Engine.nodes[i].maxOomph; //start veggies off full
-			else Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/3f; //start animals off hungrier
-		}
-	}
 
+	}
 
 	public static void snarkInit(float norm, float abnorm){
 		Bub.Node head;
@@ -406,10 +401,6 @@ public class Bots
 
 //		for (int i = 0; i<60; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*normalBubRadius,true,true,"bots");
 
-		for (int i = 0; i< Engine.nodes.Count; i++) {
-			if (CScommon.testBit(Engine.nodes[i].dna,CScommon.vegetableBit)) Engine.nodes[i].oomph = Engine.nodes[i].maxOomph; //start veggies off full
-			else Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/3f; //start animals off hungrier
-		}
 	}
 
 	public static void fussballInit(float norm, float abnorm){
@@ -458,11 +449,7 @@ public class Bots
 		for (int i=0; i<110; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm); //random clans
 		
 		//		for (int i = 0; i<60; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*normalBubRadius,true,true,"bots");
-		
-		for (int i = 0; i< Engine.nodes.Count; i++) {
-			if (CScommon.testBit(Engine.nodes[i].dna,CScommon.vegetableBit)) Engine.nodes[i].oomph = Engine.nodes[i].maxOomph; //start veggies off full
-			else Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/3f; //start animals off hungrier
-		}
+
 	}
 
 	public static void testbedInit(float norm,float abnorm){
@@ -530,7 +517,6 @@ public class Bots
 		head = pushVegNode(new Vector2(-25,40)*abnorm,large).setDna(CScommon.vegetableBit, false);
 		//done when mount Rules.installHunterPCRule(head);
 
-		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/3;
 	}
 
 
