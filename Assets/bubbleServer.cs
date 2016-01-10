@@ -41,7 +41,7 @@ public class bubbleServer : MonoBehaviour {
 	private void resetDefaultScales(int newGame){
 		switch (newGame) {
 		case 2: // race
-			normScaleI = 2; //1.2^2
+			normScaleI = 2;
 			abnormScaleI = 1;
 			photoYieldI = -3;
 			baseMetabolicRateI = -1;
@@ -49,8 +49,17 @@ public class bubbleServer : MonoBehaviour {
 			vegStartFuel = 1.0f;
 			nonvegStartFuel = 0f;
 			break;
+		case 4:
+			normScaleI = 0; 
+			abnormScaleI = 2;
+			photoYieldI = 0;
+			baseMetabolicRateI = 0;
+			worldRadiusI = -3;
+			vegStartFuel = 0f;
+			nonvegStartFuel = 0f;
+			break;
 		default:
-			normScaleI = 6; // 1.2^6
+			normScaleI = 6;
 			abnormScaleI = 1;
 			photoYieldI = 0;
 			baseMetabolicRateI = 0;
@@ -549,8 +558,8 @@ public class bubbleServer : MonoBehaviour {
 		else if (v == 62) worldRadiusI += 1;
 		else if (v == 71) vegStartFuel -= 0.1f;
 		else if (v == 72) vegStartFuel += 0.1f;
-		else if (v == 71) nonvegStartFuel -= 0.1f;
-		else if (v == 72) nonvegStartFuel += 0.1f;
+		else if (v == 81) nonvegStartFuel -= 0.1f;
+		else if (v == 82) nonvegStartFuel += 0.1f;
 		setScales();
 		quitGame(currentGame); // relaunches the current game
 	}

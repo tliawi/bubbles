@@ -191,10 +191,11 @@ public static class CScommon {
 	//dna
 
 	public const int vegetableBit = 0; // higher photosynthesis yield
-	public const int strengthBit = 1;  // higher link rate, with accompanying power demand and inefficiency
+	public const int noPhotoBit = 1;  // higher link rate, with accompanying power demand and inefficiency
 	public const int playerBit = 3;   //indicates that this node has been allocated to a player (even though the player may be offline).
 	public const int playerPlayingBit = 4;  //indicates that this node has been allocated to a player, and that this player is currently online and playing.
-	public const int snarkBit = 5; 
+	public const int snarkBit = 5;
+	public const int strengthBit = 6;
 
 	//thanks to http://www.dotnetperls.com/and
 	public static string longToString(long dna)

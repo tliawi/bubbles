@@ -252,7 +252,10 @@ public class Bub {
 		{	float 	dx = target.x - source.x,
 			dy = target.y - source.y;
 			float dislocation, effect;
-
+			if (source.burden <= 0 || target.burden <=0){
+				bubbleServer.debugDisplay("boneAction error: burden <= 0");
+				return;
+			}
 			dislocation = boneLength - source.distance(target);
 			
 			// Effect on one end is independent of effect on the other.
@@ -357,14 +360,16 @@ public class Bub {
 		public void trust(Node head){
 			if (trustHead == head.trustHead) return; //I already do
 
-			//everyone who trusted me now trusts whoever head trusts
-			foreach (Node n in trustHead.trusters){
-				head.trustHead.addTruster(n);
+			if (trustHead == this){
+				//everyone who trusted me now trusts whoever head trusts
+				foreach (Node n in trusters){
+					head.trustHead.addTruster(n);
+				}
+
+				trusters.Clear();
 			}
 
-			trustHead.trusters.Clear();
-
-			//and I trust whoever head trusts
+			//and I trust whomever head trusts
 			trustHead = head.trustHead;
 			head.trustHead.addTruster (this);
 
@@ -516,6 +521,7 @@ public class Bub {
 
 		//eventually should depend on stomach's health vitamins etc.
 		public void photosynthesis() {
+			if (testDna(CScommon.noPhotoBit)) return;
 			oomph +=  photoYield*radius2 * (maxOomph - oomph )/maxOomph; //oomph will never quite attain maxOomph, photosyn gets more inefficient as it approaches maxOomph
 		}
 
@@ -560,6 +566,7 @@ public class Bub {
 		public void shareOomph(){
 
 			if (trustHead != this) return;//do nothing except on trustHeads
+			if (trusters.Count == 0) return; //nothing to share
 			List<Node> trustGrp = trustGroup();
 
 			Node bestSupplied = trustGrp[0];
@@ -755,6 +762,17 @@ public class Bub {
 	    //In particular: if a different bot targets you (attaches a tractor link to you) do you become aware of that? Does knowing involve
 	    //knowing which node is at the other end of that link? Opens the possibility of code to edit, vandalize, that bot. Of course
 	    //the neighbors list already does that.
+
+		public Node closestStranger(){
+			Node n = null;
+			float closestDistance = float.MaxValue;
+
+			for (int i=0;i<neighbors.Count;i++)if (neighbors[i].clan != clan && distance(neighbors[i]) < closestDistance){
+				n = neighbors[i];
+				closestDistance = distance(n);
+			}
+			return n;
+		}
 
 		//These are heuristic, we'll see how effective they are...
 		public Node mostTastyNeighbor(){

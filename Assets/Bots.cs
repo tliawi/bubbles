@@ -248,6 +248,10 @@ public class Bots
 			bubbleServer.gameName = "fussball";
 			fussballInit(norm, abnorm);
 			break;
+		case 4:
+			bubbleServer.gameName = "turm";
+			turmInit(norm,abnorm);
+			break;
 		default: 
 			bubbleServer.gameName = "sizeTest";
 			testbedInit(norm, abnorm);
@@ -452,6 +456,75 @@ public class Bots
 
 	}
 
+	public static void turmInit(float norm,float abnorm){
+		float rad = 12; // turn radius is half of turm side length
+		float height = Mathf.Sqrt((rad*2)*(rad*2)-rad*rad); //height of equilateral triangle of sides = 2 rad
+		float centerHeight = rad*rad/height; //height of center of that triangle
+		Bub.Node one, two, three, goal, feeder1, feeder2, feeder3;
+
+		goal = pushVegNode(new Vector2(0,0),norm/4).setClan("turm");
+		bubbleServer.registerNPC(goal.id,"goal");
+		
+		one = pushVegNode(new Vector2(rad,-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true).setDna(CScommon.vegetableBit, false);
+		two = pushVegNode(new Vector2(-rad,-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true);
+		three = pushVegNode(new Vector2(0,height-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true);
+
+		Rules.installTurmDefender(one,5*rad); 
+		Rules.installTurmDefender(two,5*rad); 
+		Rules.installTurmDefender(three,5*rad);
+		
+		//feeders are close
+		feeder1 = pushVegNode(new Vector2(0.93f*rad,0.22f*rad),1.9f*norm,"turm").setDna (CScommon.vegetableBit, false);
+		feeder2 = pushVegNode(new Vector2(-1.2f*rad,-0.8f*rad),3.1f*norm,"turm").setDna (CScommon.vegetableBit, false);
+		feeder3 = pushVegNode(new Vector2(0.83f*rad,-0.38f*rad),4.3f*norm,"turm").setDna (CScommon.vegetableBit, false);
+
+		one.trust(goal); two.trust(goal); three.trust(goal); feeder1.trust(goal); feeder2.trust(goal); feeder3.trust(goal);
+
+		//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm.
+		feeder1.giveBurden (one);
+		feeder2.giveBurden (two);
+		feeder3.giveBurden (three);
+
+		//plant a bunch of munchies, but not within turm
+		int startCount = Engine.nodes.Count;
+		float turmRad = goal.distance (one);
+		//beware, this becomes an infinite loop as turmRad approaches worldRadius
+		while (Engine.nodes.Count - startCount < 100){
+			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+			if (Engine.nodes[Engine.nodes.Count - 1].distance(goal) < turmRad) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
+		}
+
+		//mountable
+		spawnTricycle(new Vector2( Bub.worldRadius,0)    , 1*abnorm, false,
+		              new Vector2( 10,0), 7, 0.75f*abnorm, false, "p1"); 
+		
+		spawnInchworm(new Vector2( Bub.worldRadius, -30)    , 1.2f*abnorm, false,
+		              new Vector2( 10, 0), 1f*abnorm, false,"p2"); 
+		
+		
+		spawnTricycle(new Vector2( 0, Bub.worldRadius)   , 1*abnorm, false,
+		              new Vector2( 0, 10), 7, 0.75f*abnorm, false, "p3"); 
+		
+		spawnInchworm(new Vector2( 30, Bub.worldRadius)   , 1.2f*abnorm, false,
+		              new Vector2( 0, 10), 1f*abnorm, false,"p4");
+		
+		
+		spawnTricycle(new Vector2( -Bub.worldRadius,0)   , 1*abnorm, false,
+		              new Vector2( -10,0), 7, 0.75f*abnorm, false, "p5");
+		
+		spawnInchworm(new Vector2( -Bub.worldRadius,30)   , 1.2f*abnorm, false,
+		              new Vector2( -10,0), 1f*abnorm, false,"p6"); 
+		
+		
+		spawnTricycle(new Vector2( 0, -Bub.worldRadius)   , 1*abnorm, false,
+		              new Vector2( 0, -10), 7, 0.75f*abnorm, false, "p7"); 
+		
+		spawnInchworm(new Vector2( -30, -Bub.worldRadius)   , 1.2f*abnorm, false,
+		              new Vector2( 0, -10), 1f*abnorm, false,"p8");
+		
+
+	}
+
 	public static void testbedInit(float norm,float abnorm){
 		// Bub.Node pushVegNode(Vector2 position, float radius = 1.0f, string clan="")
 		float small = norm/8;  float large = norm*8;
@@ -504,19 +577,6 @@ public class Bots
 		pushVegNode(new Vector2(70+20,60)*abnorm,norm).setDna(CScommon.vegetableBit,false);
 		pushVegNode(new Vector2(70+40,60)*abnorm,large).setDna(CScommon.vegetableBit,false);
 		
-		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph;
-
-		//mountable
-
-
-		Bub.Node head;
-		head = pushVegNode(new Vector2(-25,17.5f)*abnorm,small).setDna(CScommon.vegetableBit, false);
-		//done when mount Rules.installHunterPCRule(head);
-		head = pushVegNode(new Vector2(-25,20)*abnorm,norm).setDna(CScommon.vegetableBit, false);
-		//done when mount Rules.installHunterPCRule(head);
-		head = pushVegNode(new Vector2(-25,40)*abnorm,large).setDna(CScommon.vegetableBit, false);
-		//done when mount Rules.installHunterPCRule(head);
-
 	}
 
 

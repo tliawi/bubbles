@@ -445,4 +445,30 @@ public class Rules {
 		}
 	}
 
+	public static void installTurmDefender(Bub.Node source0, float perimeter){
+		source0.rules.Add (new TurmDefender(source0, perimeter));
+	}
+
+
+	public class TurmDefender: Rule {
+
+		private Bub.Muscle pusher;
+		private float perimeter;
+
+		public TurmDefender(Bub.Node source, float perimeter0):base(source){
+			perimeter = perimeter0;
+			pusher = addMuscle(source).makePusher().disable (); //disabled muscle from source to source
+			//pusher just convenience for muscles(0)
+		}
+
+		override public void accion(){
+			Bub.Node target = source.closestStranger ();
+			if (target == null || source.distance (target) > perimeter ) pusher.disable ();
+			else {
+				pusher.target = target; 
+				pusher.reEnable();
+			}
+		}
+
+	}
 }
