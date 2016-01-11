@@ -280,40 +280,31 @@ public class Bots
 		pushVegNode(new Vector2(-Bub.worldRadius,0), norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal left, won't eat anybody moving
 		
 		//evens against odds
-		Bub.Node head;
 		
-		head = spawnTricycle(new Vector2( Bub.worldRadius,25)    , abnorm*1, false,
+		spawnTricycle(new Vector2( Bub.worldRadius,25)    , abnorm*1, false,
 		                     new Vector2(10,0), 7, abnorm*0.75f, false, "Al"); //nodes 1,2,3
-		//done when mount Rules.installHunterPCRule(head);
 		
-		head = spawnInchworm(new Vector2( Bub.worldRadius,35)    , abnorm*1.2f, false,
+		spawnInchworm(new Vector2( Bub.worldRadius,35)    , abnorm*1.2f, false,
 		                     new Vector2(10,0) , abnorm*1f, false,"Beth"); //nodes 4,5
-		//done when mount Rules.installHunterPCRule(head);
 		
-		head = spawnTricycle(new Vector2( Bub.worldRadius,45)    , abnorm*1, false,
+		spawnTricycle(new Vector2( Bub.worldRadius,45)    , abnorm*1, false,
 		                     new Vector2(10,0), 7, abnorm*0.75f, false, "Carl"); //nodes 6,7,8
-		//done when mount Rules.installHunterPCRule(head);
 		
-		head = spawnInchworm(new Vector2( Bub.worldRadius,55)    , abnorm*1.2f, false,
+		spawnInchworm(new Vector2( Bub.worldRadius,55)    , abnorm*1.2f, false,
 		                     new Vector2(10,0) , abnorm*1f, false,"Dee"); //nodes 9,10
-		//done when mount Rules.installHunterPCRule(head);
 		
 		
-		head = spawnTricycle(new Vector2( Bub.worldRadius,-25)   , abnorm*1, false,
+		spawnTricycle(new Vector2( Bub.worldRadius,-25)   , abnorm*1, false,
 		                     new Vector2( 10,0), 7, abnorm*0.75f, false, "Ed"); //nodes 11.12.13
-		//done when mount Rules.installHunterPCRule(head);
 		
-		head = spawnInchworm(new Vector2( Bub.worldRadius,-35)   , abnorm*1.2f, false,
+		spawnInchworm(new Vector2( Bub.worldRadius,-35)   , abnorm*1.2f, false,
 		                     new Vector2( 10,0), abnorm*1f, false,"Fran"); //nodes 14,15
-		//done when mount Rules.installHunterPCRule(head);
 		
-		head = spawnTricycle(new Vector2( Bub.worldRadius,-45)   , abnorm*1, false,
+		spawnTricycle(new Vector2( Bub.worldRadius,-45)   , abnorm*1, false,
 		                     new Vector2( 10,0), 7, abnorm*0.75f, false, "Greg"); //nodes 16,17,18
-		//done when mount Rules.installHunterPCRule(head);
 		
-		head = spawnInchworm(new Vector2( Bub.worldRadius,-55)   , abnorm*1.2f, false,
+		spawnInchworm(new Vector2( Bub.worldRadius,-55)   , abnorm*1.2f, false,
 		                     new Vector2( 10,0), abnorm*1f, false,"Helen"); //nodes 19,20
-		//done when mount Rules.installHunterPCRule(head);
 
 
 		pushVegNode(new Vector2(Bub.worldRadius,0), norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal left, won't eat anybody moving
@@ -322,7 +313,7 @@ public class Bots
 		for (int i=0; i<30; i++) pushVegNode( randomRectPosition(0.17f),Random.Range(0.5f, 2.0f)*norm); //random clans
 		
 		
-		head = spawnInchworm(new Vector2(0,10),abnorm*0.6f,false,
+		Bub.Node head = spawnInchworm(new Vector2(0,10),abnorm*0.6f,false,
 		                     new Vector2(8,0),abnorm*0.5f,false,"pest");
 		Rules.installHunterNPCRule(head);
 		bubbleServer.registerNPC(head.id,"inchworm pest");
@@ -363,43 +354,7 @@ public class Bots
 		head.setDna (CScommon.snarkBit,true);
 		bubbleServer.registerNPC(head.id,"lil snark");
 
-
-		
-		head = spawnTricycle(new Vector2( Bub.worldRadius,0), 1*abnorm, false,
-		                     new Vector2( 10,0), 7, 0.75f*abnorm, false, "p1"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		head = spawnInchworm(new Vector2( Bub.worldRadius, -30), 1.2f*abnorm, false,
-		                     new Vector2( 10,0), 1f*abnorm, false,"p2"); 
-		//done when mount Rules.installHunterPCRule(head);
-
-
-		head = spawnTricycle(new Vector2( 0, Bub.worldRadius), 1*abnorm, false,
-		                     new Vector2( 0, 10), 7, 0.75f*abnorm, false, "p3"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		head = spawnInchworm(new Vector2( 30, Bub.worldRadius), 1.2f*abnorm, false,
-		                     new Vector2( 0, 10), 1f*abnorm, false,"p4");
-		//done when mount Rules.installHunterPCRule(head);
-
-
-		head = spawnTricycle(new Vector2( -Bub.worldRadius,0)   , 1*abnorm, false,
-		                     new Vector2( -10,0), 7, 0.75f*abnorm, false, "p5"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		head = spawnInchworm(new Vector2( -Bub.worldRadius,30)   , 1.2f*abnorm, false,
-		                     new Vector2( -10,0), 1f*abnorm, false,"p6"); 
-		//done when mount Rules.installHunterPCRule(head);
-
-
-		head = spawnTricycle(new Vector2( 0, -Bub.worldRadius)   , 1*abnorm, false,
-		                     new Vector2( 0, -10), 7, 0.75f*abnorm, false, "p7"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		head = spawnInchworm(new Vector2( -30, -Bub.worldRadius)   , 1.2f*abnorm, false,
-		                     new Vector2( 0, -10), 1f*abnorm, false,"p8");
-		//done when mount Rules.installHunterPCRule(head);
-		
+		stdPlayers(abnorm);
 
 		for (int i=0; i<110; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm); //random clans
 
@@ -413,43 +368,8 @@ public class Bots
 		head = pushVegNode(new Vector2(0,0),norm/4);
 		bubbleServer.registerNPC(head.id,"fussball");
 		
+		stdPlayers(abnorm);
 
-		head = spawnTricycle(new Vector2( Bub.worldRadius,0)    , 1*abnorm, false,
-		                     new Vector2( 10,0), 7, 0.75f*abnorm, false, "p1"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		head = spawnInchworm(new Vector2( Bub.worldRadius, -30)    , 1.2f*abnorm, false,
-		                     new Vector2( 10, 0), 1f*abnorm, false,"p2"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		
-		head = spawnTricycle(new Vector2( 0, Bub.worldRadius)   , 1*abnorm, false,
-		                     new Vector2( 0, 10), 7, 0.75f*abnorm, false, "p3"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		head = spawnInchworm(new Vector2( 30, Bub.worldRadius)   , 1.2f*abnorm, false,
-		                     new Vector2( 0, 10), 1f*abnorm, false,"p4");
-		//done when mount Rules.installHunterPCRule(head);
-		
-		
-		head = spawnTricycle(new Vector2( -Bub.worldRadius,0)   , 1*abnorm, false,
-		                     new Vector2( -10,0), 7, 0.75f*abnorm, false, "p5"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		head = spawnInchworm(new Vector2( -Bub.worldRadius,30)   , 1.2f*abnorm, false,
-		                     new Vector2( -10,0), 1f*abnorm, false,"p6"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		
-		head = spawnTricycle(new Vector2( 0, -Bub.worldRadius)   , 1*abnorm, false,
-		                     new Vector2( 0, -10), 7, 0.75f*abnorm, false, "p7"); 
-		//done when mount Rules.installHunterPCRule(head);
-		
-		head = spawnInchworm(new Vector2( -30, -Bub.worldRadius)   , 1.2f*abnorm, false,
-		                     new Vector2( 0, -10), 1f*abnorm, false,"p8");
-		//done when mount Rules.installHunterPCRule(head);
-		
-		
 		for (int i=0; i<110; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm); //random clans
 		
 		//		for (int i = 0; i<60; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*normalBubRadius,true,true,"bots");
@@ -494,6 +414,10 @@ public class Bots
 			if (Engine.nodes[Engine.nodes.Count - 1].distance(goal) < turmRad) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
 		}
 
+		stdPlayers(abnorm);
+	}
+
+	public static void stdPlayers(float abnorm){
 		//mountable
 		spawnTricycle(new Vector2( Bub.worldRadius,0)    , 1*abnorm, false,
 		              new Vector2( 10,0), 7, 0.75f*abnorm, false, "p1"); 
@@ -521,8 +445,6 @@ public class Bots
 		
 		spawnInchworm(new Vector2( -30, -Bub.worldRadius)   , 1.2f*abnorm, false,
 		              new Vector2( 0, -10), 1f*abnorm, false,"p8");
-		
-
 	}
 
 	public static void testbedInit(float norm,float abnorm){

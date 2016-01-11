@@ -169,7 +169,7 @@ public class Bub {
 
 		//don't want to waste energy on pulling when you've already pulled
 		//don't want to pull until nodes have identical x and y
-		private float ceasePullDistance() {return 0.95f*source.radius;}
+		private float ceasePullDistance() {return 0.95f*source.radius;} //note: gap between is long since zero
 
 		// must not debit oomph finally until all muscles have partaken, else later muscles would have less oomph than earlier muscles
 		public float actionDemand()
@@ -179,51 +179,66 @@ public class Bub {
 
 		// Executes the muscle action given sources's perhaps limited ability to power the muscle
 		public void action(float fraction){
-			float dx, dy, displacement, effect;
+			float dx, dy, deliveredOomph, displacement, effect, len = length();
 
+			if (float.IsNaN (len)) {bubbleServer.debugDisplay("action length NaN avoided"); return;}
+			if (len==0) return;
+			if (isPuller() && len <= ceasePullDistance()) return;
 			if ( fraction*demand == 0) return;
-			if (length()==0) return;
+			
+			if (source.burden <= 0.0f || float.IsNaN (source.burden)) bubbleServer.debugDisplay ("bad source burden");
+			if (target.burden <= 0.0f || float.IsNaN (target.burden)) bubbleServer.debugDisplay ("bad target burden");
 
 			dx = target.x - source.x;
 			dy = target.y - source.y;
 
+			deliveredOomph = fraction*demand*efficiency();
+			if (deliveredOomph <= 0) return;
+			if (float.IsNaN (deliveredOomph)){bubbleServer.debugDisplay ("error Nan deliveredOomph"); return;}
+
+			// friction narrative: the force of a link operates independently on both ends. 
+			// A better way of putting it: each end gets half the oomph expended on it. That way, the amount one end moves
+			// is independent of how much the other end moves--it all depends on their individual burdens.
+			// The unit of oomph is a burden meter
+
 			// Effect on one end is independent of effect on the other.
 			// Each experiences the same 'force', they react to it in inverse proportion to their burden.
-			// Strength == oomph is change on a unit burden,
-			// but in general both ends don't have unit burden, so
-			// actual change in distance between nodes is
-			displacement = oomphToDisplacement(fraction*demand)*efficiency(); //magnitude of how much this link will lengthen or shorten
+			// oomph is displacement of a unit burden,
+			// but in general both ends don't have unit burden
+
+			displacement = 0.5f*deliveredOomph/source.burden + 0.5f*deliveredOomph/target.burden;
 
 			// insure that puller doesn't overshoot zero.
 			// Further, ensure that length stays north of an epsilon:
 			// if length gets too close to zero, numerical effects can result in node superposition
 			// Further, ensure that puller never pulls you closer than you need to eat, to keep nodes from being
 			// so confounded that it's difficult for players to distinguish them.
-			// Also, Perfect superposition is hard on voronoi, and you can't start pushing on it with any notion of direction of push, etc.
-			
-			if (isPuller()) displacement = Mathf.Min (length() - ceasePullDistance(), displacement);
-			if (displacement < 0) displacement = 0; 
+			// Also, perfect superposition is hard on voronoi, and 
+			// you can't start pushing on it with any notion of direction of push.
 
-			// give a sign to displacement-- pos if pushing (trying to increase length), neg if pulling
-			if (isPuller()) displacement = -displacement; 
-			
-			if (source.burden <= 0.0f) bubbleServer.debugDisplay ("bad source burden");
-			if (target.burden <= 0.0f) bubbleServer.debugDisplay ("bad target burden");
-			
+			if (isPuller()){ 
+				//note that at this point we have len > ceasePullDistance()
+				if ( displacement > len - ceasePullDistance()) {
+					float x = (len-ceasePullDistance())/displacement;
+					deliveredOomph *= x;
+					displacement *= x;
+				}
+				// give a sign to oomph-- pos if pushing (trying to increase length), neg if pulling
+				deliveredOomph = -deliveredOomph; 
+				displacement = -displacement;
+			}
+
 			source.pushedMinusPulled += displacement; // accumulate positive if pushed, negative if pulled
 			target.pushedMinusPulled += displacement; // gravity question: should this be weighted (as below) by inverse burden?
-			
-			effect = displacementToOomph(displacement); // effect is signed oomph: displacement of a unit burden. Units: bd == o
-			//Debug.Log ("displacement:"+displacement+" effect:"+effect+" dx:"+dx+" length:"+length);
-			
-			//Units of effect change from gd to g, i.e. express it as a fraction of length, and cut it in half to equally apply it to both ends
-			effect = effect/(2*length());
-			
+
+			//change units from oomph = burden*meter to burden*meter/meter, i.e. burden * fraction of length, and cut it in half to equally apply it to both ends
+			effect = deliveredOomph/(2*len); //so effect/burden is dimensionless
+
 			// has full effect on unit burden
 			//A smaller burden moves more than a bigger burden.
 			source.nx -= dx*effect/source.burden;
 			source.ny -= dy*effect/source.burden;
-			
+
 			target.nx += dx*effect/target.burden;
 			target.ny += dy*effect/target.burden;
 
@@ -597,7 +612,8 @@ public class Bub {
 			float fraction = 1;
 
 			for (int i=0;i< rules.Count;i++) totDemand += rules[i].muscleActionDemand();
-			if (totDemand>0 && oomph < totDemand) fraction = oomph/totDemand;
+			if (totDemand <= 0) return; //all muscles disabled or are pullers within ceasePullDistance
+			if (oomph < totDemand) fraction = oomph/totDemand;
 			for (int i=0;i< rules.Count;i++) rules[i].muscleAction(fraction);
 
 			oomph -= fraction*totDemand; //pay for oomph dispensed. Cannot logically drive oomph below zero
@@ -623,6 +639,7 @@ public class Bub {
 			//more than the high-burden low-speed tail, and the pulled low-burden tail gets moved outwards
 			//more than the high-burden low-spead head, imparting a rotating effect to the bot as a whole
 			factor = gGravity*Mathf.Sqrt(speed2);
+			if (float.IsNaN (factor)) {factor = 0; bubbleServer.debugDisplay("doGravity NaN avoided.");}//+/-infinity not in the cards
 			// Note that if speed is too great, gravity can sling someone off the map. Need to have an upper limit on speed, 
 			// or I can't use the gravity approach. The only current upper limit is imposed by link efficiency.
 			
