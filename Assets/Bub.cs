@@ -154,18 +154,18 @@ public class Bub {
 			return demand*CScommon.efficiency(length2(),source.radius2);
 		}
 		
-		// friction narrative: the force of a link operates independently on both ends. 
-		// A better way of putting it: each end gets half the oomph expended on it. That way, the amount one end moves
-		// is independent of how much the other end moves--it all depends on their individual burdens.
-		// The unit of oomph is a burden meter
-		// So total amount of lengthening or shortening is
-		private float oomphToDisplacement(float omp){
-			return 0.5f*omp*(1/source.burden + 1/target.burden);
-		}
-		
-		private float displacementToOomph(float disp){
-			return 2*disp/(1/source.burden + 1/target.burden);
-		}
+//		// friction narrative: the force of a link operates independently on both ends. 
+//		// A better way of putting it: each end gets half the oomph expended on it. That way, the amount one end moves
+//		// is independent of how much the other end moves--it all depends on their individual burdens.
+//		// The unit of oomph is a burden meter
+//		// So total amount of lengthening or shortening is
+//		private float oomphToDisplacement(float omp){
+//			return 0.5f*omp*(1/source.burden + 1/target.burden);
+//		}
+//		
+//		private float displacementToOomph(float disp){
+//			return 2*disp/(1/source.burden + 1/target.burden);
+//		}
 
 		//don't want to waste energy on pulling when you've already pulled
 		//don't want to pull until nodes have identical x and y
@@ -181,20 +181,15 @@ public class Bub {
 		public void action(float fraction){
 			float dx, dy, deliveredOomph, displacement, effect, len = length();
 
-			if (float.IsNaN (len)) {bubbleServer.debugDisplay("action length NaN avoided"); return;}
 			if (len==0) return;
 			if (isPuller() && len <= ceasePullDistance()) return;
 			if ( fraction*demand == 0) return;
-			
-			if (source.burden <= 0.0f || float.IsNaN (source.burden)) bubbleServer.debugDisplay ("bad source burden");
-			if (target.burden <= 0.0f || float.IsNaN (target.burden)) bubbleServer.debugDisplay ("bad target burden");
 
 			dx = target.x - source.x;
 			dy = target.y - source.y;
 
 			deliveredOomph = fraction*demand*efficiency();
 			if (deliveredOomph <= 0) return;
-			if (float.IsNaN (deliveredOomph)){bubbleServer.debugDisplay ("error Nan deliveredOomph"); return;}
 
 			// friction narrative: the force of a link operates independently on both ends. 
 			// A better way of putting it: each end gets half the oomph expended on it. That way, the amount one end moves
@@ -233,7 +228,7 @@ public class Bub {
 
 			//change units from oomph = burden*meter to burden*meter/meter, i.e. burden * fraction of length, and cut it in half to equally apply it to both ends
 			effect = deliveredOomph/(2*len); //so effect/burden is dimensionless
-
+		
 			// has full effect on unit burden
 			//A smaller burden moves more than a bigger burden.
 			source.nx -= dx*effect/source.burden;
@@ -241,6 +236,7 @@ public class Bub {
 
 			target.nx += dx*effect/target.burden;
 			target.ny += dy*effect/target.burden;
+
 
 		}
 	}
@@ -267,10 +263,7 @@ public class Bub {
 		{	float 	dx = target.x - source.x,
 			dy = target.y - source.y;
 			float dislocation, effect;
-			if (source.burden <= 0 || target.burden <=0){
-				bubbleServer.debugDisplay("boneAction error: burden <= 0");
-				return;
-			}
+
 			dislocation = boneLength - source.distance(target);
 			
 			// Effect on one end is independent of effect on the other.
@@ -279,6 +272,7 @@ public class Bub {
 
 			//A smaller burden moves more than a bigger burden.
 			effect = 0.5f * effect * target.burden /(source.burden + target.burden);
+
 
 			source.nx -= dx*effect;
 			source.ny -= dy*effect;
@@ -367,7 +361,8 @@ public class Bub {
 
 		//adds truster to the trusters of whoever this trusts...
 		public void addTruster(Node truster){
-			if (trustHead.trusters.Contains(truster)) return;
+			if (truster == trustHead) return; //never add a node to its own trusters list
+			if (trustHead.trusters.Contains(truster)) return; //nor twice
 			truster.trustHead = trustHead;
 			trustHead.trusters.Add(truster);
 		}
@@ -639,7 +634,6 @@ public class Bub {
 			//more than the high-burden low-speed tail, and the pulled low-burden tail gets moved outwards
 			//more than the high-burden low-spead head, imparting a rotating effect to the bot as a whole
 			factor = gGravity*Mathf.Sqrt(speed2);
-			if (float.IsNaN (factor)) {factor = 0; bubbleServer.debugDisplay("doGravity NaN avoided.");}//+/-infinity not in the cards
 			// Note that if speed is too great, gravity can sling someone off the map. Need to have an upper limit on speed, 
 			// or I can't use the gravity approach. The only current upper limit is imposed by link efficiency.
 			
@@ -695,13 +689,13 @@ public class Bub {
 
 		//preserves form and orientation of the organism
 		private void randomRelocateOrganism(){
-			Vector2 newPos = Bub.worldRadius * Random.insideUnitCircle;
+			Vector2 here = new Vector2(trustHead.x, trustHead.y);
+			Vector2 delta = (Bub.worldRadius * Random.insideUnitCircle)-here;
+
 			foreach (var node in trustHead.trusters) { 
-				node.x += newPos.x - trustHead.x; node.y += newPos.y - trustHead.y; 
-				node.nx = node.x; node.ny = node.y;
+				node.nx += delta.x; node.ny += delta.y;
 			}
-			trustHead.x = newPos.x; trustHead.y = newPos.y;
-			trustHead.nx = trustHead.x; trustHead.ny = trustHead.y;
+			trustHead.nx += delta.x; trustHead.ny += delta.y;
 		}
 
 		private float orgOomph(){

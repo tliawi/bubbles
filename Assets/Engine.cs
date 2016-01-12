@@ -60,6 +60,32 @@ public class Engine {
 	private static void shareOomph()
 	{	for (int i=0; i< nodes.Count; i++) nodes[i].shareOomph();
 	}
+
+	private static void checknXnY(string msg){
+		for (int i=0; i < nodes.Count;i++){
+			if (float.IsNaN (nodes[i].nx) || float.IsNaN (nodes[i].ny)){
+				Debug.Assert(false,msg+" "+i+" nx:"+float.IsNaN (nodes[i].nx) + " ny:"+float.IsNaN(nodes[i].ny));
+				nodes[i].nx = 0; nodes[i].ny = 0; //total trainwreck
+			}
+		}
+	}
+
+	private static void checkXY(string msg){
+		for (int i=0; i < nodes.Count;i++){
+
+			if (float.IsNaN (nodes[i].x) || float.IsNaN (nodes[i].y)){
+				Debug.Assert(false,msg+" "+i+" x:"+float.IsNaN (nodes[i].x) + " y:"+float.IsNaN(nodes[i].y));
+				nodes[i].x = 0; nodes[i].y = 0; //total trainwreck
+			}
+			if (float.IsNaN (nodes[i].x) || float.IsNaN (nodes[i].y)){
+				Debug.Assert(false,msg+" "+i+" nx:"+float.IsNaN (nodes[i].nx) + " ny:"+float.IsNaN(nodes[i].ny));
+				nodes[i].nx = nodes[i].x; nodes[i].ny = nodes[i].y;
+			}
+			
+			Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+" x!=nx or y!=ny");
+
+		}
+	}
 	
 	private static void makeNeighbors(){
 		float x, y, maxx = nodes[0].x, maxy = nodes[0].y, minx=nodes[0].x, miny=nodes[0].y;
@@ -68,7 +94,7 @@ public class Engine {
 		for (int i=0; i < nodes.Count;i++){
 			ids.Add ((uint)i); //i = nodes[i].id
 			x = nodes[i].x; y = nodes[i].y;
-			if ( float.IsNaN (x) || float.IsNaN (y)) Debug.Log("makeNeighbors Nan x:"+float.IsNaN (x) + " y:"+float.IsNaN(y));
+
 			if (maxx < x) maxx = x;
 			if (minx > x) minx = x;
 			if (maxy < y) maxy = y;
@@ -96,6 +122,7 @@ public class Engine {
 				//Brute force arbitrarily add distinction so that it doesn't repeat itself
 				n.x += Random.Range (-0.001f, 0.001f);
 				n.y += Random.Range (-0.001f, 0.001f);
+				n.nx = n.x; n.ny = n.y; //at this stage should be no distinction between x,y and nx,ny
 			}
 			
 			for (int j=  1  ;j<neighborIDs.Count; j++){	
@@ -115,26 +142,25 @@ public class Engine {
 	public static void step(){
 		
 		tickCounter++;
-		
+
+		//x,y == nx, ny
+		checkXY("pre makeNeighbors");
+		makeNeighbors(); //look around
 		doAllRules();
 
+		//nx and  ny begin to accumulate change based on muscles, on relocation, on gravity.
 		activateAll();//During and hereafter there's a difference between x, y and nx,ny
-		
-		updatePositions(); //update x, y to nx,ny: hereafter no difference between them
-		
-		//trackEnergy();
+		checknXnY("post activateAll");
+		tryToEatNeighbors(); //get (or lose) oomph, perhaps destroy some bots
+		//forced relocation of nx,ny
+		checknXnY("post Eating");
+		//final adjustment to nx ny based on gravity.
+		updatePositions(); // Update x, y to nx,ny
+		checkXY("post updatePositions");
 		
 		//Prepare the future
 		photosynthesize(); //generate oomph
-		
 		shareOomph();
-		
-		makeNeighbors(); //look around
-		
-		tryToEatNeighbors(); //get (or lose) oomph, perhaps destroy some bots
-		//doSmarts(); //change tactics, shift node burden, muscle link parameters etc
-		
-		
 		
 	}
 	
