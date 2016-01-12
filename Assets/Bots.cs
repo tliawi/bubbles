@@ -252,6 +252,10 @@ public class Bots
 			bubbleServer.gameName = "turm";
 			turmInit(norm,abnorm);
 			break;
+		case 5:
+			bubbleServer.gameName = "turm2";
+			turmInit2(norm,abnorm);
+			break;
 		default: 
 			bubbleServer.gameName = "sizeTest";
 			testbedInit(norm, abnorm);
@@ -416,6 +420,78 @@ public class Bots
 
 		stdPlayers(abnorm);
 	}
+
+	//***
+	public static void turmInit2(float norm,float abnorm){
+		float rad = 30f; // turn radius is half of turm side length
+		float height = Mathf.Sqrt((rad*2)*(rad*2)-rad*rad); //height of equilateral triangle of sides = 2 rad
+		float centerHeight = rad*rad/height; //height of center of that triangle
+		Bub.Node one, two, three, goal, feeder1, feeder2, feeder3;
+		Bub.Node one1, two1, three1, goal1, feeder11, feeder21, feeder31;
+		
+		goal = pushVegNode(new Vector2(Bub.worldRadius/2f, Bub.worldRadius/4f),norm/4).setClan("turm");
+		bubbleServer.registerNPC(goal.id,"goal");
+		
+		one = pushVegNode(new Vector2(goal.x+rad,goal.y+-centerHeight), 3*norm,"turm").setDna(CScommon.noPhotoBit, true).setDna(CScommon.vegetableBit, false);
+		two = pushVegNode(new Vector2(goal.x+-rad,goal.y+-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true);
+		three = pushVegNode(new Vector2(goal.x+0,goal.y+height-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true);
+
+		Rules.installTurmDefender(one,5*rad); 
+		Rules.installTurmDefender(two,5*rad); 
+		Rules.installTurmDefender(three,5*rad);
+		
+		//feeders are close
+		feeder1 = pushVegNode(new Vector2(goal.x+(0.93f*rad),goal.y+(0.22f*rad)),1.9f*norm,"turm").setDna (CScommon.vegetableBit, false);
+		feeder2 = pushVegNode(new Vector2(goal.x+(-1.2f*rad),goal.y+(-0.8f*rad)),3.1f*norm,"turm").setDna (CScommon.vegetableBit, false);
+		feeder3 = pushVegNode(new Vector2(goal.x+(0.83f*rad),goal.y+(-0.38f*rad)),4.3f*norm,"turm").setDna (CScommon.vegetableBit, false);
+		
+		one.trust(goal); two.trust(goal); three.trust(goal); feeder1.trust(goal); feeder2.trust(goal); feeder3.trust(goal);
+		
+		//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm.
+		feeder1.giveBurden (one);
+		feeder2.giveBurden (two);
+		feeder3.giveBurden (three);
+
+
+		goal1 = pushVegNode(new Vector2(-Bub.worldRadius/2f, -Bub.worldRadius/4f),norm/4).setClan("turm1");
+		bubbleServer.registerNPC(goal.id,"goal1");
+		
+		one1 = pushVegNode(new Vector2(goal1.x+rad,goal1.y+-centerHeight), 3*norm,"turm1").setDna(CScommon.noPhotoBit, true).setDna(CScommon.vegetableBit, false);
+		two1 = pushVegNode(new Vector2(goal1.x+-rad,goal1.y+-centerHeight),3*norm,"turm1").setDna(CScommon.noPhotoBit, true);
+		three1 = pushVegNode(new Vector2(goal1.x+0,goal1.y+height-centerHeight),3*norm,"turm1").setDna(CScommon.noPhotoBit, true);
+
+		Rules.installTurmDefender(one1,5*rad); 
+		Rules.installTurmDefender(two1,5*rad); 
+		Rules.installTurmDefender(three1,5*rad);
+		
+		//feeders are close
+		feeder11 = pushVegNode(new Vector2(goal1.x+(0.93f*rad),goal1.y+(0.22f*rad)),1.9f*norm,"turm1").setDna (CScommon.vegetableBit, false);
+		feeder21 = pushVegNode(new Vector2(goal1.x+(-1.2f*rad),goal1.y+(-0.8f*rad)),3.1f*norm,"turm1").setDna (CScommon.vegetableBit, false);
+		feeder31 = pushVegNode(new Vector2(goal1.x+(0.83f*rad),goal1.y+(-0.38f*rad)),4.3f*norm,"turm1").setDna (CScommon.vegetableBit, false);
+		
+		one1.trust(goal1); two1.trust(goal1); three1.trust(goal1); feeder11.trust(goal1); feeder21.trust(goal1); feeder31.trust(goal1);
+		
+		//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm.
+		feeder11.giveBurden (one1);
+		feeder21.giveBurden (two1);
+		feeder31.giveBurden (three1);
+
+
+		//plant a bunch of munchies, but not within turm
+		int startCount = Engine.nodes.Count;
+		float turmRad = goal.distance (one);
+		float turmRad1 = goal1.distance (one1);
+
+		//beware, this becomes an infinite loop as turmRad approaches worldRadius
+		while (Engine.nodes.Count - startCount < 100){
+			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+			if (Engine.nodes[Engine.nodes.Count - 1].distance(goal) < turmRad) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
+			if (Engine.nodes[Engine.nodes.Count - 1].distance(goal1) < turmRad1) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
+		}
+		
+		stdPlayers(abnorm);
+	}
+	//****
 
 	public static void stdPlayers(float abnorm){
 		//mountable
