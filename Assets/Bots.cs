@@ -386,7 +386,8 @@ public class Bots
 		float centerHeight = rad*rad/height; //height of center of that triangle
 		Bub.Node one, two, three, goal, feeder1, feeder2, feeder3;
 
-		goal = pushVegNode(new Vector2(0,0),norm/4).setClan("turm");
+		//not quite on center, so pushing of links within turm will be unstable, so hopefully turm will purge itself of interlopers
+		goal = pushVegNode(new Vector2(0.01f,-0.0223f),norm/4).setClan("turm").setDna(CScommon.noPhotoBit, true);
 		bubbleServer.registerNPC(goal.id,"goal");
 		
 		one = pushVegNode(new Vector2(rad,-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true).setDna(CScommon.vegetableBit, false);
@@ -396,6 +397,7 @@ public class Bots
 		Rules.installTurmDefender(one,5*rad); 
 		Rules.installTurmDefender(two,5*rad); 
 		Rules.installTurmDefender(three,5*rad);
+		Rules.installTurmDefender(goal,5*rad);
 		
 		//feeders are close
 		feeder1 = pushVegNode(new Vector2(0.93f*rad,0.22f*rad),1.9f*norm,"turm").setDna (CScommon.vegetableBit, false);
@@ -404,7 +406,11 @@ public class Bots
 
 		one.trust(goal); two.trust(goal); three.trust(goal); feeder1.trust(goal); feeder2.trust(goal); feeder3.trust(goal);
 
-		//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm.
+		//can add bones only after they trust each other, i.e. after organism has been created.
+		one.addBone(two); two.addBone(three); three.addBone(one); 
+		goal.addBone(one); goal.addBone(two); goal.addBone(three);
+
+		//Weakness: Makes turm points heavier, but makes feeders easy to steal. Take them far far away and turm might starve.
 		feeder1.giveBurden (one);
 		feeder2.giveBurden (two);
 		feeder3.giveBurden (three);
@@ -415,7 +421,7 @@ public class Bots
 		//beware, this becomes an infinite loop as turmRad approaches worldRadius
 		while (Engine.nodes.Count - startCount < 100){
 			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
-			if (Engine.nodes[Engine.nodes.Count - 1].distance(goal) < turmRad) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
+			//see if turm purges self of interlopers... if (Engine.nodes[Engine.nodes.Count - 1].distance(goal) < turmRad) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
 		}
 
 		stdPlayers(abnorm);
@@ -470,11 +476,13 @@ public class Bots
 		feeder31 = pushVegNode(new Vector2(goal1.x+(0.83f*rad),goal1.y+(-0.38f*rad)),4.3f*norm,"turm1").setDna (CScommon.vegetableBit, false);
 		
 		one1.trust(goal1); two1.trust(goal1); three1.trust(goal1); feeder11.trust(goal1); feeder21.trust(goal1); feeder31.trust(goal1);
-		
-		//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm.
+
+		//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm--though they're fairly large.
+		//Pull them far away 
 		feeder11.giveBurden (one1);
 		feeder21.giveBurden (two1);
 		feeder31.giveBurden (three1);
+
 
 
 		//plant a bunch of munchies, but not within turm

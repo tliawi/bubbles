@@ -7,8 +7,8 @@ using System.Collections.Generic;
 
 public class Bub {
 	
-	public static readonly float minRadius = 0.0001f;  //bottom of fractal possibilities, don't want to push float representation
-	public static readonly float minPosValue = 0.000001f;
+	public static readonly float minRadius = 0.0000001f;  //bottom of fractal possibilities, don't want to push float representation
+	public static readonly float minPosValue = 0.0000001f;
 	//physics fundamental tuning constants
 	public static readonly float minBurdenMultiplier = 0.1f; //governs how more efficient use of shiftBurden is, than solo movement. If 1, inchworms more comperable to solos.
 
@@ -20,12 +20,18 @@ public class Bub {
 
 	private static float gGravity;//see resetGravity. OccaSsional large perterbations in gravity can have a pleasing and disruptive effect on circling
 	private static Vector2 gCG = new Vector2(0.0f,0.0f); //Center of world is 0,0, but CG, Center of Gravity, can be moved about a bit to give a nice effect
-	
+
+	public static void checkVals(float x, float y, string msg){
+		if (float.IsNaN(x) || float.IsNaN (y)) Debug.Log ("XXX Nan: "+msg);
+		if (float.IsInfinity(x) || float.IsInfinity(y)) Debug.Log ("XXX Inf: "+msg);
+	}
+
 	public static void resetGravity(){
 		float norm = -1.7f*Mathf.Log(worldRadius); //larger neg value makes gravity weaker
-		gGravity = Mathf.Exp(Random.Range(norm-norm/4, norm+norm/4));
+		gGravity = Mathf.Exp(Random.Range(1.25f*norm, 0.75f*norm)); //assumes norm is negative.
 		gCG.x = 0.2f*worldRadius*(Random.value - 0.5f);
 		gCG.y = 0.2f*worldRadius*(Random.value - 0.5f);
+		Debug.Assert (!float.IsNaN (gCG.x) && !float.IsNaN (gCG.y),"resetGravity bad gCG");
 	}
 
 	public static void initialize(){
@@ -619,13 +625,18 @@ public class Bub {
 			for (int i=0;i<bones.Count;i++) bones[i].boneAction();
 		}
 
-
 		//called after nx and ny have been fully hallucinated, and before they've been folded back into x and y
 		public void doGravity(){
 			float dx, dy, speed2, factor;
 			dx = x - gCG.x; //distance from center of gravity
 			dy = y - gCG.y;
+
+			checkVals(gCG.x,gCG.y, "gCG"); checkVals(x,y, "x||y");
+			checkVals(dx,dy,"dx||dy");
+			checkVals(nx,ny,"nx||ny before speed2 calc");
+
 			speed2 = (x - nx)*(x - nx) + (y - ny)*(y - ny);
+			checkVals(speed2,speed2,"speed2.");
 			//speed is zero if node is not moving
 			//Without speed unmoving nodes would slowly migrate to the center.
 			//Without speed, during pushing part of cycle *both* ends would get moved inwards, towards the origin,
@@ -633,26 +644,34 @@ public class Bub {
 			//With speed, you effect the faster moving parts more, donc the pushed low-burden high-speed head gets moved inwards
 			//more than the high-burden low-speed tail, and the pulled low-burden tail gets moved outwards
 			//more than the high-burden low-spead head, imparting a rotating effect to the bot as a whole
-			factor = gGravity*Mathf.Sqrt(speed2);
 			// Note that if speed is too great, gravity can sling someone off the map. Need to have an upper limit on speed, 
 			// or I can't use the gravity approach. The only current upper limit is imposed by link efficiency.
-			
+			factor = Mathf.Min (gGravity*Mathf.Sqrt(speed2),0.999f); //use 0.999f so several points aren't all imposed directly on gCG.
+
+			checkVals(factor, factor, "factor.");
+
 			//Greater effect on those far from origin
 			if (pushedMinusPulled >= 0)
 			{	nx -= dx*factor; ny -= dy*factor; //move towards gCG those being pushed. 
 			} else
 			{	nx += dx*factor; ny += dy*factor; //move away from gCG those being pulled
 			}
+			checkVals(nx,ny,"nx||ny");
 		}
 
 		public void updatePosition()
 		{	
 			doGravity ();
 
-			//bring future into the present
-			x = nx;
-			y = ny;
+			//bring future into the present, injecting a small amount of chaos to prevent convergent forces on nx,ny
+			//(like a surrounding triad of pushers pushing several nodes to their midpoint) from achieving perfect overlap
+			// (which is hard on voronoi calculations)
+			Vector2 chaos = 0.000023f*Random.insideUnitCircle;
+			checkVals(chaos.x, chaos.y, "chaos");
+			x = nx = nx + chaos.x;
+			y = ny = ny + chaos.y;
 			pushedMinusPulled = 0;
+			checkVals(x,y,"final x||y");
 		}
 
 		private List<int> registeredOrgNodes(){
@@ -666,9 +685,9 @@ public class Bub {
 			if (registeredWinners.Count > 0){
 				List<int> registeredLosers = loser.registeredOrgNodes();
 				if (registeredLosers.Count > 0 ) {
+					Engine.scheduledOrgRelocations.Add(loser.trustHead);
+
 					foreach (int loserId in registeredLosers) foreach (int winnerId in registeredWinners) bubbleServer.playerWinLose(winnerId, loserId);
-					
-					loser.randomRelocateOrganism();
 				}
 			}
 		}
@@ -687,15 +706,17 @@ public class Bub {
 //			randomRelocateOrganism();
 //		}
 
-		//preserves form and orientation of the organism
-		private void randomRelocateOrganism(){
+		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that
+		public void randomRelocateOrganism(){
 			Vector2 here = new Vector2(trustHead.x, trustHead.y);
 			Vector2 delta = (Bub.worldRadius * Random.insideUnitCircle)-here;
 
 			foreach (var node in trustHead.trusters) { 
-				node.nx += delta.x; node.ny += delta.y;
+				node.x  += delta.x; node.y += delta.y;
+				node.nx  = node.x;  node.ny = node.y;
 			}
-			trustHead.nx += delta.x; trustHead.ny += delta.y;
+			trustHead.x += delta.x;     trustHead.y += delta.y;
+			trustHead.nx = trustHead.x; trustHead.ny = trustHead.y;
 		}
 
 		private float orgOomph(){

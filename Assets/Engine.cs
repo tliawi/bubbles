@@ -7,6 +7,8 @@ public class Engine {
 	private static int gInterval = 2;
 	
 	public static readonly List<Bub.Node> nodes = new List<Bub.Node>();
+
+	public static readonly List<Bub.Node> scheduledOrgRelocations = new List<Bub.Node>();
 	
 	public static int closestNodeId(float x, float y){
 		float closestD2 = 40000000;
@@ -63,24 +65,17 @@ public class Engine {
 
 	private static void checknXnY(string msg){
 		for (int i=0; i < nodes.Count;i++){
-			if (float.IsNaN (nodes[i].nx) || float.IsNaN (nodes[i].ny)){
-				Debug.Assert(false,msg+" "+i+" nx:"+float.IsNaN (nodes[i].nx) + " ny:"+float.IsNaN(nodes[i].ny));
-				nodes[i].nx = 0; nodes[i].ny = 0; //total trainwreck
-			}
+			Bub.checkVals (nodes[i].nx,nodes[i].ny,"nXnY");
 		}
 	}
 
 	private static void checkXY(string msg){
 		for (int i=0; i < nodes.Count;i++){
 
-			if (float.IsNaN (nodes[i].x) || float.IsNaN (nodes[i].y)){
-				Debug.Assert(false,msg+" "+i+" x:"+float.IsNaN (nodes[i].x) + " y:"+float.IsNaN(nodes[i].y));
-				nodes[i].x = 0; nodes[i].y = 0; //total trainwreck
-			}
-			if (float.IsNaN (nodes[i].x) || float.IsNaN (nodes[i].y)){
-				Debug.Assert(false,msg+" "+i+" nx:"+float.IsNaN (nodes[i].nx) + " ny:"+float.IsNaN(nodes[i].ny));
-				nodes[i].nx = nodes[i].x; nodes[i].ny = nodes[i].y;
-			}
+			
+			Bub.checkVals(nodes[i].x,nodes[i].y,"XY");
+			
+			Bub.checkVals(nodes[i].nx,nodes[i].ny,"NXNY");
 			
 			Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+" x!=nx or y!=ny");
 
@@ -92,9 +87,12 @@ public class Engine {
 		List<Vector2> coords = new List<Vector2>();
 		List<uint>ids = new List<uint>();
 		for (int i=0; i < nodes.Count;i++){
+
 			ids.Add ((uint)i); //i = nodes[i].id
 			x = nodes[i].x; y = nodes[i].y;
-
+			if(float.IsNaN(x) || float.IsNaN (y) || float.IsInfinity(x) || float.IsInfinity (y)){
+				Debug.Log ("makeNeighbors "+i+" bad x or y");
+			}
 			if (maxx < x) maxx = x;
 			if (minx > x) minx = x;
 			if (maxy < y) maxy = y;
@@ -137,7 +135,11 @@ public class Engine {
 		nodes[i].tryEat(nodes[i].neighbors[j]);
 	}
 
-	
+	private static void doScheduledRelocations(){
+		foreach (var node in scheduledOrgRelocations) node.randomRelocateOrganism();
+		scheduledOrgRelocations.Clear ();
+	}
+
 	//called every fixedUpdate
 	public static void step(){
 		
@@ -145,19 +147,24 @@ public class Engine {
 
 		//x,y == nx, ny
 		checkXY("pre makeNeighbors");
-		makeNeighbors(); //look around
-		doAllRules();
+		makeNeighbors(); //look around, create voronoi neighbor graph
+		//collision detection based on voronoi neighbors
+		tryToEatNeighbors(); //get (or lose) oomph, perhaps schedule forced relocation, but
+		//defer relocations, because otherwise would have to recompute voronoi for rules
+		doAllRules();//based on non relocated x,y positions
 
-		//nx and  ny begin to accumulate change based on muscles, on relocation, on gravity.
+		checkXY("pre activateAll"); //should be unchanged from pre makeNeighbors
+		//nx and ny begin to accumulate change based on muscles and gravity.
 		activateAll();//During and hereafter there's a difference between x, y and nx,ny
 		checknXnY("post activateAll");
-		tryToEatNeighbors(); //get (or lose) oomph, perhaps destroy some bots
-		//forced relocation of nx,ny
-		checknXnY("post Eating");
 		//final adjustment to nx ny based on gravity.
-		updatePositions(); // Update x, y to nx,ny
+		updatePositions(); // Update x,y to == nx,ny
 		checkXY("post updatePositions");
 		
+		doScheduledRelocations(); //relocations scheduled by eating.
+
+		checkXY("post relocations");
+
 		//Prepare the future
 		photosynthesize(); //generate oomph
 		shareOomph();

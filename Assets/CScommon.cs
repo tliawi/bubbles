@@ -190,7 +190,7 @@ public static class CScommon {
 
 	//dna
 
-	public const int vegetableBit = 0; // higher photosynthesis yield
+	public const int vegetableBit = 0; // if false isEater, if true !isEater. We should rename this "predatorBit" and flip all our uses of it.
 	public const int noPhotoBit = 1;  // higher link rate, with accompanying power demand and inefficiency
 	public const int playerBit = 3;   //indicates that this node has been allocated to a player (even though the player may be offline).
 	public const int playerPlayingBit = 4;  //indicates that this node has been allocated to a player, and that this player is currently online and playing.
