@@ -415,14 +415,8 @@ public class Bots
 		feeder2.giveBurden (two);
 		feeder3.giveBurden (three);
 
-		//plant a bunch of munchies, but not within turm
-		int startCount = Engine.nodes.Count;
-		float turmRad = goal.distance (one);
-		//beware, this becomes an infinite loop as turmRad approaches worldRadius
-		while (Engine.nodes.Count - startCount < 100){
-			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
-			//see if turm purges self of interlopers... if (Engine.nodes[Engine.nodes.Count - 1].distance(goal) < turmRad) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
-		}
+		//munchies
+		for (int i =0; i<100; i++) plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
 
 		stdPlayers(abnorm);
 	}

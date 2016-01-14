@@ -21,9 +21,11 @@ public class Bub {
 	private static float gGravity;//see resetGravity. OccaSsional large perterbations in gravity can have a pleasing and disruptive effect on circling
 	private static Vector2 gCG = new Vector2(0.0f,0.0f); //Center of world is 0,0, but CG, Center of Gravity, can be moved about a bit to give a nice effect
 
-	public static void checkVals(float x, float y, string msg){
-		if (float.IsNaN(x) || float.IsNaN (y)) Debug.Log ("XXX Nan: "+msg);
-		if (float.IsInfinity(x) || float.IsInfinity(y)) Debug.Log ("XXX Inf: "+msg);
+	public static bool checkVals(float x, float y, string msg){
+		bool b = false;
+		if (float.IsNaN(x) || float.IsNaN (y)) { Debug.Log ("XXX Nan: "+msg); b = true;}
+		if (float.IsInfinity(x) || float.IsInfinity(y)) { Debug.Log ("XXX Inf: "+msg); b = true;}
+		return b;
 	}
 
 	public static void resetGravity(){
@@ -250,7 +252,7 @@ public class Bub {
 
 	//////////////////////////////////////////////////////////////// bones
 
-	public static float boneStiffness = 0.4f;
+	public static float boneStiffness = 0.05f;
 
 	public class Bone{
 
@@ -266,23 +268,43 @@ public class Bub {
 
 		//only for bone links. Elastically pushes or pulls its source/target pair, to maintain the distance between them at boneLength
 		public void boneAction()
-		{	float 	dx = target.x - source.x,
-			dy = target.y - source.y;
-			float dislocation, effect;
+		{	float dx = target.x - source.x;
+			float dy = target.y - source.y;
+			float dislocation, effect, dist;
 
-			dislocation = boneLength - source.distance(target);
-			
+			if (dx == 0 && dy == 0) {//bone has no notion of what direction to push
+				float v = Random.Range (-Mathf.PI, Mathf.PI);
+				dx = Mathf.Cos (v)*minPosValue; dy = Mathf.Sin(v)*minPosValue; dist = minPosValue;
+			}
+			else dist = source.distance(target);
+
+			dislocation = boneLength - dist;
+//			if (boneLength > 20){
+//				Debug.Log ("BONEACTION "+boneLength+","+source.distance (target));
+//				Debug.Log ("("+source.x + ","+source.y+") ("+target.x+","+target.y+")");
+//				Debug.Log ("dx,dy "+dx+","+dy);
+//			}
+
+			effect = boneStiffness*dislocation;// - if too long, + if too short.
+
 			// Effect on one end is independent of effect on the other.
 			// Each experiences the same 'force', they react to it in inverse proportion to their burden.
-			effect = boneStiffness*dislocation; // - if too long, + if too short.
+			//A smaller burden moves more than a bigger burden. Bone force is not per unit of burden,
+			//it is structural, i.e. bones between large masses are, in muscle terms, much stronger than
+			//bones between small burdens.
 
-			//A smaller burden moves more than a bigger burden.
-			effect = 0.5f * effect * target.burden /(source.burden + target.burden);
+			effect *= target.burden /(source.burden + target.burden);
 
+			//if (source.burden + target.burden ==0) Debug.Log ("boneAction burdens zero!");
+			//checkVals(effect,effect,"bonaction bone effect "+source.id+":"+target.id);
 
-			source.nx -= dx*effect;
-			source.ny -= dy*effect;
-			
+			source.nx -= effect*dx/dist;
+			source.ny -= effect*dy/dist;
+
+//			if (boneLength > 20) Debug.Log("  effect "+effect+": ("+(-dx*effect)+","+(-dy*effect)+")");
+//
+//			checkVals(source.nx, source.ny, "bonaction nxny "+source.id+":"+target.id);
+
 			//target will be moved when target processes this bone's twin
 			//			target.nx += dx*effect/target.burden;
 			//			target.ny += dy*effect/target.burden;
@@ -646,10 +668,11 @@ public class Bub {
 			//more than the high-burden low-spead head, imparting a rotating effect to the bot as a whole
 			// Note that if speed is too great, gravity can sling someone off the map. Need to have an upper limit on speed, 
 			// or I can't use the gravity approach. The only current upper limit is imposed by link efficiency.
-			factor = Mathf.Min (gGravity*Mathf.Sqrt(speed2),0.999f); //use 0.999f so several points aren't all imposed directly on gCG.
+			factor = gGravity*Mathf.Sqrt(speed2); 
 
 			checkVals(factor, factor, "factor.");
-
+			if ( !(factor<=0.999f)) factor = 0.999f;//Use negation so that if factor is NaN will fix. Use 0.999f so several points aren't all imposed directly on gCG. 
+			checkVals(factor, factor, "factor.");
 			//Greater effect on those far from origin
 			if (pushedMinusPulled >= 0)
 			{	nx -= dx*factor; ny -= dy*factor; //move towards gCG those being pushed. 

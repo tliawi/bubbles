@@ -65,7 +65,7 @@ public class Engine {
 
 	private static void checknXnY(string msg){
 		for (int i=0; i < nodes.Count;i++){
-			Bub.checkVals (nodes[i].nx,nodes[i].ny,"nXnY");
+			Bub.checkVals (nodes[i].nx,nodes[i].ny,msg+":"+nodes[i].id+":nXnY");
 		}
 	}
 
@@ -73,11 +73,11 @@ public class Engine {
 		for (int i=0; i < nodes.Count;i++){
 
 			
-			Bub.checkVals(nodes[i].x,nodes[i].y,"XY");
+			Bub.checkVals(nodes[i].x,nodes[i].y,msg+":"+nodes[i].id+":XY");
 			
-			Bub.checkVals(nodes[i].nx,nodes[i].ny,"NXNY");
+			Bub.checkVals(nodes[i].nx,nodes[i].ny,msg+":"+nodes[i].id+":NXNY");
 			
-			Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+" x!=nx or y!=ny");
+			Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+":"+nodes[i].id+": x!=nx or y!=ny");
 
 		}
 	}
