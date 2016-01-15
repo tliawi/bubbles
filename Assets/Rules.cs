@@ -4,6 +4,23 @@ using System.Collections.Generic;
 
 public class Rules {
 
+	//given an angle in radians, returns the equivalent between -PI and +PI
+	public static float stdAngle( float angl)
+	{	while (angl < -Mathf.PI) angl += 2*Mathf.PI;
+		while (angl > Mathf.PI) angl -= 2*Mathf.PI;
+		return angl;
+	}
+	
+	// Angle abc. Given three points a,b,c
+	// returns the angle at the middle one, b.
+	// Is positive if angle from a to b to c is ccwise(standard math positive angle direction), 
+	// negative if cwise.
+	public static float signedAngle( Bub.Node a, Bub.Node b, Bub.Node c)
+	{	float angle1 = Mathf.Atan2(a.y-b.y, a.x-b.x);
+		float angle2 = Mathf.Atan2(c.y-b.y, c.x-b.x);
+		return stdAngle(angle2 - angle1);
+	}
+
 	//overloaded helper fcn
 	public static List<Bub.Node> nodeList(Bub.Node nod0){
 		List<Bub.Node> lst =  new List<Bub.Node>();
@@ -15,6 +32,14 @@ public class Rules {
 		List<Bub.Node> lst =  new List<Bub.Node>();
 		lst.Add (nod0);
 		lst.Add (nod1);
+		return lst;
+	}
+
+	public static List<Bub.Node> nodeList(Bub.Node nod0, Bub.Node nod1, Bub.Node nod2){
+		List<Bub.Node> lst =  new List<Bub.Node>();
+		lst.Add (nod0);
+		lst.Add (nod1);
+		lst.Add (nod2);
 		return lst;
 	}
 
@@ -469,6 +494,41 @@ public class Rules {
 				pusher.reEnable();
 			}
 		}
+	}
 
+	//install on two nodes held at 60-120 degrees from each other about the center, cranking the given crank node
+	public static void installCrank(Bub.Node source,  Bub.Node center, Bub.Node crank, bool cwise){
+		source.rules.Add (new Crank(source, center, crank, cwise));
+	}
+	
+	
+	public class Crank: Rule {
+		
+		private Bub.Muscle muscl;
+		private Bub.Node crank;
+		private Bub.Node center;
+		private bool cwise;
+		
+		public Crank(Bub.Node source0, Bub.Node center0, Bub.Node crank0, bool cwise0):base(source0){
+			center = center0;
+			crank = crank0;
+			cwise = cwise0;
+			muscl = addMuscle(crank).disable(); //source to crank. Disable so it remembers enablement for reEnable.
+		}
+		
+		override public void accion(){
+			float radius2 = source.distance2(center);
+			float dist2 = source.distance2(crank);
+			float angl = signedAngle(center,source,crank);
+			if (Mathf.Abs(angl)<Mathf.PI/9 ) muscl.disable();  // dist = 2*radius at farthest point on circumscribed circle
+			else {
+				if ( dist2 < radius2/10000) muscl.disable();//note the condition is the same as dist < radius/100
+				else {
+					muscl.reEnable();
+					if ( cwise ^ (signedAngle(center,source,crank) > 0 )) muscl.makePuller(); 
+					else muscl.makePusher();
+				}
+			}
+		}
 	}
 }

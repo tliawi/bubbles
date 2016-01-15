@@ -381,6 +381,10 @@ public class Bub {
 			//this.intrface = undefined;
 		}
 
+		public Vector2 vector2(){
+			return new Vector2(x,y);
+		}
+
 		public void clearTrust(){
 			trustHead = this;
 			foreach (Node n in trusters) n.trustHead = n;

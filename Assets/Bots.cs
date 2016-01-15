@@ -369,8 +369,54 @@ public class Bots
 	public static void fussballInit(float norm, float abnorm){
 		Bub.Node head;
 
-		head = pushVegNode(new Vector2(0,0),norm/4);
-		bubbleServer.registerNPC(head.id,"fussball");
+		float rad = 12; // turn radius is half of turm side length
+		float height = Mathf.Sqrt((rad*2)*(rad*2)-rad*rad); //height of equilateral triangle of sides = 2 rad
+		float centerHeight = rad*rad/height; //height of center of that triangle
+		float radius = height - centerHeight; //radius of circle circumscribed about three vertices
+		Bub.Node crankA, crankB, crankC, one, two, three, center;
+
+		//make triangle to swing the crank. 
+		center = pushVegNode(new Vector2(0,0),0.7f*abnorm,"crank");
+		bubbleServer.registerNPC(center.id,"fussball");
+		one = pushVegNode(new Vector2(-rad,-centerHeight),abnorm,"crank");
+		two = pushVegNode(new Vector2(rad,-centerHeight),abnorm,"crank");
+		three = pushVegNode(new Vector2(0,radius),abnorm,"crank");
+
+		//cranks are bigger, generate most power for the whole org
+		crankA = pushVegNode(new Vector2(-rad,centerHeight),abnorm*3,"crank");
+		crankB = pushVegNode(new Vector2(rad,centerHeight),abnorm*3,"crank");
+		crankC = pushVegNode(new Vector2(0,-radius),abnorm*3,"crank");
+		
+		one.trust(center); two.trust(center); three.trust(center); 
+		crankA.trust(center);crankB.trust(center);crankC.trust(center);
+		
+		//can add bones only after they trust each other, i.e. after organism has been created.
+		one.addBone(two); two.addBone(three); three.addBone(one);
+		one.addBone(center); two.addBone(center); three.addBone(center);
+		center.addBone(crankA);center.addBone(crankB); center.addBone(crankC);
+		crankA.addBone(crankB);crankB.addBone(crankC);crankC.addBone(crankA);
+		//put all weight in the support triangle
+		Bub.shiftBurden(0,Rules.nodeList(crankA,crankB,crankC),Rules.nodeList(one,two,three));
+
+		Rules.installTurmDefender(crankA,5*rad);
+		Rules.installTurmDefender(crankB,5*rad);
+		Rules.installTurmDefender(crankC,5*rad);
+
+		Rules.installTurmDefender(one,3*rad);
+		Rules.installTurmDefender(two,3*rad);
+		Rules.installTurmDefender(three,3*rad);
+
+		Rules.installCrank(one,center,crankA, true); 
+		Rules.installCrank(two,center, crankA, true);
+		Rules.installCrank(three,center,crankA, true);
+
+		Rules.installCrank(one,center,crankB, true); 
+		Rules.installCrank(two,center, crankB, true);
+		Rules.installCrank(three,center,crankB, true);
+
+		Rules.installCrank(one,center,crankC, true); 
+		Rules.installCrank(two,center, crankC, true);
+		Rules.installCrank(three,center,crankC, true);
 		
 		stdPlayers(abnorm);
 
