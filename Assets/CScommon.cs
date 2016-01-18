@@ -21,7 +21,7 @@ public static class CScommon {
 	public const short gamePhaseMsgType = 311; //GamePhaseMsg, where gamephase 1: pregame, 2: running, numNodes, numLinks, worldRadius
 	public const short nameNodeIdMsgType = 312; //NameNodeIdMsg, tells all clients what user name is associated with what bubble
 	public const short turnMsgType = 313; //intMsg, -1 means change direction a bit to the left, +1 means a bit to the right, 0 indicates go straight.
-	public const short forward0Reverse1Type = 314; //intMsg, 0 means forward, 1 means reverse. 2 means toggle.
+	public const short forward0Reverse1Type = 314; //intMsg, 0 means forward, 1 means reverse. 2 means toggle. Changes speed to -speed.
 	public const short linksMsgType = 315; //linksMsg
 	public const short restartMsgType = 316; //intMsg, sent from client to restart server game.
 	// value 0 is the exception, it pauses/unpauses current game without restarting it.
@@ -36,7 +36,7 @@ public static class CScommon {
 	// 71/72 move down/up by 1/10 between 0 and 1 the fraction of their maxOomph fed to veg nodes before launch
 	// 81/82 move down/up by 1/10 between 0 and 1 the fraction of their maxOomph fed to nonveg nodes before launch
 
-	public const short speedMsgType = 317; //intMsg, sent from client to change percent (0 to 300) of it's muscles demand
+	public const short speedMsgType = 317; //intMsg, sent from client to change speed of its muscles demand. Range from -300 to 300, negative values reverse gear.
 	public const short broadCastMsgType = 318; //stringMsg, sent from client to server, and rebroadcast by server to all clients.
 	public const short scaleMsgType = 319; //stringMsg, sent from server to all clients whenever scales are set or changed, a very succinct summary of scales
 
@@ -101,6 +101,7 @@ public static class CScommon {
 	public class TargetNodeMsg : MessageBase{
 		public int nodeIndex;
 		public LinkType linkType;
+		public byte hand;
 	}
 	
 	public struct StaticNodeData {

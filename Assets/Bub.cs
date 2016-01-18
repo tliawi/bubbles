@@ -121,8 +121,8 @@ public class Bub {
 		public float demand {get; private set;}
 		private float pastDemand;
 
-		public bool enabled {get{ return demand > 0;}} //deprecated
-		public bool disabled { get {return demand == 0;}} //deprecated
+		public bool enabled {get{ return demand > 0;}} 
+		public bool disabled { get {return demand == 0;}}
 
 		public Muscle enable(int percent){
 			if (percent>=0 && percent <= 300) {
@@ -134,6 +134,10 @@ public class Bub {
 
 		public Muscle disable(){ if (demand > 0) pastDemand = demand; demand = 0; return this; }
 		public Muscle reEnable(){demand = pastDemand; return this;}
+
+		public int enableStep(){
+			return Mathf.RoundToInt(demand/(source.radius2 * baseMetabolicRate * 100)); //should be 0, 1, 2, or 3
+		}
 
 		private bool pulling;
 		public bool isPuller() {return pulling;}
@@ -438,8 +442,8 @@ public class Bub {
 			return group;
 		}
 
-		public void enableMuscles(int percent){
-			for (int i = 0; i<rules.Count; i++) rules[i].enableMuscles(percent);
+		public void enableInternalMuscles(int percent){
+			for (int i = 0; i<rules.Count; i++) rules[i].enableInternalMuscles(percent);
 		}
 
 		public void setState(string key, int value){

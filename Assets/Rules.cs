@@ -62,6 +62,10 @@ public class Rules {
 			for (int i = 0; i< _muscles.Count; i++) _muscles[i].disable ();
 		}
 
+		public void enableInternalMuscles(int percent)
+		{	for (int i = 0; i< _muscles.Count; i++) if (source.trusts(_muscles[i].target)) _muscles[i].enable (percent);
+		}
+
 		public void enableMuscles(int percent){
 			for (int i = 0; i< _muscles.Count; i++) _muscles[i].enable (percent);
 		}
@@ -113,7 +117,15 @@ public class Rules {
 			source.setState ("turn",0);
 		}
 
+		private void flipHandedness(){
+			Bub.Node x = muscles(0).target;
+			muscles(0).target = muscles(1).target;
+			muscles(1).target = x;
+		}
+
 		public override void accion() {
+
+			if (signedAngle(muscles(1).target,muscles(0).target,source)<0) flipHandedness();
 
 			int turn = source.getState ("turn"); //-1, 0, +1, 12345 (during a turn)
 
@@ -326,38 +338,76 @@ public class Rules {
 		}
 	}
 
-	public static void installHunterPCRule(Bub.Node source0){
-		source0.rules.Add (new HunterPCRule(source0));
+	public static void installHunterPCRule(Bub.Node source, byte hand){
+		source.rules.Add (new HunterPCRule(source, hand));
 	}			
 
 	public class HunterPCRule: HunterBase{
-		
+
+		const int idle = int.MaxValue;
+		string handTargetIdp1;
+
 		//side effect: adds a rule, to source0, such that it is responsive to targetIdp1 state
-		public HunterPCRule(Bub.Node source0):base(source0){
+		public HunterPCRule(Bub.Node source0, byte hand):base(source0){
+
+			handTargetIdp1 = hand + "targetIdp1";
 
 			fightingMuscle = addMuscle(source).disable (); //temporary from source to source disabled
 			
-			source.setState("targetIdp1",0);
+			source.setState(handTargetIdp1,idle);
 			
 		}
 
+
 		override public void accion(){
-				
-			int targetIdp1 = source.getState("targetIdp1"); // push-, pull+, (targetId+1). 0 means stop fighting
-			
-			if (targetIdp1 == 0) { stopFighting(); return; }
-			
-			Bub.Node target = Engine.nodes[ targetIdp1<0? -1 - targetIdp1:targetIdp1-1 ]; 
-			
-			if (amTargeting(target) && source.overlaps (target)) {
-				source.setState ("targetIdp1", 0);
+			int step;
+			int targetIdp1 = source.getState(handTargetIdp1); // push+, pull-, (targetId+1). 0 means stop fighting
+			//AND idle means a previous accion has already dealt with the message.
+			if (targetIdp1 == idle) return;
+			source.setState (handTargetIdp1,idle);
+
+			if (targetIdp1 == 0) { 
 				stopFighting(); 
+				return; 
+			}
+			
+			Bub.Node target = Engine.nodes[ targetIdp1<0? -1 - targetIdp1:targetIdp1-1 ];
+
+			if (source.trusts(target) ) {
+				stopFighting(); // removed || source.clan == target.clan so clan members can pull or push each other out of danger etc.
 				return;
+			}
+
+			if (fightingMuscle.disabled) { // state() == State.notFighting
+				startFighting(target, targetIdp1>=0?State.fleeing:State.attacking);
+				return;
+			}
+			
+			if (amTargeting(target)) {
+
+				if (fightingMuscle.isPuller() && source.overlaps (target)) {
+					stopFighting();
+					return;
+				}
+
+				step = fightingMuscle.enableStep(); //0,1,2,3
+				if (fightingMuscle.isPuller()) step = -step;
+				//step is now in -3..3
+				step += targetIdp1<0?-1:1; //move step left or right, is now in -4..4
+
+				if (step == 0) stopFighting();
+				else if (step < 0) {
+					fightingMuscle.makePuller ();
+					fightingMuscle.enable (-step*100); //percent
+				} else {
+					fightingMuscle.makePusher ();
+					fightingMuscle.enable (step*100); //percent
+				}
 			}
 			
 			if (source.trusts (target) ) stopFighting(); // removed || source.clan == target.clan so clan members can pull or push each other out of danger etc.
 			
-			else startFighting(target, targetIdp1<0?State.fleeing:State.attacking);
+			else startFighting(target, targetIdp1>=0?State.fleeing:State.attacking);
 			
 		}
 

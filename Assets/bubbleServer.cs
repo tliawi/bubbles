@@ -424,9 +424,9 @@ public class bubbleServer : MonoBehaviour {
 		NetworkServer.RegisterHandler (CScommon.targetNodeType, onTargetNode);
 		//NetworkServer.RegisterHandler (CScommon.lookAtNodeType, onLookAtNode);//unused
 		NetworkServer.RegisterHandler (CScommon.initRequestType, onInitRequest);
-		NetworkServer.RegisterHandler (CScommon.push1Pull2MsgType, onPush1Pull2Msg);
+		//NetworkServer.RegisterHandler (CScommon.push1Pull2MsgType, onPush1Pull2Msg);
 		NetworkServer.RegisterHandler (CScommon.turnMsgType, onTurnMsg);
-		NetworkServer.RegisterHandler (CScommon.forward0Reverse1Type, onForward0Reverse1);
+		//NetworkServer.RegisterHandler (CScommon.forward0Reverse1Type, onForward0Reverse1);
 		NetworkServer.RegisterHandler (CScommon.restartMsgType, onRestartMsg);
 		NetworkServer.RegisterHandler (CScommon.speedMsgType, onSpeedMsg);
 		NetworkServer.RegisterHandler (CScommon.broadCastMsgType, onBroadCastMsg);
@@ -493,11 +493,11 @@ public class bubbleServer : MonoBehaviour {
 		checkForInitRevisions();
 	}
 
-	public void onPush1Pull2Msg(NetworkMessage netMsg){
-		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId <0) return;
-		CScommon.intMsg push1Pull2Msg = netMsg.ReadMessage<CScommon.intMsg>();
-		Bots.onPush1Pull2(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, push1Pull2Msg.value);
-	}
+//	public void onPush1Pull2Msg(NetworkMessage netMsg){
+//		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId <0) return;
+//		CScommon.intMsg push1Pull2Msg = netMsg.ReadMessage<CScommon.intMsg>();
+//		Bots.onPush1Pull2(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, push1Pull2Msg.value);
+//	}
 	
 	private void onTargetNode(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId <0) return;
@@ -506,7 +506,7 @@ public class bubbleServer : MonoBehaviour {
 		//debugDisplay ("onTargetNode "+targetMsg.nodeIndex+" "+targetMsg.linkType);
 		//		if (xing) Bots.onXTarget(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, targetMsg.nodeIndex, targetMsg.linkType);
 //		else 
-		Bots.onTarget(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, targetMsg.nodeIndex, targetMsg.linkType);
+		Bots.onTarget(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, targetMsg.nodeIndex, targetMsg.linkType, targetMsg.hand);
 	}
 
 	private void onTurnMsg(NetworkMessage netMsg){
@@ -516,11 +516,11 @@ public class bubbleServer : MonoBehaviour {
 		Bots.onTurn(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, intMsg.value);
 	}
 
-	private void onForward0Reverse1(NetworkMessage netMsg){
-		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId <0) return;
-		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
-		Bots.onForward0Reverse1(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, intMsg.value);
-	}
+//	private void onForward0Reverse1(NetworkMessage netMsg){
+//		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId <0) return;
+//		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
+//		Bots.onForward0Reverse1(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, intMsg.value);
+//	}
 
 	private void onLookAtNode(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId <0) return;
@@ -567,8 +567,7 @@ public class bubbleServer : MonoBehaviour {
 	private void onSpeedMsg(NetworkMessage netMsg){
 		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
 		if ( connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId < 0 ) return;
-		List<Bub.Node> orgNodes = Engine.nodes[connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId].trustGroup ();
-		foreach (var node in orgNodes) node.enableMuscles(intMsg.value);
+		Bots.onSpeed (Engine.nodes[connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId], intMsg.value);
 	}
 
 	private void onInitRequest(NetworkMessage netMsg){

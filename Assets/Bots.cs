@@ -125,13 +125,14 @@ public class Bots
 
 	////////Event handlers called from bubbleServer
 
-	public static void onTarget(int sourceId, int targetId, CScommon.LinkType linkType){
+	public static void onTarget(int sourceId, int targetId, CScommon.LinkType linkType, byte hand){
 		if (sourceId >= 0 && sourceId < Engine.nodes.Count && targetId >= 0 && targetId < Engine.nodes.Count
 		    && linkType != CScommon.LinkType.bone) {
 
 			int targetIdp1 = targetId + 1;
-			if (linkType == CScommon.LinkType.pusher) targetIdp1 = -targetIdp1;
-			Engine.nodes[sourceId].setState("targetIdp1", targetIdp1); // push-, pull+, (targetId +1). 0 means stop fighting
+			if (linkType == CScommon.LinkType.puller) targetIdp1 = -targetIdp1;
+
+			Engine.nodes[sourceId].setState(hand+"targetIdp1", targetIdp1); // push+, pull-, (targetId +1). 0 means stop fighting
 
 		}
 	}
@@ -171,37 +172,55 @@ public class Bots
 	}
 
 	//manual push/pull 1:push, 2:Pull, 3. togglePushPull, 0. return to automatic pushPull
-	public static void onPush1Pull2(int sourceId, int push1Pull2){
-	
-		switch (push1Pull2) {
-		
-			case 0:  
-				Engine.nodes[sourceId].setState ("nearFarSwitch01", 1); //enable automatic nearFar cmdr
-				break;
-			case 1:
-			case 2:
-				Engine.nodes[sourceId].setState ("nearFarSwitch01", 0); //disable automatic cmdr
-				Engine.nodes[sourceId].setState ("push1Pull2",push1Pull2); 
-				break;
-			case 3: 
-				Engine.nodes[sourceId].setState ("nearFarSwitch01", 0); //disable automatic cmdr
-				togglePushPull(Engine.nodes[sourceId]);
-				break;
-			}
-	}
+//	public static void onPush1Pull2(int sourceId, int push1Pull2){
+//	
+//		switch (push1Pull2) {
+//		
+//			case 0:  
+//				Engine.nodes[sourceId].setState ("nearFarSwitch01", 1); //enable automatic nearFar cmdr
+//				break;
+//			case 1:
+//			case 2:
+//				Engine.nodes[sourceId].setState ("nearFarSwitch01", 0); //disable automatic cmdr
+//				Engine.nodes[sourceId].setState ("push1Pull2",push1Pull2); 
+//				break;
+//			case 3: 
+//				Engine.nodes[sourceId].setState ("nearFarSwitch01", 0); //disable automatic cmdr
+//				togglePushPull(Engine.nodes[sourceId]);
+//				break;
+//			}
+//	}
 
 	//reversal effect: push pull servo shifts burden to determine which end moves more during push bzw pull
 	//0 means forward, 1 means reverse. Anything else means toggle.
-	public static void onForward0Reverse1(int sourceId, int forward0Reverse1){
-		int pre = Engine.nodes[sourceId].getState("forward0Reverse1");
+//	public static void onForward0Reverse1(int sourceId, int forward0Reverse1){
+//		int pre = Engine.nodes[sourceId].getState("forward0Reverse1");
+//
+//		if (forward0Reverse1 == 0 || forward0Reverse1 == 1)	Engine.nodes[sourceId].setState("forward0Reverse1",forward0Reverse1);
+//		else Engine.nodes[sourceId].setState("forward0Reverse1",Engine.nodes[sourceId].checkState("forward0Reverse1",1)?0:1);
+//		
+//		//compare pre to post
+//		if (pre != Engine.nodes[sourceId].getState("forward0Reverse1")) togglePushPull(Engine.nodes[sourceId]); //so has immediate effect
+//
+//		//bubbleServer.debugDisplay ("fr "+forward0Reverse1+" "+Engine.nodes[sourceId].getState ("forward0Reverse1"));
+//	}
 
-		if (forward0Reverse1 == 0 || forward0Reverse1 == 1)	Engine.nodes[sourceId].setState("forward0Reverse1",forward0Reverse1);
-		else Engine.nodes[sourceId].setState("forward0Reverse1",Engine.nodes[sourceId].checkState("forward0Reverse1",1)?0:1);
+	//changes the metabolic rate (power) of internal muscles of the given mount
+	public static void onSpeed(Bub.Node mount, int speed){
 		
-		//compare pre to post
-		if (pre != Engine.nodes[sourceId].getState("forward0Reverse1")) togglePushPull(Engine.nodes[sourceId]); //so has immediate effect
-
-		//bubbleServer.debugDisplay ("fr "+forward0Reverse1+" "+Engine.nodes[sourceId].getState ("forward0Reverse1"));
+		int forward0Reverse1 = mount.getState ("forward0Reverse1");
+		
+		//so effect is immediate
+		if (forward0Reverse1 == 0 && speed < 0) togglePushPull(mount);
+		if (forward0Reverse1 == 1 && speed > 0) togglePushPull(mount);
+		
+		//so effect stands
+		if (speed < 0) mount.setState ("forward0Reverse1", 1);
+		else mount.setState ("forward0Reverse1",0);
+		
+		speed = Mathf.Abs (speed);
+		List<Bub.Node> orgNodes = mount.trustGroup ();
+		foreach (var node in orgNodes) node.enableInternalMuscles(speed);
 	}
 
 	public static void onTurn(int sourceId, int turn){
@@ -217,7 +236,8 @@ public class Bots
 		Engine.nodes[nodeId].setDna (CScommon.playerBit, false);
 		Engine.nodes[nodeId].setDna(CScommon.playerPlayingBit, false);
 
-		Engine.nodes[nodeId].rules.RemoveAt (Engine.nodes[nodeId].rules.Count - 1); //remove rule added when you mounted
+		Engine.nodes[nodeId].rules.RemoveAt (Engine.nodes[nodeId].rules.Count - 1); //remove two rules added when you mounted
+		Engine.nodes[nodeId].rules.RemoveAt (Engine.nodes[nodeId].rules.Count - 1);
 	}
 
 	//when a player mounts a node, they get the ability to command any pushPullServo that may be on the node,
@@ -229,7 +249,8 @@ public class Bots
 		Engine.nodes[nodeId].setDna(CScommon.playerBit, true);
 		Engine.nodes[nodeId].setDna(CScommon.playerPlayingBit, true);
 
-		Rules.installHunterPCRule(Engine.nodes[nodeId]);
+		Rules.installHunterPCRule(Engine.nodes[nodeId],0);
+		Rules.installHunterPCRule(Engine.nodes[nodeId],1);
 	}
 
 	// initialization
@@ -367,7 +388,6 @@ public class Bots
 	}
 
 	public static void fussballInit(float norm, float abnorm){
-		Bub.Node head;
 
 		float rad = 12; // turn radius is half of turm side length
 		float height = Mathf.Sqrt((rad*2)*(rad*2)-rad*rad); //height of equilateral triangle of sides = 2 rad
