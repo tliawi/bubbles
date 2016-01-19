@@ -42,8 +42,8 @@ public class Bots
 		tail.trust(head);
 
 		List<Bub.Node> tailList = Rules.nodeList(tail);
-		Rules.installPush1Pull2Servo(head,tailList);
-		Rules.installNearFarPush1Pull2Cmdr(head,tailList, Random.Range (2f,4f),Random.Range (10f,20f));
+		Rules.Push1Pull2Servo.install(head,tailList);
+		Rules.NearFarPush1Pull2Cmdr.install(head,tailList, Random.Range (2f,4f),Random.Range (10f,20f));
 		return head;
 	}
 
@@ -76,11 +76,11 @@ public class Bots
 		tailL.addBone(tailR);
 
 		List<Bub.Node> tailList = Rules.nodeList( tailL, tailR );
-		Rules.installPush1Pull2Servo(head,tailList);
-		Rules.installTurnServo(head,tailL,tailR);
+		Rules.Push1Pull2Servo.install(head,tailList);
+		Rules.TurnServo.install(head,tailL,tailR);
 
 		// make equilateral triangle at near end
-		Rules.installNearFarPush1Pull2Cmdr(head,tailList, 0.75f*widthBetweenTails ,1.4f*widthBetweenTails);
+		Rules.NearFarPush1Pull2Cmdr.install(head,tailList, 0.75f*widthBetweenTails ,1.4f*widthBetweenTails);
 
 		return head;
 	}
@@ -111,9 +111,9 @@ public class Bots
 			tail = pushVegNode(tailPosition, radius, clan).setDna(CScommon.vegetableBit, tailVeg);
 			tail.trust (priorTail);
 
-			//Rules.installSegmentPushPullServo(priorTail,tail, n);
-			//Rules.installNearFarPush1Pull2Cmdr(priorTail,Rules.nodeList(tail), 3,10);//6.5 is avg of 3 and 10...
-			Rules.installSegmentPulltokenServo(priorTail,tail);
+			//Rules.SegmentPushPullServo.install(priorTail,tail, n);
+			//Rules.NearFarPush1Pull2Cmdr.install(priorTail,Rules.nodeList(tail), 3,10);//6.5 is avg of 3 and 10...
+			Rules.SegmentPulltokenServo.install(priorTail,tail);
 		}
 
 		//make final tail tiny, so is light to push, since that weight won't be shifted off it
@@ -249,8 +249,8 @@ public class Bots
 		Engine.nodes[nodeId].setDna(CScommon.playerBit, true);
 		Engine.nodes[nodeId].setDna(CScommon.playerPlayingBit, true);
 
-		Rules.installHunterPCRule(Engine.nodes[nodeId],0);
-		Rules.installHunterPCRule(Engine.nodes[nodeId],1);
+		Rules.HunterPCRule.install(Engine.nodes[nodeId],0);
+		Rules.HunterPCRule.install(Engine.nodes[nodeId],1);
 	}
 
 	// initialization
@@ -282,21 +282,6 @@ public class Bots
 			testbedInit(norm, abnorm);
 			break;
 		}
-	}
-
-	//called from bubbleServer whenever it enters second game phase
-	//disables unregistered players
-	public static void startRace(){
-//		foreach (Bub.Node node in Engine.nodes) {
-//
-//			if (!CScommon.testBit(node.dna,CScommon.vegetableBit)
-//			    && !bubbleServer.registered (node.id)
-//			    && node.getState ("nearFarSwitch01") != int.MinValue ){ //i.e. it has a nearFarSwitch at all
-//
-//					node.setState ("nearFarSwitch01",0);
-//					node.setState ("push1Pull2", 0); //anything but 1 or 2 disables push1Pull2
-//			}
-//		}
 	}
 	
 
@@ -340,7 +325,7 @@ public class Bots
 		
 		Bub.Node head = spawnInchworm(new Vector2(0,10),abnorm*0.6f,false,
 		                     new Vector2(8,0),abnorm*0.5f,false,"pest");
-		Rules.installHunterNPCRule(head);
+		Rules.HunterNPCRule.install(head);
 		bubbleServer.registerNPC(head.id,"inchworm pest");
 		
 		//head = spawnTricycle(new Vector2(0,-10),abnorm*0.8f,false,
@@ -364,18 +349,18 @@ public class Bots
 //		Rules.installHunterNPCRule(head);
 
 		head = spawnTapeworm(new Vector2(100,100),false, 7, abnorm*0.8f, false ,"tapeworm");
-		Rules.installHunterNPCRule(head);
+		Rules.HunterNPCRule.install(head);
 		// don't track his score on snarks... bubbleServer.registerNPC(head.id,"tapeworm");
 
 		head = spawnInchworm(new Vector2(-3,-3), abnorm*1.2f, false, 
 		                     new Vector2(7,7), abnorm*1f, false,"snark"); 
-		Rules.installHunterNPCRule(head);
+		Rules.HunterNPCRule.install(head);
 		head.setDna (CScommon.snarkBit,true);
 		bubbleServer.registerNPC(head.id,"big snark");
 		
 		head = spawnInchworm(new Vector2(0,10),abnorm*0.6f,false,
 		                     new Vector2(8,0), abnorm*0.5f,false,"snark");
-		Rules.installHunterNPCRule(head);
+		Rules.HunterNPCRule.install(head);
 		head.setDna (CScommon.snarkBit,true);
 		bubbleServer.registerNPC(head.id,"lil snark");
 
@@ -418,25 +403,25 @@ public class Bots
 		//put all weight in the support triangle
 		Bub.shiftBurden(0,Rules.nodeList(crankA,crankB,crankC),Rules.nodeList(one,two,three));
 
-		Rules.installTurmDefender(crankA,5*rad);
-		Rules.installTurmDefender(crankB,5*rad);
-		Rules.installTurmDefender(crankC,5*rad);
+		Rules.TurmDefender.install(crankA,5*rad);
+		Rules.TurmDefender.install(crankB,5*rad);
+		Rules.TurmDefender.install(crankC,5*rad);
 
-		Rules.installTurmDefender(one,3*rad);
-		Rules.installTurmDefender(two,3*rad);
-		Rules.installTurmDefender(three,3*rad);
+		Rules.TurmDefender.install(one,3*rad);
+		Rules.TurmDefender.install(two,3*rad);
+		Rules.TurmDefender.install(three,3*rad);
 
-		Rules.installCrank(one,center,crankA, true); 
-		Rules.installCrank(two,center, crankA, true);
-		Rules.installCrank(three,center,crankA, true);
+		Rules.Crank.install(one,center,crankA, true); 
+		Rules.Crank.install(two,center, crankA, true);
+		Rules.Crank.install(three,center,crankA, true);
 
-		Rules.installCrank(one,center,crankB, true); 
-		Rules.installCrank(two,center, crankB, true);
-		Rules.installCrank(three,center,crankB, true);
+		Rules.Crank.install(one,center,crankB, true); 
+		Rules.Crank.install(two,center, crankB, true);
+		Rules.Crank.install(three,center,crankB, true);
 
-		Rules.installCrank(one,center,crankC, true); 
-		Rules.installCrank(two,center, crankC, true);
-		Rules.installCrank(three,center,crankC, true);
+		Rules.Crank.install(one,center,crankC, true); 
+		Rules.Crank.install(two,center, crankC, true);
+		Rules.Crank.install(three,center,crankC, true);
 		
 		stdPlayers(abnorm);
 
@@ -460,10 +445,10 @@ public class Bots
 		two = pushVegNode(new Vector2(-rad,-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true);
 		three = pushVegNode(new Vector2(0,height-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true);
 
-		Rules.installTurmDefender(one,5*rad); 
-		Rules.installTurmDefender(two,5*rad); 
-		Rules.installTurmDefender(three,5*rad);
-		Rules.installTurmDefender(goal,5*rad);
+		Rules.TurmDefender.install(one,5*rad); 
+		Rules.TurmDefender.install(two,5*rad); 
+		Rules.TurmDefender.install(three,5*rad);
+		Rules.TurmDefender.install(goal,5*rad);
 		
 		//feeders are close
 		feeder1 = pushVegNode(new Vector2(0.93f*rad,0.22f*rad),1.9f*norm,"turm").setDna (CScommon.vegetableBit, false);
@@ -502,9 +487,9 @@ public class Bots
 		two = pushVegNode(new Vector2(goal.x+-rad,goal.y+-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true);
 		three = pushVegNode(new Vector2(goal.x+0,goal.y+height-centerHeight),3*norm,"turm").setDna(CScommon.noPhotoBit, true);
 
-		Rules.installTurmDefender(one,5*rad); 
-		Rules.installTurmDefender(two,5*rad); 
-		Rules.installTurmDefender(three,5*rad);
+		Rules.TurmDefender.install(one,5*rad); 
+		Rules.TurmDefender.install(two,5*rad); 
+		Rules.TurmDefender.install(three,5*rad);
 		
 		//feeders are close
 		feeder1 = pushVegNode(new Vector2(goal.x+(0.93f*rad),goal.y+(0.22f*rad)),1.9f*norm,"turm").setDna (CScommon.vegetableBit, false);
@@ -526,9 +511,9 @@ public class Bots
 		two1 = pushVegNode(new Vector2(goal1.x+-rad,goal1.y+-centerHeight),3*norm,"turm1").setDna(CScommon.noPhotoBit, true);
 		three1 = pushVegNode(new Vector2(goal1.x+0,goal1.y+height-centerHeight),3*norm,"turm1").setDna(CScommon.noPhotoBit, true);
 
-		Rules.installTurmDefender(one1,5*rad); 
-		Rules.installTurmDefender(two1,5*rad); 
-		Rules.installTurmDefender(three1,5*rad);
+		Rules.TurmDefender.install(one1,5*rad); 
+		Rules.TurmDefender.install(two1,5*rad); 
+		Rules.TurmDefender.install(three1,5*rad);
 		
 		//feeders are close
 		feeder11 = pushVegNode(new Vector2(goal1.x+(0.93f*rad),goal1.y+(0.22f*rad)),1.9f*norm,"turm1").setDna (CScommon.vegetableBit, false);

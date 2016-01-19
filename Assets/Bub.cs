@@ -115,17 +115,29 @@ public class Bub {
 	
 	public class Muscle {
 		
-		public Bub.Node source { get; protected set; }
-		public Bub.Node target;
+		public Node source { get; protected set; }
+		public Node target { get; private set; }
 
 		public float demand {get; private set;}
 		private float pastDemand;
 
+		public bool external {get{return target.trustHead != source.trustHead;}}
+
+		public void reTarget(Node n) {
+			if (notCut && external) target.enemyMuscles.Remove(this); //external muscle
+			target = n;
+			if (notCut && external) target.enemyMuscles.Add(this); //external muscle
+		}
+
 		public bool enabled {get{ return demand > 0;}} 
 		public bool disabled { get {return demand == 0;}}
 
+		// cut implies wholly (pastdemand == demand == 0) disabled. Disabled does not imply cut.
+		public Muscle cut() { reTarget(null); pastDemand = demand = 0; return this;}
+		public bool notCut { get {return target != null;}}
+
 		public Muscle enable(int percent){
-			if (percent>=0 && percent <= 300) {
+			if ( notCut && percent>=0 && percent <= 300 ) {
 				demand = source.radius2 * baseMetabolicRate * percent;//some day * CScommon.testBit(source.dna, CScommon.strengthBit)?10:1; 
 				pastDemand = demand; //so that a subsequent reEnable will do nothing.
 			}
@@ -133,9 +145,9 @@ public class Bub {
 		}
 
 		public Muscle disable(){ if (demand > 0) pastDemand = demand; demand = 0; return this; }
-		public Muscle reEnable(){demand = pastDemand; return this;}
+		public Muscle reEnable(){ if (notCut) demand = pastDemand; return this;}
 
-		public int enableStep(){
+		public int enabledStep(){
 			return Mathf.RoundToInt(demand/(source.radius2 * baseMetabolicRate * 100)); //should be 0, 1, 2, or 3
 		}
 
@@ -148,12 +160,15 @@ public class Bub {
 		public CScommon.LinkType commonType() {return pulling?CScommon.LinkType.puller:CScommon.LinkType.pusher;}
 		
 		public Muscle( Bub.Node source0, Bub.Node target0) {
-			source = source0;
-			target = target0;
-			enable(100);
+			source = source0; //may not be null
+			target = target0; //may be null
+			if (notCut) { 
+				enable(100); 
+				if (external) target.enemyMuscles.Add(this); 
+			}
 			pulling = true;
 		}
-		
+
 		public float length(){ return source.distance(target); }
 		public float length2() { return source.distance2(target);}
 		public float relativeLength(){ return source.distance (target)/source.radius; }
@@ -181,7 +196,7 @@ public class Bub {
 
 		//don't want to waste energy on pulling when you've already pulled
 		//don't want to pull until nodes have identical x and y
-		private float ceasePullDistance() {return 0.95f*source.radius;} //note: gap between is long since zero
+		private float ceasePullDistance() {return 0.05f*source.radius;} //note: gap between is long since zero
 
 		// must not debit oomph finally until all muscles have partaken, else later muscles would have less oomph than earlier muscles
 		public float actionDemand()
@@ -256,7 +271,7 @@ public class Bub {
 
 	//////////////////////////////////////////////////////////////// bones
 
-	public static float boneStiffness = 0.05f;
+	public static float boneStiffness = 0.1f;
 
 	public class Bone{
 
@@ -338,6 +353,8 @@ public class Bub {
 		public List<Bone> bones;
 		public List<Node> neighbors;
 
+		public List<Muscle> enemyMuscles;
+
 		public float nx, ny; //hallucinated evolving next position of node
 		public string clan  { get; private set; }
 		//this is the head of a trust group iff trustHead == this
@@ -363,6 +380,7 @@ public class Bub {
 			trusters = new List<Node>();
 			states = new Dictionary<string,int>();
 			rules = new List<Rules.Rule>();
+			enemyMuscles = new List<Muscle>();
         	this.naiveState();
 		}
 
@@ -375,6 +393,7 @@ public class Bub {
 			neighbors.Clear();
 			states.Clear();
 			rules.Clear();
+			enemyMuscles.Clear();
 			nx = x; //node.nx,ny the hallucinated potential evolving next position of node
 			ny = y;
 			clan = getRandomClan(); // not likely to be the clan of anything else in the world, nearly inevitably unique
@@ -434,16 +453,19 @@ public class Bub {
 
 		//set of nodes that trust each other to shift burden and share oomph and make bones.
 		public List<Node> trustGroup()
-		{	if (trustHead != this)return trustHead.trustGroup();
+		{	if (trustHead != this) return trustHead.trustGroup();
 
-			List<Node> group = new List<Node>();
+			List<Node> group = new List<Node>(trusters);
 			group.Add (this);
-			foreach (Node n in trusters) group.Add (n);
 			return group;
 		}
 
 		public void enableInternalMuscles(int percent){
 			for (int i = 0; i<rules.Count; i++) rules[i].enableInternalMuscles(percent);
+		}
+
+		public void cutExternalMuscles(){
+			for (int i=0; i<rules.Count; i++) rules[i].cutExternalMuscles();
 		}
 
 		public void setState(string key, int value){
@@ -737,6 +759,16 @@ public class Bub {
 //			randomRelocateOrganism();
 //		}
 
+		//cuts all external links to this organism, and all external links from this organism
+		public void cutOutOrganism(){
+			//take out all muscles attacking me
+			List<Muscle> attackers = new List<Muscle>(trustHead.enemyMuscles);
+			foreach (var muscl in attackers) muscl.cut ();
+			//take out all of my attack muscles
+			List<Node> org = trustGroup();
+			foreach (var node in org) node.cutExternalMuscles();
+		}
+
 		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that
 		public void randomRelocateOrganism(){
 			Vector2 here = new Vector2(trustHead.x, trustHead.y);
@@ -787,7 +819,7 @@ public class Bub {
 							foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanEat;
 							foreach (var orgN in node.trustGroup()) { 
 								orgN.oomph -= canTransfer*(orgN.oomph/nodeOrgCanGive);
-								if (orgN.oomph < minPosValue) orgN.oomph = 0;
+								if (orgN.oomph < minPosValue) orgN.oomph = 0; //mostly to make sureit every going negative
 							}
 						}
 						//could take all their burden too

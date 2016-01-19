@@ -7,7 +7,7 @@ public static class CScommon {
 
 	public static int serverPort = 8888;
 
-	public const short nodeIdMsgType = 300;  //intMsg, server tells a client which bubble they are associated with, often in response to their requestNodeIdMsg
+	public const short nodeIdMsgType = 300; //intMsg, server tells a client which bubble they are associated with, often in response to their requestNodeIdMsg
 	public const short updateMsgType = 301; //UpdateMsg, server sends to all clients frequently to update positions of bubbles. Uses DynamicNodeData[]
 	//public const short worldRadiusMsgType = 302; //was vegFlipType, an early debugging effort
 	public const short targetNodeType = 303; //TargetNodeMsg, client tells server that they want a link made from their bubble to a given target bubble
@@ -21,7 +21,7 @@ public static class CScommon {
 	public const short gamePhaseMsgType = 311; //GamePhaseMsg, where gamephase 1: pregame, 2: running, numNodes, numLinks, worldRadius
 	public const short nameNodeIdMsgType = 312; //NameNodeIdMsg, tells all clients what user name is associated with what bubble
 	public const short turnMsgType = 313; //intMsg, -1 means change direction a bit to the left, +1 means a bit to the right, 0 indicates go straight.
-	public const short forward0Reverse1Type = 314; //intMsg, 0 means forward, 1 means reverse. 2 means toggle. Changes speed to -speed.
+	//public const short forward0Reverse1Type = 314; //intMsg, 0 means forward, 1 means reverse. 2 means toggle. Changes speed to -speed.
 	public const short linksMsgType = 315; //linksMsg
 	public const short restartMsgType = 316; //intMsg, sent from client to restart server game.
 	// value 0 is the exception, it pauses/unpauses current game without restarting it.
@@ -50,7 +50,6 @@ public static class CScommon {
 //  Server handles MsgType.Connect, replies with gamePhaseMsg 1 with numNodes, numLinks and worldRadius
 //	Client responds with initRequestMsg including a name
 //	Server replies with a suite of reliable initMsgs and updateMsgs and linkMsgs that cover the whole world.
-//  During gamePhase 1, the game is paused, i.e. there is no movement or change other than clients choice of which node to mount.
 
 //  If user clicks on a desired node to mount, client sends a requestNodeId for that node.
 //	The server replies with a nodeIdMsg which either contains their old, unchanged bubble assignment

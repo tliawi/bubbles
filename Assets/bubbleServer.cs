@@ -32,7 +32,7 @@ public class bubbleServer : MonoBehaviour {
 	//private bool xing = false;
 
 	private static bool paused = true;
-	private static int gamePhase = 1; //1 if paused start of new game, 2 if game running
+	//private static int gamePhase = 1; //1 if paused start of new game, 2 if game running
 
 	private static float normScale, abnormScale;
 	private static int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
@@ -262,12 +262,7 @@ public class bubbleServer : MonoBehaviour {
 	}
 
 	void togglePause(){
-		paused = !paused; 
-		if (gamePhase == 1){
-			gamePhase = 2;
-			Bots.startRace();
-			foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGamePhase(connectionId);
-		}
+		paused = !paused;
 	}
 		
 		void Update(){
@@ -373,7 +368,6 @@ public class bubbleServer : MonoBehaviour {
 	void initCurrentGame()
 	{	
 		paused = true;
-		gamePhase = 1;
 
 		Bub.initialize();
 		Bots.initialize(currentGame, normScale, normScale*abnormScale);
@@ -457,10 +451,13 @@ public class bubbleServer : MonoBehaviour {
 	}
 
 	void safeSendToClient(int connectionId, short msgType, MessageBase msg){
-		if (NetworkServer.connections[connectionId].connectionId != connectionId) debugDisplay("safeSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId);
+		if (NetworkServer.connections[connectionId].connectionId != connectionId) { 
+			debugDisplay("safeSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId); 
+			return;
+		}
 		if (NetworkServer.connections.Count <= connectionId || NetworkServer.connections[connectionId] == null ){
-			debugDisplay("safeSendToClient warning: client disconnected "+connectionId);
-			return; //return else SendToClient fails without throwing an exception!
+			debugDisplay("safeSend WARNING: client disconnected "+connectionId);
+			return;
 		}
 		NetworkServer.SendToClient(connectionId, msgType, msg);
 	}
@@ -468,12 +465,11 @@ public class bubbleServer : MonoBehaviour {
 
 	void sendGamePhase(int connectionId){
 		CScommon.GamePhaseMsg gamePhaseMsg = new CScommon.GamePhaseMsg();
-		gamePhaseMsg.gamePhase = gamePhase;
+		gamePhaseMsg.gamePhase = 777;
 		gamePhaseMsg.numNodes = Engine.nodes.Count;
 		gamePhaseMsg.numLinks = referenceLinkJK.Count;
 		gamePhaseMsg.worldRadius = Bub.worldRadius;
 		safeSendToClient(connectionId,CScommon.gamePhaseMsgType,gamePhaseMsg);
-		//debugDisplay("sent game phase "+phase);
 	}
 
 	// // // handlers
@@ -585,6 +581,9 @@ public class bubbleServer : MonoBehaviour {
 		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
 		desiredNodeId = nixMsg.value;
 
+		if (desiredNodeId < 0 || desiredNodeId >= Engine.nodes.Count  ) desiredNodeId = -1;
+		else desiredNodeId = Engine.nodes[desiredNodeId].trustHead.id; // move to the id of the head of that organism
+
 		if (nodeIdPlayerInfo.ContainsKey(desiredNodeId)) return; //enforce that only one player can mount a node. Also covers case where desired == old
 
 		//all connections have an entry in connectionIdPlayerInfo, though for some the nodeId might be -1, so no need to try-catch
@@ -594,7 +593,6 @@ public class bubbleServer : MonoBehaviour {
 			Bots.dismount(oldNodeId);
 			nodeIdPlayerInfo.Remove (oldNodeId);
 		}
-		if (desiredNodeId < 0 || desiredNodeId >= Engine.nodes.Count  ) desiredNodeId = -1; 
 
 		Bots.mount(desiredNodeId);
 		updateConnectionIdNodeId(netMsg.conn.connectionId,desiredNodeId);
@@ -782,7 +780,7 @@ public class bubbleServer : MonoBehaviour {
 				Bub.Muscle muscle = Engine.nodes[i].rules[j].muscles (k);
 
 				referenceLinkMsg.links[lnkcntr].linkId = lnkcntr;
-				referenceLinkMsg.links[lnkcntr].linkData.enabled = muscle.enabled;
+				referenceLinkMsg.links[lnkcntr].linkData.enabled = muscle.notCut && muscle.enabled;
 				referenceLinkMsg.links[lnkcntr].linkData.linkType = muscle.commonType();
 				referenceLinkMsg.links[lnkcntr].linkData.sourceId = muscle.source.id; // == i
 				referenceLinkMsg.links[lnkcntr].linkData.targetId = muscle.target.id;
@@ -837,12 +835,12 @@ public class bubbleServer : MonoBehaviour {
 			//bones never change
 			if (referenceLinkMsg.links[i].linkData.linkType != CScommon.LinkType.bone) {
 				Bub.Muscle muscle = source.rules[referenceLinkJK[i].j].muscles(referenceLinkJK[i].k);
-				if (referenceLinkMsg.links[i].linkData.targetId != muscle.target.id ||
-				    referenceLinkMsg.links[i].linkData.enabled != muscle.enabled ||
-				    referenceLinkMsg.links[i].linkData.linkType != muscle.commonType() ) {
+				if ((referenceLinkMsg.links[i].linkData.targetId != muscle.target.id) ||
+				    (referenceLinkMsg.links[i].linkData.enabled != muscle.notCut && muscle.enabled) ||
+				    (referenceLinkMsg.links[i].linkData.linkType != muscle.commonType() )) {
 					
 					referenceLinkMsg.links[i].linkData.targetId =  muscle.target.id; //update reference
-					referenceLinkMsg.links[i].linkData.enabled = muscle.enabled;
+					referenceLinkMsg.links[i].linkData.enabled = muscle.notCut && muscle.enabled;
 					referenceLinkMsg.links[i].linkData.linkType = muscle.commonType();
 					
 					linkInfo.Add(referenceLinkMsg.links[i]); //struct pass by copy

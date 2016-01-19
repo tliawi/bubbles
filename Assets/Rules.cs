@@ -73,6 +73,10 @@ public class Rules {
 		public void reEnableMuscles(){
 			for (int i = 0; i< _muscles.Count; i++) _muscles[i].reEnable ();
 		}
+
+		public void cutExternalMuscles(){
+			for (int i=0; i< _muscles.Count; i++) if (_muscles[i].external ) _muscles[i].cut();
+		}
 		
 		abstract public void accion(); //rule condition, state changes, muscle property changes
 
@@ -86,24 +90,28 @@ public class Rules {
 			for (int i = 0; i<_muscles.Count; i++)_muscles[i].action(fraction);
 		}
 
-		public Rule(Bub.Node source0) {
+		protected Rule(Bub.Node source0) {
 			source = source0;
 			_muscles = new List<Bub.Muscle>();
 		}
 	}
 	
-	public static void installTurnServo(Bub.Node source, Bub.Node firstTarget, Bub.Node lastTarget){
-		source.rules.Add (new TurnServo(source, firstTarget, lastTarget));
-	}
+
 
 	//disabled by source.setState("turn",0)
 	public class TurnServo: Rule{
+
+		public static void install(Bub.Node source, Bub.Node firstTarget, Bub.Node lastTarget){
+			if (source == null || firstTarget == null || lastTarget == null) return;
+			
+			source.rules.Add (new TurnServo(source, firstTarget, lastTarget));
+		}
 
 		int countDown;
 		List<Bub.Node> sourceList;
 		List<Bub.Node> targetList;
 
-		public TurnServo(Bub.Node source0, Bub.Node firstTarget, Bub.Node lastTarget):base(source0){
+		private TurnServo(Bub.Node source0, Bub.Node firstTarget, Bub.Node lastTarget):base(source0){
 
 			//ASSUMPTION: order of muscles sweeps from L to R,
 			addMuscle(firstTarget);
@@ -117,10 +125,11 @@ public class Rules {
 			source.setState ("turn",0);
 		}
 
+		//only call on internal muscles (externals might be cut, i.e. have null target)
 		private void flipHandedness(){
 			Bub.Node x = muscles(0).target;
-			muscles(0).target = muscles(1).target;
-			muscles(1).target = x;
+			muscles(0).reTarget(muscles(1).target);
+			muscles(1).reTarget(x);
 		}
 
 		public override void accion() {
@@ -157,16 +166,19 @@ public class Rules {
 		}
 	}
 
-	public static void installPush1Pull2Servo(Bub.Node source, List<Bub.Node> targetList){
-		source.rules.Add (new Push1Pull2Servo(source, targetList));
-	}
 
 	public class Push1Pull2Servo: Rule {
+		
+		public static void install(Bub.Node source, List<Bub.Node> targetList){
+			if (source == null || targetList.Contains (null)) return;
+			
+			source.rules.Add (new Push1Pull2Servo(source, targetList));
+		}
 	
 		int priorPushPull;
 		List<Bub.Node> sourceList, targetList;
 
-		public Push1Pull2Servo( Bub.Node source0, List<Bub.Node> targetList0):base(source0){
+		private Push1Pull2Servo( Bub.Node source0, List<Bub.Node> targetList0):base(source0){
 
 			targetList = targetList0;
 
@@ -227,22 +239,24 @@ public class Rules {
 	}
 
 
-	
-	//A Servo is a rule with muscles.
-	//A Cmdr is a rule with musclesCount == 0 that takes the place of a user via manipulating state only, thereby controlling a servo rule
-	//near and far are in terms of link gap, i.e. distance - sum of radii of source and target
-	public static void installNearFarPush1Pull2Cmdr(Bub.Node source0, List<Bub.Node> targets0, float near0, float far0){
-		source0.rules.Add (new NearFarPush1Pull2Cmdr(source0, targets0, near0, far0));
-	}
+
 	
 	//Controls push1Pull2Servo via push1Pull2 state.
 	//Integer versions of Near and Far could be kept in state if we want to make this rule modifyable by other rules or actions.
 	public class NearFarPush1Pull2Cmdr:Rule {
 
+		//A Servo is a rule with muscles.
+		//A Cmdr is a rule with musclesCount == 0 that takes the place of a user via manipulating state only, thereby controlling a servo rule
+		//near and far are in terms of link gap, i.e. distance - sum of radii of source and target
+		public static void install(Bub.Node source0, List<Bub.Node> targets0, float near0, float far0){
+			if (source0 == null || targets0.Contains (null)) return;
+			source0.rules.Add (new NearFarPush1Pull2Cmdr(source0, targets0, near0, far0));
+		}
+
 		float near, far;
 		List<Bub.Node> targets;
 
-		public NearFarPush1Pull2Cmdr(Bub.Node source0, List<Bub.Node> targets0, float near0, float far0):base(source0) {
+		private NearFarPush1Pull2Cmdr(Bub.Node source0, List<Bub.Node> targets0, float near0, float far0):base(source0) {
 		
 			targets = targets0;
 			near = near0;
@@ -285,8 +299,8 @@ public class Rules {
 		}
 		
 		protected void startFighting(Bub.Node target, State newState){ //newState must be either attacking or fleeing
-			fightingMuscle.target = target; //whether or not it already was
-			fightingMuscle.reEnable ();
+			fightingMuscle.reTarget(target); //whether or not it already was
+			fightingMuscle.reEnable();
 			
 			if (newState == State.attacking) fightingMuscle.makePuller ();
 			else if (newState == State.fleeing) fightingMuscle.makePusher ();
@@ -302,15 +316,18 @@ public class Rules {
 	}
 
 
-	public static void installHunterNPCRule(Bub.Node source0){
-		source0.rules.Add (new HunterNPCRule(source0));
-	}			
+				
 
 	public class HunterNPCRule: HunterBase{
-		
-		public HunterNPCRule(Bub.Node source0):base(source0){
 
-			fightingMuscle = addMuscle(source).disable (); //a disabled muscle temporarily from source to source
+		public static void install(Bub.Node source0){
+			if (source0 == null) return;
+			source0.rules.Add (new HunterNPCRule(source0));
+		}
+
+		private HunterNPCRule(Bub.Node source0):base(source0){
+
+			fightingMuscle = addMuscle(Engine.cutNode); // a cut muscle, disabled
 			
 		}
 
@@ -338,21 +355,24 @@ public class Rules {
 		}
 	}
 
-	public static void installHunterPCRule(Bub.Node source, byte hand){
-		source.rules.Add (new HunterPCRule(source, hand));
-	}			
+				
 
 	public class HunterPCRule: HunterBase{
+
+		public static void install(Bub.Node source, byte hand){
+			if (source == null) return;
+			source.rules.Add (new HunterPCRule(source, hand));
+		}
 
 		const int idle = int.MaxValue;
 		string handTargetIdp1;
 
 		//side effect: adds a rule, to source0, such that it is responsive to targetIdp1 state
-		public HunterPCRule(Bub.Node source0, byte hand):base(source0){
+		private HunterPCRule(Bub.Node source0, byte hand):base(source0){
 
 			handTargetIdp1 = hand + "targetIdp1";
 
-			fightingMuscle = addMuscle(source).disable (); //temporary from source to source disabled
+			fightingMuscle = addMuscle(Engine.cutNode); //a cut muscle, disabled
 			
 			source.setState(handTargetIdp1,idle);
 			
@@ -390,7 +410,7 @@ public class Rules {
 					return;
 				}
 
-				step = fightingMuscle.enableStep(); //0,1,2,3
+				step = fightingMuscle.enabledStep(); //0,1,2,3
 				if (fightingMuscle.isPuller()) step = -step;
 				//step is now in -3..3
 				step += targetIdp1<0?-1:1; //move step left or right, is now in -4..4
@@ -413,17 +433,20 @@ public class Rules {
 
 	}
 
-	//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
-	public static void installSegmentPushPullServo(Bub.Node source0, Bub.Node target0, int n){
-		source0.rules.Add (new SegmentPushPullServo(source0, target0, n));
-	}
+
 
 	public class SegmentPushPullServo: Rule {
+
+		//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
+		public static void install(Bub.Node source0, Bub.Node target0, int n){
+			if (source0 == null || target0 == null ) return;
+			source0.rules.Add (new SegmentPushPullServo(source0, target0, n));
+		}
 
 		Bub.Node target;
 		int priorPushPull = 0;
 		
-		public SegmentPushPullServo( Bub.Node source0, Bub.Node target0, int n):base(source0){
+		private SegmentPushPullServo( Bub.Node source0, Bub.Node target0, int n):base(source0){
 			target = target0; //next in line
 			addMuscle(target);
 			source.setState ("push1Pull2", n%2==0?2:1); //set initial state alternately
@@ -460,16 +483,19 @@ public class Rules {
 	}
 
 
-	//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
-	public static void installSegmentPulltokenServo(Bub.Node source0, Bub.Node target0){
-		source0.rules.Add (new SegmentPulltokenServo(source0, target0));
-	}
+
 	
 	public class SegmentPulltokenServo: Rule {
-		
+
+		//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
+		public static void install(Bub.Node source0, Bub.Node target0){
+			if (source0 == null || target0 == null) return;
+			source0.rules.Add (new SegmentPulltokenServo(source0, target0));
+		}
+
 		Bub.Node target;
 		
-		public SegmentPulltokenServo( Bub.Node source0, Bub.Node target0):base(source0){
+		private SegmentPulltokenServo( Bub.Node source0, Bub.Node target0):base(source0){
 			target = target0; //next in line
 			addMuscle(target);
 			if (source.trustHead == source){ //pulling starts with trustHead
@@ -520,46 +546,49 @@ public class Rules {
 		}
 	}
 
-	public static void installTurmDefender(Bub.Node source0, float perimeter){
-		source0.rules.Add (new TurmDefender(source0, perimeter));
-	}
-
 
 	public class TurmDefender: Rule {
+
+		public static void install(Bub.Node source0, float perimeter){
+			if (source0 == null) return;
+			source0.rules.Add (new TurmDefender(source0, perimeter));
+		}
 
 		private Bub.Muscle pusher;
 		private float perimeter;
 
-		public TurmDefender(Bub.Node source, float perimeter0):base(source){
+		private TurmDefender(Bub.Node source, float perimeter0):base(source){
 			perimeter = perimeter0;
-			pusher = addMuscle(source).makePusher().disable (); //disabled muscle from source to source
+			pusher = addMuscle(Engine.cutNode).makePusher(); //a cut muscle, disabled
 			//pusher just convenience for muscles(0)
 		}
 
 		override public void accion(){
 			Bub.Node target = source.closestStranger ();
-			if (target == null || source.distance (target) > perimeter ) pusher.disable ();
+			if (target == null || source.distance (target) > perimeter ) pusher.cut();
 			else {
-				pusher.target = target; 
+				pusher.reTarget(target); 
 				pusher.reEnable();
 			}
 		}
 	}
 
-	//install on two nodes held at 60-120 degrees from each other about the center, cranking the given crank node
-	public static void installCrank(Bub.Node source,  Bub.Node center, Bub.Node crank, bool cwise){
-		source.rules.Add (new Crank(source, center, crank, cwise));
-	}
-	
-	
+
+
 	public class Crank: Rule {
+
+		//install on two nodes held at 60-120 degrees from each other about the center, cranking the given crank node
+		public static void install(Bub.Node source,  Bub.Node center, Bub.Node crank, bool cwise){
+			if (source == null || center == null || crank == null) return;
+			source.rules.Add (new Crank(source, center, crank, cwise));
+		}
 		
 		private Bub.Muscle muscl;
 		private Bub.Node crank;
 		private Bub.Node center;
 		private bool cwise;
 		
-		public Crank(Bub.Node source0, Bub.Node center0, Bub.Node crank0, bool cwise0):base(source0){
+		private Crank(Bub.Node source0, Bub.Node center0, Bub.Node crank0, bool cwise0):base(source0){
 			center = center0;
 			crank = crank0;
 			cwise = cwise0;
