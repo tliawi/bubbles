@@ -43,7 +43,7 @@ public class Bots
 
 		List<Bub.Node> tailList = Rules.nodeList(tail);
 		Rules.Push1Pull2Servo.install(head,tailList);
-		Rules.NearFarPush1Pull2Cmdr.install(head,tailList, Random.Range (2f,4f),Random.Range (10f,20f));
+		Rules.NearFarPush1Pull2Cmdr.install(head, tailList, tailDelta.magnitude*0.2f,tailDelta.magnitude);
 		return head;
 	}
 

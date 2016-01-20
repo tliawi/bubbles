@@ -130,19 +130,20 @@ public class Grid {
 			anode = Engine.nodes[i];
 			for (int j = 0; j<anode.rules.Count; j++) {
 				for (int k = 0; k<anode.rules[j].musclesCount; k++){
+					if (anode.rules[j].muscles(k).notCut){
+						targetNode = anode.rules[j].muscles(k).target;
+						dist = anode.distance (targetNode);
+						r = 3.0f*Mathf.Sqrt(anode.rules[j].muscles(k).strength());//the constant factor is purely display taste
+						dx = r*(targetNode.y - anode.y)/dist;
+						dy = r*(targetNode.x - anode.x)/dist;
 
-					targetNode = anode.rules[j].muscles(k).target;
-					dist = anode.distance (targetNode);
-					r = 3.0f*Mathf.Sqrt(anode.rules[j].muscles(k).strength());//the constant factor is purely display taste
-					dx = r*(targetNode.y - anode.y)/dist;
-					dy = r*(targetNode.x - anode.x)/dist;
-
-					vix = makeTriangle(
-						new Vector3(targetNode.x, targetNode.y),
-						new Vector3(anode.x + dx, anode.y - dy), 
-						new Vector3(anode.x - dx, anode.y + dy),
-						uvClass, vix);
-			}
+						vix = makeTriangle(
+							new Vector3(targetNode.x, targetNode.y),
+							new Vector3(anode.x + dx, anode.y - dy), 
+							new Vector3(anode.x - dx, anode.y + dy),
+							uvClass, vix);
+					}
+				}
 			}
 			if (vix == vertices.Length) return true; //not enough vertices etc allocated
 		}

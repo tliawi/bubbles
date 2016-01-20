@@ -9,9 +9,6 @@ public class Engine {
 	//list of all nodes in universe
 	public static readonly List<Bub.Node> nodes = new List<Bub.Node>();
 
-	//exists outside the universe, is target of cut external muscles, so they refer to an external org
-	public static Bub.Node cutNode = new Bub.Node(-1, float.MaxValue, float.MaxValue, 1); 
-
 	public static readonly List<Bub.Node> scheduledOrgRelocations = new List<Bub.Node>();
 	
 	public static int closestNodeId(float x, float y){

@@ -13,12 +13,12 @@ public static class CScommon {
 	public const short targetNodeType = 303; //TargetNodeMsg, client tells server that they want a link made from their bubble to a given target bubble
 	//public const short lookAtNodeType = 304; //unused
 	public const short initMsgType = 305; // InitMsg, server sends to clients relatively static info on many bubbles.
-	public const short initRequestType = 306; //stringMsg containing a name. Client affirms having received gamePhaseMsg 1, requests initialization
+	public const short initRequestType = 306; //stringMsg containing a name. Client affirms having received gameSizeMsg, requests initialization
 	public const short push1Pull2MsgType = 307; //intMsg, manual push/pull 1:push, 2:Pull, 3. togglePushPull, 0. return to automatic pushPull
 	//public const short keyMsgType = 308; // unused, could send client keypresses to server
 	public const short initRevisionMsgType = 309; //InitRevisionMsg, server sends to all clients infrequently, to update relatively static initMsg data.
 	public const short requestNodeIdMsgType = 310; //intMsg, client requests being associated with a given bubble. Server responds with nodeIDMsgType.
-	public const short gamePhaseMsgType = 311; //GamePhaseMsg, where gamephase 1: pregame, 2: running, numNodes, numLinks, worldRadius
+	public const short gameSizeMsgType = 311; //GameSizeMsg with numNodes, numLinks, worldRadius
 	public const short nameNodeIdMsgType = 312; //NameNodeIdMsg, tells all clients what user name is associated with what bubble
 	public const short turnMsgType = 313; //intMsg, -1 means change direction a bit to the left, +1 means a bit to the right, 0 indicates go straight.
 	//public const short forward0Reverse1Type = 314; //intMsg, 0 means forward, 1 means reverse. 2 means toggle. Changes speed to -speed.
@@ -47,19 +47,19 @@ public static class CScommon {
 	
 //  Client starts with a nodeID of -1.
 //  Client sends myNetworkClient.Connect(serverIP, CScommon.serverPort)
-//  Server handles MsgType.Connect, replies with gamePhaseMsg 1 with numNodes, numLinks and worldRadius
+//  Server handles MsgType.Connect, replies with gameSizeMsg with numNodes, numLinks and worldRadius
 //	Client responds with initRequestMsg including a name
 //	Server replies with a suite of reliable initMsgs and updateMsgs and linkMsgs that cover the whole world.
 
 //  If user clicks on a desired node to mount, client sends a requestNodeId for that node.
 //	The server replies with a nodeIdMsg which either contains their old, unchanged bubble assignment
-//  (which may have been -1) which indicates their request is denied for some reason, OR it contains the desired nodeId.
+//  (which may have been -1) which indicates their request is denied for some reason, OR it contains an assigned nodeId.
 //  If request granted, server will issue an initRevisionMsg of the changed DNA (reflecting that the node is mounted) to all connected clients.
 
-//  When game is launched on server, server sends gamePhaseMsg 2 to all clients, the game is unpaused, and the server
-//  begins sending regular unreliable updateMsgs, and irregularly sends reliable initRevisionMsgs and linkMsgs.
+//  When game is unpaused, server sends regular unreliable updateMsgs,
+//  and irregularly sends reliable initRevisionMsgs and linkMsgs.
 
-//  If server starts a new game, it issues a new gamePhaseMsg 1 to all connected clients.
+//  If server starts a new game, it issues a new gameSizeMsg to all connected clients.
 
 	//make sure bone is not first one, it must not be default value since bones can't be changed to another type.
 	public enum LinkType : byte {pusher, puller, bone} 
@@ -80,8 +80,7 @@ public static class CScommon {
 		public KeyCode keyCode;
 	}
 
-	public class GamePhaseMsg: MessageBase {
-		public int gamePhase;
+	public class GameSizeMsg: MessageBase {
 		public int numNodes;
 		public int numLinks;
 		public float worldRadius;

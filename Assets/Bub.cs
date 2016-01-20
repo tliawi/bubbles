@@ -121,20 +121,20 @@ public class Bub {
 		public float demand {get; private set;}
 		private float pastDemand;
 
-		public bool external {get{return target.trustHead != source.trustHead;}}
+		public bool external {get{ return target.trustHead != source.trustHead;}} // a cut muscle is not external. Nor is it internal.
 
 		public void reTarget(Node n) {
-			if (notCut && external) target.enemyMuscles.Remove(this); //external muscle
+			if (external) target.enemyMuscles.Remove(this); 
 			target = n;
-			if (notCut && external) target.enemyMuscles.Add(this); //external muscle
+			if (external) target.enemyMuscles.Add(this); 
 		}
 
 		public bool enabled {get{ return demand > 0;}} 
 		public bool disabled { get {return demand == 0;}}
 
 		// cut implies wholly (pastdemand == demand == 0) disabled. Disabled does not imply cut.
-		public Muscle cut() { reTarget(null); pastDemand = demand = 0; return this;}
-		public bool notCut { get {return target != null;}}
+		public Muscle cut() { reTarget(source); pastDemand = demand = 0; return this;}
+		public bool notCut { get {return target != source;}}
 
 		public Muscle enable(int percent){
 			if ( notCut && percent>=0 && percent <= 300 ) {
@@ -161,7 +161,8 @@ public class Bub {
 		
 		public Muscle( Bub.Node source0, Bub.Node target0) {
 			source = source0; //may not be null
-			target = target0; //may be null
+			target = target0; //may not be null
+			//is cut if source == target
 			if (notCut) { 
 				enable(100); 
 				if (external) target.enemyMuscles.Add(this); 
@@ -194,13 +195,10 @@ public class Bub {
 //			return 2*disp/(1/source.burden + 1/target.burden);
 //		}
 
-		//don't want to waste energy on pulling when you've already pulled
-		//don't want to pull until nodes have identical x and y
-		private float ceasePullDistance() {return 0.05f*source.radius;} //note: gap between is long since zero
 
 		// must not debit oomph finally until all muscles have partaken, else later muscles would have less oomph than earlier muscles
 		public float actionDemand()
-		{	if (isPuller() && length() < ceasePullDistance()) return 0;
+		{	if (isPuller() && length() < source.ceasePullDistance()) return 0;
 			return demand;
 		}
 
@@ -209,7 +207,7 @@ public class Bub {
 			float dx, dy, deliveredOomph, displacement, effect, len = length();
 
 			if (len==0) return;
-			if (isPuller() && len <= ceasePullDistance()) return;
+			if (isPuller() && len <= source.ceasePullDistance()) return;
 			if ( fraction*demand == 0) return;
 
 			dx = target.x - source.x;
@@ -240,8 +238,8 @@ public class Bub {
 
 			if (isPuller()){ 
 				//note that at this point we have len > ceasePullDistance()
-				if ( displacement > len - ceasePullDistance()) {
-					float x = (len-ceasePullDistance())/displacement;
+				if ( displacement > len - source.ceasePullDistance()) {
+					float x = (len-source.ceasePullDistance())/displacement;
 					deliveredOomph *= x;
 					displacement *= x;
 				}
@@ -467,6 +465,10 @@ public class Bub {
 		public void cutExternalMuscles(){
 			for (int i=0; i<rules.Count; i++) rules[i].cutExternalMuscles();
 		}
+
+		//don't want to waste energy on pulling when you've already pulled enough
+		//don't want to pull until nodes have identical x and y
+		public float ceasePullDistance() {return 0.05f*radius;}
 
 		public void setState(string key, int value){
 				states[key] = value;

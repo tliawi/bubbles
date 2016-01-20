@@ -377,7 +377,7 @@ public class bubbleServer : MonoBehaviour {
 
 		generateReferences();
 
-		foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGamePhase(connectionId); //and so do any clients who are still connected
+		foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGameSize(connectionId); //and so do any clients who are still connected
 
 		Camera.main.orthographicSize = Bub.worldRadius/2;
 		Camera.main.transform.position = new Vector3(0,0,-100);
@@ -431,7 +431,7 @@ public class bubbleServer : MonoBehaviour {
 	void OnConnectedS(NetworkMessage netMsg) 
 	{	connectionIdPlayerInfo[netMsg.conn.connectionId] = new PlayerInfo();
 		connectionIdPlayerInfo[netMsg.conn.connectionId].connectionId = netMsg.conn.connectionId;
-		sendGamePhase(netMsg.conn.connectionId);
+		sendGameSize(netMsg.conn.connectionId);
 	}
 
 
@@ -463,13 +463,12 @@ public class bubbleServer : MonoBehaviour {
 	}
 	
 
-	void sendGamePhase(int connectionId){
-		CScommon.GamePhaseMsg gamePhaseMsg = new CScommon.GamePhaseMsg();
-		gamePhaseMsg.gamePhase = 777;
-		gamePhaseMsg.numNodes = Engine.nodes.Count;
-		gamePhaseMsg.numLinks = referenceLinkJK.Count;
-		gamePhaseMsg.worldRadius = Bub.worldRadius;
-		safeSendToClient(connectionId,CScommon.gamePhaseMsgType,gamePhaseMsg);
+	void sendGameSize(int connectionId){
+		CScommon.GameSizeMsg gameSizeMsg = new CScommon.GameSizeMsg();
+		gameSizeMsg.numNodes = Engine.nodes.Count;
+		gameSizeMsg.numLinks = referenceLinkJK.Count;
+		gameSizeMsg.worldRadius = Bub.worldRadius;
+		safeSendToClient(connectionId,CScommon.gameSizeMsgType,gameSizeMsg);
 	}
 
 	// // // handlers
@@ -575,8 +574,6 @@ public class bubbleServer : MonoBehaviour {
 
 	private void onRequestNodeId(NetworkMessage netMsg){
 		int oldNodeId, desiredNodeId;
-
-		if (!paused) return; //only works while paused, not permitted during game play
 
 		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
 		desiredNodeId = nixMsg.value;
@@ -778,9 +775,8 @@ public class bubbleServer : MonoBehaviour {
 			for (int j=0; j<Engine.nodes[i].rules.Count; j++) for (int k = 0; k<Engine.nodes[i].rules[j].musclesCount; k++) {
 				referenceLinkJK.Add(new JKStruct(j,k));
 				Bub.Muscle muscle = Engine.nodes[i].rules[j].muscles (k);
-
 				referenceLinkMsg.links[lnkcntr].linkId = lnkcntr;
-				referenceLinkMsg.links[lnkcntr].linkData.enabled = muscle.notCut && muscle.enabled;
+				referenceLinkMsg.links[lnkcntr].linkData.enabled = muscle.enabled;
 				referenceLinkMsg.links[lnkcntr].linkData.linkType = muscle.commonType();
 				referenceLinkMsg.links[lnkcntr].linkData.sourceId = muscle.source.id; // == i
 				referenceLinkMsg.links[lnkcntr].linkData.targetId = muscle.target.id;
@@ -836,11 +832,11 @@ public class bubbleServer : MonoBehaviour {
 			if (referenceLinkMsg.links[i].linkData.linkType != CScommon.LinkType.bone) {
 				Bub.Muscle muscle = source.rules[referenceLinkJK[i].j].muscles(referenceLinkJK[i].k);
 				if ((referenceLinkMsg.links[i].linkData.targetId != muscle.target.id) ||
-				    (referenceLinkMsg.links[i].linkData.enabled != muscle.notCut && muscle.enabled) ||
+				    (referenceLinkMsg.links[i].linkData.enabled != muscle.enabled) ||
 				    (referenceLinkMsg.links[i].linkData.linkType != muscle.commonType() )) {
 					
 					referenceLinkMsg.links[i].linkData.targetId =  muscle.target.id; //update reference
-					referenceLinkMsg.links[i].linkData.enabled = muscle.notCut && muscle.enabled;
+					referenceLinkMsg.links[i].linkData.enabled = muscle.enabled;
 					referenceLinkMsg.links[i].linkData.linkType = muscle.commonType();
 					
 					linkInfo.Add(referenceLinkMsg.links[i]); //struct pass by copy
@@ -891,7 +887,7 @@ public class bubbleServer : MonoBehaviour {
 		for (int i=0; i< nodeInfoList.Count; i++) initRevisionMsg.nodeInfo[i] = nodeInfoList[i];
 
 		NetworkServer.SendToAll(CScommon.initRevisionMsgType,initRevisionMsg);
-
+		safeSendToClient(1, CScommon.initRevisionMsgType,initRevisionMsg); ///888888888
 	}
 	
 	//for client, check comment by aabramychev about Receive() near bottom of

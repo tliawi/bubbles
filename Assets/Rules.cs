@@ -63,7 +63,7 @@ public class Rules {
 		}
 
 		public void enableInternalMuscles(int percent)
-		{	for (int i = 0; i< _muscles.Count; i++) if (source.trusts(_muscles[i].target)) _muscles[i].enable (percent);
+		{	for (int i = 0; i< _muscles.Count; i++) if (!_muscles[i].external && source.trusts(_muscles[i].target)) _muscles[i].enable (percent);
 		}
 
 		public void enableMuscles(int percent){
@@ -125,7 +125,7 @@ public class Rules {
 			source.setState ("turn",0);
 		}
 
-		//only call on internal muscles (externals might be cut, i.e. have null target)
+		//only call on internal muscles, which are never cut (have identical source and target)
 		private void flipHandedness(){
 			Bub.Node x = muscles(0).target;
 			muscles(0).reTarget(muscles(1).target);
@@ -246,7 +246,7 @@ public class Rules {
 	public class NearFarPush1Pull2Cmdr:Rule {
 
 		//A Servo is a rule with muscles.
-		//A Cmdr is a rule with musclesCount == 0 that takes the place of a user via manipulating state only, thereby controlling a servo rule
+		//A Cmdr is a rule with musclesCount == 0 that takes the place of a user via manipulating state only, thereby controlling servo rules
 		//near and far are in terms of link gap, i.e. distance - sum of radii of source and target
 		public static void install(Bub.Node source0, List<Bub.Node> targets0, float near0, float far0){
 			if (source0 == null || targets0.Contains (null)) return;
@@ -266,17 +266,17 @@ public class Rules {
 
 		}
 
-		public float avgGap() {
+		public float avgLen() {
 			float sum = 0;
-			for (int i = 0; i< targets.Count; i++) sum += Mathf.Max(0f,source.distance(targets[i]) - (source.radius + targets[i].radius));
+			for (int i = 0; i< targets.Count; i++) sum += source.distance(targets[i]) - source.ceasePullDistance() ;
 			return sum/targets.Count;
 		}
 
 		public override void accion() {
 			if (source.getState ("nearFarSwitch01") == 1){ //can be suppressed by setting nearFarSwitch01 to 0
-				float avgLen = avgGap();
-				if ( avgLen <= near) source.setState ("push1Pull2",1);
-				else if (avgLen >= far) source.setState ("push1Pull2",2);
+				float avgLn = avgLen();
+				if ( avgLn <= near) source.setState ("push1Pull2",1);
+				else if (avgLn >= far) source.setState ("push1Pull2",2);
 			}
 		}
 
@@ -327,7 +327,7 @@ public class Rules {
 
 		private HunterNPCRule(Bub.Node source0):base(source0){
 
-			fightingMuscle = addMuscle(Engine.cutNode); // a cut muscle, disabled
+			fightingMuscle = addMuscle(source0); // a cut muscle, disabled
 			
 		}
 
@@ -372,7 +372,7 @@ public class Rules {
 
 			handTargetIdp1 = hand + "targetIdp1";
 
-			fightingMuscle = addMuscle(Engine.cutNode); //a cut muscle, disabled
+			fightingMuscle = addMuscle(source0); //a cut muscle, disabled
 			
 			source.setState(handTargetIdp1,idle);
 			
@@ -557,18 +557,18 @@ public class Rules {
 		private Bub.Muscle pusher;
 		private float perimeter;
 
-		private TurmDefender(Bub.Node source, float perimeter0):base(source){
+		private TurmDefender(Bub.Node source0, float perimeter0):base(source0){
 			perimeter = perimeter0;
-			pusher = addMuscle(Engine.cutNode).makePusher(); //a cut muscle, disabled
+			pusher = addMuscle(source0).makePusher(); //a cut muscle, disabled
 			//pusher just convenience for muscles(0)
 		}
 
 		override public void accion(){
-			Bub.Node target = source.closestStranger ();
-			if (target == null || source.distance (target) > perimeter ) pusher.cut();
+			Bub.Node targt = source.closestStranger ();
+			if (targt == null || source.distance (targt) > perimeter ) pusher.cut();
 			else {
-				pusher.reTarget(target); 
-				pusher.reEnable();
+				pusher.reTarget(targt); 
+				pusher.enable(100);
 			}
 		}
 	}
