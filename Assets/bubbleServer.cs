@@ -37,6 +37,7 @@ public class bubbleServer : MonoBehaviour {
 	private static float normScale, abnormScale;
 	private static int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
 	private static float vegStartFuel, nonvegStartFuel;
+	public static int popcorn = 100;
 
 	private void resetDefaultScales(int newGame){
 		switch (newGame) {
@@ -48,6 +49,7 @@ public class bubbleServer : MonoBehaviour {
 			worldRadiusI = 0;
 			vegStartFuel = 1.0f;
 			nonvegStartFuel = 0f;
+			popcorn = 100;
 			break;
 		case 4:
 			normScaleI = 0; 
@@ -57,6 +59,7 @@ public class bubbleServer : MonoBehaviour {
 			worldRadiusI = -3;
 			vegStartFuel = 0f;
 			nonvegStartFuel = 0f;
+			popcorn = 100;
 			break;
 		default:
 			normScaleI = 6;
@@ -66,6 +69,7 @@ public class bubbleServer : MonoBehaviour {
 			worldRadiusI = 0;
 			vegStartFuel = 1.0f;
 			nonvegStartFuel = 0f;
+			popcorn = 100;
 			break;
 		}
 		setScales();
@@ -75,7 +79,7 @@ public class bubbleServer : MonoBehaviour {
 	private static string scaleString(){
 		return "| "+normScaleI+" "+abnormScaleI+"   "+
 			photoYieldI+" "+baseMetabolicRateI+" "+worldRadiusI+"   "+
-			Mathf.Round(vegStartFuel*10)+" "+Mathf.Round (nonvegStartFuel*10);
+			Mathf.Round(vegStartFuel*10)+" "+Mathf.Round (nonvegStartFuel*10)+"  "+popcorn;
 	}
 
 	private void setScales(){
@@ -88,6 +92,7 @@ public class bubbleServer : MonoBehaviour {
 		if (vegStartFuel > 1) vegStartFuel = 1;
 		if (nonvegStartFuel < 0) nonvegStartFuel = 0;
 		if (nonvegStartFuel > 1) nonvegStartFuel = 1;
+		if (popcorn < 0) popcorn = 0;
 		sendScalesToAll();
 	}
 	
@@ -142,8 +147,7 @@ public class bubbleServer : MonoBehaviour {
 			nodeIdPlayerInfo[winnerId].scorePlus += 1;
 			nodeIdPlayerInfo[loserId].scoreMinus += 1;
 
-			sendScoreToAll(winnerId, true);
-			sendScoreToAll(loserId, false);
+			sendScoreToAll(winnerId, loserId);
 
 		}
 	}
@@ -339,6 +343,10 @@ public class bubbleServer : MonoBehaviour {
 			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(82);
 			else restartGame(81);
 		}
+		if (Input.GetKeyDown(KeyCode.Slash)) {
+			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) restartGame(92);
+			else restartGame(91);
+		}
 		execute();
 	}
 
@@ -435,28 +443,14 @@ public class bubbleServer : MonoBehaviour {
 	}
 
 
-	void updateConnectionIdNodeId(int connectionId, int nodeId) {
 
-		connectionIdPlayerInfo[connectionId].nodeId = nodeId;
-		connectionIdPlayerInfo[connectionId].clearScore ();
-
-		if (nodeId < 0 ) nodeIdPlayerInfo.Remove (nodeId);
-		else nodeIdPlayerInfo[nodeId] = connectionIdPlayerInfo[connectionId];
-
-		CScommon.intMsg nixMsg = new CScommon.intMsg();
-		nixMsg.value = nodeId;
-		safeSendToClient(connectionId,CScommon.nodeIdMsgType,nixMsg);
-		sendNameNodeToAll(connectionId);
-		checkForInitRevisions();
-	}
-
-	void safeSendToClient(int connectionId, short msgType, MessageBase msg){
+	static void checkSendToClient(int connectionId, short msgType, MessageBase msg){
 		if (NetworkServer.connections[connectionId].connectionId != connectionId) { 
-			debugDisplay("safeSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId); 
+			debugDisplay("checkSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId); 
 			return;
 		}
 		if (NetworkServer.connections.Count <= connectionId || NetworkServer.connections[connectionId] == null ){
-			debugDisplay("safeSend WARNING: client disconnected "+connectionId);
+			debugDisplay("checkSend WARNING: client disconnected "+connectionId);
 			return;
 		}
 		NetworkServer.SendToClient(connectionId, msgType, msg);
@@ -468,7 +462,8 @@ public class bubbleServer : MonoBehaviour {
 		gameSizeMsg.numNodes = Engine.nodes.Count;
 		gameSizeMsg.numLinks = referenceLinkJK.Count;
 		gameSizeMsg.worldRadius = Bub.worldRadius;
-		safeSendToClient(connectionId,CScommon.gameSizeMsgType,gameSizeMsg);
+		checkSendToClient(connectionId,CScommon.gameSizeMsgType,gameSizeMsg);
+		debugDisplay("gameSize sent to conId "+connectionId);
 	}
 
 	// // // handlers
@@ -484,8 +479,10 @@ public class bubbleServer : MonoBehaviour {
 
 		connectionIdPlayerInfo.Remove(netMsg.conn.connectionId);
 		nodeIdPlayerInfo.Remove (nodeId);
+		
+		send1or2NodeNamesToAll(nodeId, "");
 
-		checkForInitRevisions();
+		checkForInitRevisions();//dismount changes dna
 	}
 
 //	public void onPush1Pull2Msg(NetworkMessage netMsg){
@@ -555,6 +552,8 @@ public class bubbleServer : MonoBehaviour {
 		else if (v == 72) vegStartFuel += 0.1f;
 		else if (v == 81) nonvegStartFuel -= 0.1f;
 		else if (v == 82) nonvegStartFuel += 0.1f;
+		else if (v == 91) popcorn -= 20;
+		else if (v == 92) popcorn += 20;
 		setScales();
 		quitGame(currentGame); // relaunches the current game
 	}
@@ -573,28 +572,54 @@ public class bubbleServer : MonoBehaviour {
 	}
 
 	private void onRequestNodeId(NetworkMessage netMsg){
-		int oldNodeId, desiredNodeId;
-
-		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
-		desiredNodeId = nixMsg.value;
-
-		if (desiredNodeId < 0 || desiredNodeId >= Engine.nodes.Count  ) desiredNodeId = -1;
-		else desiredNodeId = Engine.nodes[desiredNodeId].trustHead.id; // move to the id of the head of that organism
-
-		if (nodeIdPlayerInfo.ContainsKey(desiredNodeId)) return; //enforce that only one player can mount a node. Also covers case where desired == old
+		int oldNodeId, newNodeId, conId = netMsg.conn.connectionId;
 
 		//all connections have an entry in connectionIdPlayerInfo, though for some the nodeId might be -1, so no need to try-catch
-		oldNodeId = connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId;
+		oldNodeId = connectionIdPlayerInfo[conId].nodeId;
+
+		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
+
+		if (nixMsg.value < 0 || nixMsg.value >= Engine.nodes.Count  ) newNodeId = -1;
+		else newNodeId = Engine.nodes[nixMsg.value].trustHead.id; // move to the id of the head of that organism
+		
+		nixMsg.value = newNodeId;
+		checkSendToClient(conId,CScommon.nodeIdMsgType,nixMsg);
+
+		if (oldNodeId <0 && newNodeId<0 ) return; //nothing changes, no dna, nada.
+
+		//enforce that only one player can mount a node. Also covers case where desired positive newNodeId == oldNodeId
+		if (nodeIdPlayerInfo.ContainsKey(newNodeId)) return; //nothing changes, no dna, nada.
+		
+		//we know newNodeId != oldNodeId
+	
+		connectionIdPlayerInfo[conId].nodeId = newNodeId;
+		connectionIdPlayerInfo[conId].clearScore ();
 
 		if (oldNodeId >= 0) {
-			Bots.dismount(oldNodeId);
 			nodeIdPlayerInfo.Remove (oldNodeId);
+			Bots.dismount(oldNodeId);
 		}
 
-		Bots.mount(desiredNodeId);
-		updateConnectionIdNodeId(netMsg.conn.connectionId,desiredNodeId);
+		if (newNodeId >= 0) {
+			nodeIdPlayerInfo[newNodeId] = connectionIdPlayerInfo[conId];
+			Bots.mount (newNodeId);
+		}
+
+		//case where both == -1 was weeded out above
+		if (oldNodeId <0 && newNodeId>=0 ){
+			send1or2NodeNamesToAll(newNodeId, connectionIdPlayerInfo[conId].name);
+		}
+		else if (oldNodeId >=0 && newNodeId < 0){
+			send1or2NodeNamesToAll(oldNodeId, "");
+		}
+		else if (oldNodeId >= 0 && newNodeId >= 0){
+			send1or2NodeNamesToAll(oldNodeId,"",newNodeId,connectionIdPlayerInfo[conId].name);
+		}
+
+		checkForInitRevisions(); //mounting and dismounting change dna
+
 	}
-	
+
 
 	//allocate an initMsg to cover a segment of the total message
 	private CScommon.InitMsg allocateInitMsg(int size){
@@ -623,10 +648,10 @@ public class bubbleServer : MonoBehaviour {
 
 		
 		while ( start+segmentLength <= Engine.nodes.Count ){
-			safeSendToClient(connectionId, CScommon.initMsgType, fillInInitMsg(allocateInitMsg(segmentLength),start));
+			checkSendToClient(connectionId, CScommon.initMsgType, fillInInitMsg(allocateInitMsg(segmentLength),start));
 			start += segmentLength;
 		}
-		if (start < Engine.nodes.Count)safeSendToClient(connectionId, CScommon.initMsgType, fillInInitMsg(allocateInitMsg(Engine.nodes.Count-start),start));
+		if (start < Engine.nodes.Count)checkSendToClient(connectionId, CScommon.initMsgType, fillInInitMsg(allocateInitMsg(Engine.nodes.Count-start),start));
 	}
 
 	private void sendWorldToClient(int connectionId){
@@ -636,52 +661,74 @@ public class bubbleServer : MonoBehaviour {
 		sendInitToClient(connectionId);
 		sendUpdateToClient(connectionId);
 		sendLinksToClient(connectionId);
-		sendRegisteredToClient(connectionId);
+		sendAllNodeNamesToClient(connectionId);
 		                                               
 	}
 
-	private void sendRegisteredToClient(int connectionId){
-		foreach (int nodeId in nodeIdPlayerInfo.Keys) sendNameNodeToClient(nodeId, connectionId); //if (nodeIdPlayerInfo[nodeId].connectionId < 0) 
+
+	private static void sendAllNodeNamesToClient(int connectionId){
+		CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
+		nnmsg.arry = new CScommon.NodeName[nodeIdPlayerInfo.Count];
+		int i = 0;
+		foreach (int nodeId in nodeIdPlayerInfo.Keys){
+			PlayerInfo pi = nodeIdPlayerInfo[nodeId];
+			nnmsg.arry[i].nodeId = pi.nodeId;
+			nnmsg.arry[i].name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
+			i += 1;
+		}
+		checkSendToClient(connectionId,CScommon.nodeNamesMsgType,nnmsg);
 	}
 
-	private static void sendNameNodeToClient(int nodeId, int connectionId){
-		CScommon.NameNodeIdMsg nameNode = new CScommon.NameNodeIdMsg();
-		PlayerInfo pi = nodeIdPlayerInfo[nodeId];
-		nameNode.name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
-		nameNode.nodeIndex = pi.nodeId;
-		NetworkServer.SendToClient(connectionId,CScommon.nameNodeIdMsgType,nameNode);
-		debugDisplay("|name|nodeId connId |"+nameNode.name+"|"+nameNode.nodeIndex+" "+connectionId);
+	private static void send1or2NodeNamesToAll(int nodeId0, string name0, int nodeId1=int.MaxValue, string name1 = ""){
+		CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
+		nnmsg.arry = new CScommon.NodeName[nodeId1==int.MaxValue?1:2];
+
+		nnmsg.arry[0].nodeId = nodeId0;
+		nnmsg.arry[0].name = name0;
+
+		if (nodeId1 != int.MaxValue){
+			nnmsg.arry[1].nodeId = nodeId1;
+			nnmsg.arry[1].name = name1;
+		}
+
+		NetworkServer.SendToAll (CScommon.nodeNamesMsgType,nnmsg);
 	}
 
-	private static void sendNameNodeToAll(int connectionId){
-		if (connectionIdPlayerInfo.ContainsKey (connectionId)){
-			CScommon.NameNodeIdMsg nameNode = new CScommon.NameNodeIdMsg();
-			PlayerInfo pi = connectionIdPlayerInfo[connectionId];
-			nameNode.name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
-			nameNode.nodeIndex = pi.nodeId;
-			NetworkServer.SendToAll (CScommon.nameNodeIdMsgType,nameNode);
-			debugDisplay("sent nameNodeId |"+nameNode.name+"|"+nameNode.nodeIndex+" to all.");
+	private static void sendScoreToAll(int winnerId, int loserId){
+		PlayerInfo pi;
+		if (nodeIdPlayerInfo.ContainsKey(winnerId)  && nodeIdPlayerInfo.ContainsKey(loserId)){
+			CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
+			nnmsg.arry = new CScommon.NodeName[2];
+
+			pi = nodeIdPlayerInfo[winnerId];
+			nnmsg.arry[0].nodeId = pi.nodeId;
+			nnmsg.arry[0].name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
+
+			pi = nodeIdPlayerInfo[loserId];
+			nnmsg.arry[1].nodeId = pi.nodeId;
+			nnmsg.arry[1].name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
+
+			NetworkServer.SendToAll (CScommon.nodeNamesMsgType,nnmsg);
 		}
 	}
+
+//	private static void sendNameNodeToAll(int connectionId){
+//		if (connectionIdPlayerInfo.ContainsKey (connectionId)){
+//			CScommon.NameNodeIdMsg nameNode = new CScommon.NameNodeIdMsg();
+//			PlayerInfo pi = connectionIdPlayerInfo[connectionId];
+//			nameNode.name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
+//			nameNode.nodeIndex = pi.nodeId;
+//			NetworkServer.SendToAll (CScommon.nameNodeIdMsgType,nameNode);
+//			debugDisplay("sent nameNodeId |"+nameNode.name+"|"+nameNode.nodeIndex+" to all.");
+//		}
+//	}
 
 	private static void sendScalesToAll(){
 		CScommon.stringMsg scaleMsg = new CScommon.stringMsg();
 		scaleMsg.value = scaleString();
 		NetworkServer.SendToAll (CScommon.scaleMsgType,scaleMsg);
 	}
-	
 
-	private static void sendScoreToAll(int nodeId, bool winner){
-		if (nodeIdPlayerInfo.ContainsKey(nodeId)){
-			CScommon.NameNodeIdMsg nameNode = new CScommon.NameNodeIdMsg();
-			PlayerInfo pi = nodeIdPlayerInfo[nodeId];
-			nameNode.name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
-			nameNode.nodeIndex = pi.nodeId;
-			string winlose = winner?"winner":" loser";
-			debugDisplay(winlose+": "+nameNode.name);
-			NetworkServer.SendToAll (CScommon.nameNodeIdMsgType,nameNode);
-		}
-	}
 
 	//allocate an updateMsg to cover a segment of the total message
 	private CScommon.UpdateMsg allocateUpdateMsg(int size){
@@ -708,12 +755,12 @@ public class bubbleServer : MonoBehaviour {
 		int segmentLength = 100;
 		
 		while ( start+segmentLength <= Engine.nodes.Count ){
-			safeSendToClient(connectionId,CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(segmentLength), start));
+			checkSendToClient(connectionId,CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(segmentLength), start));
 			start += segmentLength;
 		}
 		
 		if (start < Engine.nodes.Count)
-			safeSendToClient(connectionId,CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(Engine.nodes.Count-start), start));
+			checkSendToClient(connectionId,CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(Engine.nodes.Count-start), start));
 
 	}
 
@@ -810,12 +857,12 @@ public class bubbleServer : MonoBehaviour {
 		int segmentLength = 50;
 		
 		while ( start+segmentLength <= referenceLinkMsg.links.Length ){
-			safeSendToClient(connectionId,CScommon.linksMsgType, fillInLinksMsg(allocateLinksMsg(segmentLength), start));
+			checkSendToClient(connectionId,CScommon.linksMsgType, fillInLinksMsg(allocateLinksMsg(segmentLength), start));
 			start += segmentLength;
 		}
 		
 		if (start < referenceLinkMsg.links.Length)
-			safeSendToClient(connectionId,CScommon.linksMsgType, fillInLinksMsg(allocateLinksMsg(referenceLinkMsg.links.Length-start), start));
+			checkSendToClient(connectionId,CScommon.linksMsgType, fillInLinksMsg(allocateLinksMsg(referenceLinkMsg.links.Length-start), start));
 
 	}
 
@@ -887,7 +934,7 @@ public class bubbleServer : MonoBehaviour {
 		for (int i=0; i< nodeInfoList.Count; i++) initRevisionMsg.nodeInfo[i] = nodeInfoList[i];
 
 		NetworkServer.SendToAll(CScommon.initRevisionMsgType,initRevisionMsg);
-		safeSendToClient(1, CScommon.initRevisionMsgType,initRevisionMsg); ///888888888
+		//safeSendToClient(1, CScommon.initRevisionMsgType,initRevisionMsg); ///888888888
 	}
 	
 	//for client, check comment by aabramychev about Receive() near bottom of

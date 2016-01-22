@@ -300,7 +300,7 @@ public class Rules {
 		
 		protected void startFighting(Bub.Node target, State newState){ //newState must be either attacking or fleeing
 			fightingMuscle.reTarget(target); //whether or not it already was
-			fightingMuscle.reEnable();
+			fightingMuscle.enable(100);
 			
 			if (newState == State.attacking) fightingMuscle.makePuller ();
 			else if (newState == State.fleeing) fightingMuscle.makePusher ();

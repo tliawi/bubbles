@@ -19,7 +19,7 @@ public static class CScommon {
 	public const short initRevisionMsgType = 309; //InitRevisionMsg, server sends to all clients infrequently, to update relatively static initMsg data.
 	public const short requestNodeIdMsgType = 310; //intMsg, client requests being associated with a given bubble. Server responds with nodeIDMsgType.
 	public const short gameSizeMsgType = 311; //GameSizeMsg with numNodes, numLinks, worldRadius
-	public const short nameNodeIdMsgType = 312; //NameNodeIdMsg, tells all clients what user name is associated with what bubble
+	//public const short nameNodeIdMsgType = 312; //NameNodeIdMsg, tells all clients what user name is associated with what bubble
 	public const short turnMsgType = 313; //intMsg, -1 means change direction a bit to the left, +1 means a bit to the right, 0 indicates go straight.
 	//public const short forward0Reverse1Type = 314; //intMsg, 0 means forward, 1 means reverse. 2 means toggle. Changes speed to -speed.
 	public const short linksMsgType = 315; //linksMsg
@@ -39,7 +39,7 @@ public static class CScommon {
 	public const short speedMsgType = 317; //intMsg, sent from client to change speed of its muscles demand. Range from -300 to 300, negative values reverse gear.
 	public const short broadCastMsgType = 318; //stringMsg, sent from client to server, and rebroadcast by server to all clients.
 	public const short scaleMsgType = 319; //stringMsg, sent from server to all clients whenever scales are set or changed, a very succinct summary of scales
-
+	public const short nodeNamesMsgType = 320;
 
 	//use value of zero to toggle server "pause" state without changing game.
 
@@ -53,7 +53,9 @@ public static class CScommon {
 
 //  If user clicks on a desired node to mount, client sends a requestNodeId for that node.
 //	The server replies with a nodeIdMsg which either contains their old, unchanged bubble assignment
-//  (which may have been -1) which indicates their request is denied for some reason, OR it contains an assigned nodeId.
+//  (which may have been -1) which indicates their request is denied for some reason, OR it contains an assigned nodeId 
+//	(which may be different from the one requested).
+//  Server also sends nameNodeIdmsg to all clients associating the name to the node.
 //  If request granted, server will issue an initRevisionMsg of the changed DNA (reflecting that the node is mounted) to all connected clients.
 
 //  When game is unpaused, server sends regular unreliable updateMsgs,
@@ -90,6 +92,17 @@ public static class CScommon {
 		public string name;
 		public int nodeIndex;
 	}
+
+
+	public struct NodeName{
+		public int nodeId;
+		public string name;
+	}
+
+	public class NodeNamesMsg: MessageBase{
+		public NodeName[] arry;
+	}
+
 
 //	public class LinkTypeMsg : MessageBase {
 //		public LinkType linkType;

@@ -147,24 +147,22 @@ public class Engine {
 		tickCounter++;
 
 		//x,y == nx, ny
-		checkXY("pre makeNeighbors");
+							//checkXY("pre makeNeighbors");
 		makeNeighbors(); //look around, create voronoi neighbor graph
 		//collision detection based on voronoi neighbors
 		tryToEatNeighbors(); //get (or lose) oomph, perhaps schedule forced relocation, but
 		//defer relocations, because otherwise would have to recompute voronoi for rules
-		doAllRules();//based on non relocated x,y positions
-
-		checkXY("pre activateAll"); //should be unchanged from pre makeNeighbors
+		doAllRules();
+							//checkXY("pre activateAll"); //should be unchanged from pre makeNeighbors
 		//nx and ny begin to accumulate change based on muscles and gravity.
 		activateAll();//During and hereafter there's a difference between x, y and nx,ny
-		checknXnY("post activateAll");
+							//checknXnY("post activateAll");
 		//final adjustment to nx ny based on gravity.
 		updatePositions(); // Update x,y to == nx,ny
-		checkXY("post updatePositions");
+							//checkXY("post updatePositions");
 		
 		doScheduledRelocations(); //relocations scheduled by eating.
-
-		checkXY("post relocations");
+							//checkXY("post relocations");
 
 		//Prepare the future
 		photosynthesize(); //generate oomph

@@ -467,7 +467,7 @@ public class Bots
 		feeder3.giveBurden (three);
 
 		//munchies
-		for (int i =0; i<100; i++) plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+		for (int i = 0; i<bubbleServer.popcorn; i++) spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn");
 
 		stdPlayers(abnorm);
 	}
