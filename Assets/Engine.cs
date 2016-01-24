@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics; //for stopwatch
 
 public class Engine {
 
@@ -78,12 +79,22 @@ public class Engine {
 			
 			Bub.checkVals(nodes[i].nx,nodes[i].ny,msg+":"+nodes[i].id+":NXNY");
 			
-			Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+":"+nodes[i].id+": x!=nx or y!=ny");
+			UnityEngine.Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+":"+nodes[i].id+": x!=nx or y!=ny");
 
 		}
 	}
-	
+
+
+	private static long preVoronoi, inVoronoi, postVoronoi;
+	static void printVoronoiTimes(){
+		double sum = preVoronoi + inVoronoi + postVoronoi;
+		UnityEngine.Debug.Log(preVoronoi/sum+" "+inVoronoi/sum+" "+postVoronoi/sum);
+	}
+
 	private static void makeNeighbors(){
+		Stopwatch sw = new Stopwatch();
+		sw.Start();
+
 		float x, y, maxx = nodes[0].x, maxy = nodes[0].y, minx=nodes[0].x, miny=nodes[0].y;
 		List<Vector2> coords = new List<Vector2>();
 		List<uint>ids = new List<uint>();
@@ -92,7 +103,7 @@ public class Engine {
 			ids.Add ((uint)i); //i = nodes[i].id
 			x = nodes[i].x; y = nodes[i].y;
 			if(float.IsNaN(x) || float.IsNaN (y) || float.IsInfinity(x) || float.IsInfinity (y)){
-				Debug.Log ("makeNeighbors "+i+" bad x or y");
+				UnityEngine.Debug.Log ("makeNeighbors "+i+" bad x or y");
 			}
 			if (maxx < x) maxx = x;
 			if (minx > x) minx = x;
@@ -100,23 +111,29 @@ public class Engine {
 			if (miny > y) miny = y;
 			coords.Add (new Vector2(x,y));
 		}
+
+		preVoronoi += sw.ElapsedTicks;
+
+		sw.Reset(); sw.Start();
 		//use "color" (second parm of Voronoi constructor) to map from voronoi sites to my nodes
 		Delaunay.Voronoi v = new Delaunay.Voronoi (coords, ids, new Rect(minx-1,miny-1, 2+maxx-minx, 2+maxy-miny));
+		inVoronoi += sw.ElapsedTicks;
+		sw.Reset(); sw.Start();
 
 		for (int i=0; i < nodes.Count;i++){
 			Bub.Node n = nodes[i];
 			if (n.id != i){
-				Debug.Log ("i:"+i+" != n.id:"+n.id);
+				UnityEngine.Debug.Log ("i:"+i+" != n.id:"+n.id);
 			}
 			n.neighbors.Clear ();
 			List<int> neighborIDs = v.NeighborIDs (new Vector2(n.x, n.y));
 			if (neighborIDs.Count == 0){
-				Debug.Log ("no neighborIDs");
+				UnityEngine.Debug.Log ("no neighborIDs");
 				continue;
 			}
 			
 			if (neighborIDs[0] != n.id){ // a very rare but possible condition caused by loss of numerical distinction due to the many independent influences (muscle, bone, gravity) on nodes
-				Debug.Log ("nodes["+i+"] and nodes["+neighborIDs[0]+"] have identical coordinates. x:"+n.x+" y:"+n.y+" x:"+nodes[neighborIDs[0]].x+" y:"+nodes[neighborIDs[0]].y);
+				UnityEngine.Debug.Log ("nodes["+i+"] and nodes["+neighborIDs[0]+"] have identical coordinates. x:"+n.x+" y:"+n.y+" x:"+nodes[neighborIDs[0]].x+" y:"+nodes[neighborIDs[0]].y);
 				//so what to do? We have to deal with this situation. 
 				//Brute force arbitrarily add distinction so that it doesn't repeat itself
 				n.x += Random.Range (-0.001f, 0.001f);
@@ -128,6 +145,8 @@ public class Engine {
 				n.neighbors.Add (nodes[neighborIDs[j]]);
 			}
 		}
+
+		postVoronoi += sw.ElapsedTicks;
 		
 	}
 	
@@ -141,33 +160,61 @@ public class Engine {
 		scheduledOrgRelocations.Clear ();
 	}
 
+	static long makeNeighborsTime, tryToEatNeighborsTime, doAllRulesTime, activateAllTime, updatePositionsTime, relocationsTime, photoOomphTime;
+	static void printTimes(){
+		double sumTimes = makeNeighborsTime+tryToEatNeighborsTime+doAllRulesTime+activateAllTime+updatePositionsTime+relocationsTime+photoOomphTime;
+		UnityEngine.Debug.Log(makeNeighborsTime/sumTimes+" "+tryToEatNeighborsTime/sumTimes+" "+doAllRulesTime/sumTimes+" "+activateAllTime/sumTimes+" "+updatePositionsTime/sumTimes+" "+relocationsTime/sumTimes+" "+photoOomphTime/sumTimes);
+	}
+		
+
 	//called every fixedUpdate
 	public static void step(){
-		
+		Stopwatch sw = new Stopwatch();
+
 		tickCounter++;
 
 		//x,y == nx, ny
 							//checkXY("pre makeNeighbors");
+		sw.Start();
 		makeNeighbors(); //look around, create voronoi neighbor graph
+		makeNeighborsTime += sw.ElapsedTicks;
+
 		//collision detection based on voronoi neighbors
+		sw.Reset(); sw.Start();
 		tryToEatNeighbors(); //get (or lose) oomph, perhaps schedule forced relocation, but
 		//defer relocations, because otherwise would have to recompute voronoi for rules
+		tryToEatNeighborsTime += sw.ElapsedTicks;
+
+		sw.Reset(); sw.Start();
 		doAllRules();
+		doAllRulesTime += sw.ElapsedTicks;
+
 							//checkXY("pre activateAll"); //should be unchanged from pre makeNeighbors
 		//nx and ny begin to accumulate change based on muscles and gravity.
+		sw.Reset(); sw.Start();
 		activateAll();//During and hereafter there's a difference between x, y and nx,ny
+		activateAllTime += sw.ElapsedTicks;
+
 							//checknXnY("post activateAll");
 		//final adjustment to nx ny based on gravity.
+		sw.Reset(); sw.Start();
 		updatePositions(); // Update x,y to == nx,ny
+		updatePositionsTime += sw.ElapsedTicks;
+
 							//checkXY("post updatePositions");
-		
+		sw.Reset(); sw.Start();
 		doScheduledRelocations(); //relocations scheduled by eating.
+		relocationsTime += sw.ElapsedTicks;
+
 							//checkXY("post relocations");
 
 		//Prepare the future
+		sw.Reset(); sw.Start();
 		photosynthesize(); //generate oomph
 		shareOomph();
-		
+		photoOomphTime += sw.ElapsedTicks;
+
+		if (tickCounter%1000 == 1) { printTimes(); printVoronoiTimes();}
 	}
 	
 
