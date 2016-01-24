@@ -269,7 +269,7 @@ public class Bub {
 
 	//////////////////////////////////////////////////////////////// bones
 
-	public static float boneStiffness = 0.1f;
+	public static float boneStiffness = 0.35f;
 
 	public class Bone{
 
@@ -458,12 +458,32 @@ public class Bub {
 			return group;
 		}
 
+		public Rules.Rule removeAI(){
+			Rules.Rule ai;
+			for (int i=0; i<rules.Count; i++) if (rules[i].amAI){
+					ai = rules[i];
+					rules.RemoveAt(i);
+					return ai;
+				}
+			return null;
+		}
+
+		public List<Rules.Rule> removeAIs(){
+			List<Rules.Rule> ais = new List<Rules.Rule>();
+			for (Rules.Rule ai = removeAI(); ai != null; ai = removeAI()){ ais.Add(ai); }
+			return ais;
+		}
+
 		public void enableInternalMuscles(int percent){
 			for (int i = 0; i<rules.Count; i++) rules[i].enableInternalMuscles(percent);
 		}
 
 		public void cutExternalMuscles(){
 			for (int i=0; i<rules.Count; i++) rules[i].cutExternalMuscles();
+		}
+
+		public void cutMusclesTargetingOrg(Node orgMember){
+			for (int i=0; i<rules.Count; i++) rules[i].cutMusclesTargetingOrg(orgMember);
 		}
 
 		//don't want to waste energy on pulling when you've already pulled enough
@@ -746,23 +766,15 @@ public class Bub {
 				}
 			}
 		}
-
-//		//presumption is that both this and winner are registerd
-//		private void loserOrganism(Node winner){
-//
-//			List<int> registeredLoserIds = new List<int>();
-//			foreach (var node in trustGroup()) if (bubbleServer.registered(node.id)) registeredLoserIds.Add(node.id);
-//
-//			List<int> registeredWinnerIds = new List<int>();
-//			foreach (var node in winner.trustGroup ()) if (bubbleServer.registered(node.id)) registeredWinnerIds.Add(node.id);
-//
-//			foreach (int loserId in registeredLoserIds) foreach (int winnerId in registeredWinnerIds) bubbleServer.playerWinLose(winnerId, loserId);
-//
-//			randomRelocateOrganism();
-//		}
+		
+		//cuts links from this organism to loser organism
+		private void cutOrgsMusclesToOrg(Node targetOrg){
+			List<Node> org = trustGroup();
+			foreach (var node in org) node.cutMusclesTargetingOrg(targetOrg);
+		}
 
 		//cuts all external links to this organism, and all external links from this organism
-		public void cutOutOrganism(){
+		private void cutOutOrganism(){
 			//take out all muscles attacking me
 			List<Muscle> attackers = new List<Muscle>(trustHead.enemyMuscles);
 			foreach (var muscl in attackers) muscl.cut ();
@@ -821,12 +833,16 @@ public class Bub {
 							foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanEat;
 							foreach (var orgN in node.trustGroup()) { 
 								orgN.oomph -= canTransfer*(orgN.oomph/nodeOrgCanGive);
-								if (orgN.oomph < minPosValue) orgN.oomph = 0; //mostly to make sureit every going negative
+								if (orgN.oomph < minPosValue) orgN.oomph = 0; //mostly to make sure it never goes a smidgeon negative
 							}
 						}
+
+						//cut all of winner orgs muscles to loser node's org. For both their sakes.
+						cutOrgsMusclesToOrg(node); 
+
 						//could take all their burden too
 
-						thisOrgBeats(node);
+						thisOrgBeats(node); //keep score
 					
 						/*
 						switch (this.eatPolicy)

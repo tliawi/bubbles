@@ -147,7 +147,7 @@ public class bubbleServer : MonoBehaviour {
 			nodeIdPlayerInfo[winnerId].scorePlus += 1;
 			nodeIdPlayerInfo[loserId].scoreMinus += 1;
 
-			sendScoreToAll(winnerId, loserId);
+			send2ScoresToAll(winnerId, loserId);
 
 		}
 	}
@@ -469,15 +469,21 @@ public class bubbleServer : MonoBehaviour {
 	// // // handlers
 
 	public void OnDisconnectedS(NetworkMessage netMsg)
-	{	debugDisplay("Disconnection id:"+netMsg.conn.connectionId);
-		//close it, don't disconnect it... disconnect could provoke infinite recursion?
-		//apparently it's already been removed from Network.connections, the following line crashes with array ref out of range even w/ connectionId 1
+	{	int cId = netMsg.conn.connectionId;
+		debugDisplay("Disconnection id:"+cId);
+
+		//netMsg.conn.FlushChannels(); causes "attempt to send to not connected connection."
+		netMsg.conn.Dispose(); //get rid of any existing buffers of stuff being sent? doesn't help
+
+		//don't disconnect it... disconnect could provoke infinite recursion?
+		//apparently it's already been removed from Network.connections?
+		//the following line crashes with array ref out of range even w/ connectionId 1
 		//Network.CloseConnection(Network.connections[netMsg.conn.connectionId],false); //network.connections is [] of NetworkPlayers, whereas netMsg.conn is a NetworkConnection...
 
-		int nodeId = connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId;
+		int nodeId = connectionIdPlayerInfo[cId].nodeId;
 		Bots.dismount(nodeId);
 
-		connectionIdPlayerInfo.Remove(netMsg.conn.connectionId);
+		connectionIdPlayerInfo.Remove(cId);
 		nodeIdPlayerInfo.Remove (nodeId);
 		
 		send1or2NodeNamesToAll(nodeId, "");
@@ -566,7 +572,7 @@ public class bubbleServer : MonoBehaviour {
 
 	private void onInitRequest(NetworkMessage netMsg){
 		CScommon.stringMsg strMsg = netMsg.ReadMessage<CScommon.stringMsg>();
-		strMsg.value += ":"+netMsg.conn.connectionId; //so even if multiple identical names are requested, all names are unique
+		strMsg.value += netMsg.conn.connectionId; //so even if multiple identical names are requested, all names are unique
 		connectionIdPlayerInfo[netMsg.conn.connectionId].name = strMsg.value;
 		sendWorldToClient(netMsg.conn.connectionId);
 	}
@@ -581,16 +587,17 @@ public class bubbleServer : MonoBehaviour {
 
 		if (nixMsg.value < 0 || nixMsg.value >= Engine.nodes.Count  ) newNodeId = -1;
 		else newNodeId = Engine.nodes[nixMsg.value].trustHead.id; // move to the id of the head of that organism
-		
+
+		//enforce that only one player can mount a node.
+		if (nodeIdPlayerInfo.ContainsKey(newNodeId))newNodeId = oldNodeId;
+
 		nixMsg.value = newNodeId;
 		checkSendToClient(conId,CScommon.nodeIdMsgType,nixMsg);
 
-		if (oldNodeId <0 && newNodeId<0 ) return; //nothing changes, no dna, nada.
-
-		//enforce that only one player can mount a node. Also covers case where desired positive newNodeId == oldNodeId
-		if (nodeIdPlayerInfo.ContainsKey(newNodeId)) return; //nothing changes, no dna, nada.
+		//both could be -1
+		if (oldNodeId == newNodeId ) return; //no dna changes...
 		
-		//we know newNodeId != oldNodeId
+		//newNodeId != oldNodeId
 	
 		connectionIdPlayerInfo[conId].nodeId = newNodeId;
 		connectionIdPlayerInfo[conId].clearScore ();
@@ -662,22 +669,61 @@ public class bubbleServer : MonoBehaviour {
 		sendUpdateToClient(connectionId);
 		sendLinksToClient(connectionId);
 		sendAllNodeNamesToClient(connectionId);
+		sendAllScoresToClient(connectionId);
 		                                               
 	}
 
 
 	private static void sendAllNodeNamesToClient(int connectionId){
 		CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
-		nnmsg.arry = new CScommon.NodeName[nodeIdPlayerInfo.Count];
+		nnmsg.arry = new CScommon.NodeName[nodeIdPlayerInfo.Keys.Count];
 		int i = 0;
 		foreach (int nodeId in nodeIdPlayerInfo.Keys){
 			PlayerInfo pi = nodeIdPlayerInfo[nodeId];
-			nnmsg.arry[i].nodeId = pi.nodeId;
-			nnmsg.arry[i].name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
+			if (nnmsg.arry[i].nodeId != nodeId) debugDisplay("error in sendAllNodeNames");
+			nnmsg.arry[i].nodeId = pi.nodeId; // == nodeId
+			nnmsg.arry[i].name = pi.name;
 			i += 1;
 		}
 		checkSendToClient(connectionId,CScommon.nodeNamesMsgType,nnmsg);
 	}
+
+	private static void sendAllScoresToClient(int connectionId){
+		CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
+		smsg.zeroAteOne = false;
+		smsg.arry = new CScommon.ScoreStruct[nodeIdPlayerInfo.Count];
+		int i = 0;
+		foreach (int nodeId in nodeIdPlayerInfo.Keys){
+			PlayerInfo pi = nodeIdPlayerInfo[nodeId];
+			smsg.arry[i].nodeId = pi.nodeId;
+			smsg.arry[i].plus = pi.scorePlus;
+			smsg.arry[i].minus = pi.scoreMinus;
+			i += 1;
+		}
+		checkSendToClient(connectionId,CScommon.scoreMsgType,smsg);
+	}
+	
+	private static void send2ScoresToAll(int winnerId, int loserId){
+		PlayerInfo pi;
+		if (nodeIdPlayerInfo.ContainsKey(winnerId)  && nodeIdPlayerInfo.ContainsKey(loserId)){
+			CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
+			smsg.zeroAteOne = true;
+			smsg.arry = new CScommon.ScoreStruct[2];
+			
+			pi = nodeIdPlayerInfo[winnerId];
+			smsg.arry[0].nodeId = pi.nodeId;
+			smsg.arry[0].plus = pi.scorePlus; 
+			smsg.arry[0].minus = pi.scoreMinus;
+			
+			pi = nodeIdPlayerInfo[loserId];
+			smsg.arry[1].nodeId = pi.nodeId;
+			smsg.arry[1].plus = pi.scorePlus; 
+			smsg.arry[1].minus = pi.scoreMinus;
+			
+			NetworkServer.SendToAll (CScommon.scoreMsgType,smsg);
+		}
+	}
+
 
 	private static void send1or2NodeNamesToAll(int nodeId0, string name0, int nodeId1=int.MaxValue, string name1 = ""){
 		CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
@@ -693,35 +739,6 @@ public class bubbleServer : MonoBehaviour {
 
 		NetworkServer.SendToAll (CScommon.nodeNamesMsgType,nnmsg);
 	}
-
-	private static void sendScoreToAll(int winnerId, int loserId){
-		PlayerInfo pi;
-		if (nodeIdPlayerInfo.ContainsKey(winnerId)  && nodeIdPlayerInfo.ContainsKey(loserId)){
-			CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
-			nnmsg.arry = new CScommon.NodeName[2];
-
-			pi = nodeIdPlayerInfo[winnerId];
-			nnmsg.arry[0].nodeId = pi.nodeId;
-			nnmsg.arry[0].name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
-
-			pi = nodeIdPlayerInfo[loserId];
-			nnmsg.arry[1].nodeId = pi.nodeId;
-			nnmsg.arry[1].name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
-
-			NetworkServer.SendToAll (CScommon.nodeNamesMsgType,nnmsg);
-		}
-	}
-
-//	private static void sendNameNodeToAll(int connectionId){
-//		if (connectionIdPlayerInfo.ContainsKey (connectionId)){
-//			CScommon.NameNodeIdMsg nameNode = new CScommon.NameNodeIdMsg();
-//			PlayerInfo pi = connectionIdPlayerInfo[connectionId];
-//			nameNode.name = pi.name + " +" + pi.scorePlus+" -"+pi.scoreMinus;
-//			nameNode.nodeIndex = pi.nodeId;
-//			NetworkServer.SendToAll (CScommon.nameNodeIdMsgType,nameNode);
-//			debugDisplay("sent nameNodeId |"+nameNode.name+"|"+nameNode.nodeIndex+" to all.");
-//		}
-//	}
 
 	private static void sendScalesToAll(){
 		CScommon.stringMsg scaleMsg = new CScommon.stringMsg();
@@ -778,13 +795,18 @@ public class bubbleServer : MonoBehaviour {
 		if (!s.Equals (oldConnections)){ debugDisplay(oldConnections + " /"); debugDisplay(s); oldConnections = s;}
 
 		while ( start+segmentLength <= Engine.nodes.Count ){
+			//NetworkServer.SendToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(segmentLength), start));
+			//reliable SendToAll fails with "ChannelBuffer buffer limit of 16 packets reached." if client is paused, like for dragging window around on screen
+			//unity bug: sendbychanneltoall dies on disconnect
 			NetworkServer.SendByChannelToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(segmentLength), start), Channels.DefaultUnreliable);
 			start += segmentLength;
 		}
 
-		if (start < Engine.nodes.Count)
+		if (start < Engine.nodes.Count){
+			//SendToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(Engine.nodes.Count-start), start));
 			NetworkServer.SendByChannelToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(Engine.nodes.Count-start), start), Channels.DefaultUnreliable);
-			
+		}
+
 		//for big messages, use NetworkServer.SendByChannelToAll (CScommon.updateMsgType, updateMsg, bigMsgChannel);
 
 		checkForInitRevisions();

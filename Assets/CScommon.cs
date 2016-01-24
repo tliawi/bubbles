@@ -9,7 +9,7 @@ public static class CScommon {
 
 	public const short nodeIdMsgType = 300; //intMsg, server tells a client which bubble they are associated with, often in response to their requestNodeIdMsg
 	public const short updateMsgType = 301; //UpdateMsg, server sends to all clients frequently to update positions of bubbles. Uses DynamicNodeData[]
-	//public const short worldRadiusMsgType = 302; //was vegFlipType, an early debugging effort
+	public const short scoreMsgType = 302; //server sends player scores to client
 	public const short targetNodeType = 303; //TargetNodeMsg, client tells server that they want a link made from their bubble to a given target bubble
 	//public const short lookAtNodeType = 304; //unused
 	public const short initMsgType = 305; // InitMsg, server sends to clients relatively static info on many bubbles.
@@ -103,6 +103,18 @@ public static class CScommon {
 		public NodeName[] arry;
 	}
 
+	public struct ScoreStruct{
+		public int nodeId;
+		public int plus;
+		public int minus;
+	}
+
+	public class ScoreMsg: MessageBase{
+		//true if this message sends two ScoreStructs, arry[0] being the winner, arry[1] being the loser.
+		public bool zeroAteOne; //false if this message is a list of initial scores (like when you first join an ongoing game).
+
+		public ScoreStruct[] arry;
+	}
 
 //	public class LinkTypeMsg : MessageBase {
 //		public LinkType linkType;

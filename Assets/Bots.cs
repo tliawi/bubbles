@@ -229,6 +229,8 @@ public class Bots
 
 	//Mounting and dismounting.
 
+	Dictionary<int, List<Rules.Rule>> dismountedAIs = new Dictionary<int, List<Rules.Rule>>();
+
 
 	public static void dismount(int nodeId){
 		if (nodeId < 0 || nodeId >= Engine.nodes.Count) return;

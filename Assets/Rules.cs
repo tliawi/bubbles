@@ -47,6 +47,7 @@ public class Rules {
 
 		public Bub.Node source {get; protected set;}
 		private List<Bub.Muscle> _muscles;
+		public bool amAI {get; protected set;}
 
 		public Bub.Muscle muscles( int i) { return _muscles[i]; }
 		
@@ -77,6 +78,10 @@ public class Rules {
 		public void cutExternalMuscles(){
 			for (int i=0; i< _muscles.Count; i++) if (_muscles[i].external ) _muscles[i].cut();
 		}
+
+		public void cutMusclesTargetingOrg(Bub.Node orgMember){
+			for (int i=0; i< _muscles.Count; i++) if (_muscles[i].target.trustHead == orgMember.trustHead) _muscles[i].cut();
+		}
 		
 		abstract public void accion(); //rule condition, state changes, muscle property changes
 
@@ -93,6 +98,7 @@ public class Rules {
 		protected Rule(Bub.Node source0) {
 			source = source0;
 			_muscles = new List<Bub.Muscle>();
+			amAI = false;
 		}
 	}
 	
@@ -284,6 +290,7 @@ public class Rules {
 	
 
 	public abstract class HunterBase: Rule {
+		
 		public enum State {notFighting, fleeing, attacking};
 
 		protected Bub.Muscle fightingMuscle;
@@ -312,7 +319,9 @@ public class Rules {
 
 		abstract override public void accion();
 
-		public HunterBase(Bub.Node source0):base(source0){}
+		public HunterBase(Bub.Node source0):base(source0){
+			amAI = true;
+		}
 	}
 
 
@@ -549,6 +558,7 @@ public class Rules {
 
 	public class TurmDefender: Rule {
 
+
 		public static void install(Bub.Node source0, float perimeter){
 			if (source0 == null) return;
 			source0.rules.Add (new TurmDefender(source0, perimeter));
@@ -561,6 +571,7 @@ public class Rules {
 			perimeter = perimeter0;
 			pusher = addMuscle(source0).makePusher(); //a cut muscle, disabled
 			//pusher just convenience for muscles(0)
+			amAI = true;
 		}
 
 		override public void accion(){
@@ -594,7 +605,8 @@ public class Rules {
 			cwise = cwise0;
 			muscl = addMuscle(crank).disable(); //source to crank. Disable so it remembers enablement for reEnable.
 		}
-		
+			
+
 		override public void accion(){
 			float radius2 = source.distance2(center);
 			float dist2 = source.distance2(crank);
