@@ -23,6 +23,8 @@ ExportedObj/
 *.unityproj
 *.booproj
 
+*.pdb
+
 *.zip
 *.exe
 
