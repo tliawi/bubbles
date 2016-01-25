@@ -35,16 +35,29 @@ public class bubbleServer : MonoBehaviour {
 	private static bool paused = true;
 	//private static int gamePhase = 1; //1 if paused start of new game, 2 if game running
 
-	private static float normScale, abnormScale;
+	private static float normScale;
+	private static float abnormScale;
+	public static float norm {get {return normScale;}}
+	public static float abnorm {get{ return normScale*abnormScale;} }
 	private static int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
 	private static float vegStartFuel, nonvegStartFuel;
-	public static int popcorn = 100;
+	public static int popcorn {get; private set;} 
 
 	private void resetDefaultScales(int newGame){
 		switch (newGame) {
+		case 1: //snark
+			normScaleI = 9;
+			abnormScaleI = 2;
+			photoYieldI = 0;
+			baseMetabolicRateI = 0;
+			worldRadiusI = 0;
+			vegStartFuel = 1.0f;
+			nonvegStartFuel = 0f;
+			popcorn = 100;
+			break;
 		case 2: // race
 			normScaleI = 2;
-			abnormScaleI = 1;
+			abnormScaleI = 6;
 			photoYieldI = -3;
 			baseMetabolicRateI = -1;
 			worldRadiusI = 0;
@@ -52,15 +65,25 @@ public class bubbleServer : MonoBehaviour {
 			nonvegStartFuel = 0f;
 			popcorn = 100;
 			break;
-		case 4:
-			normScaleI = 0; 
-			abnormScaleI = 2;
+		case 3: //fussball
+			normScaleI = 5;
+			abnormScaleI = 5;
+			photoYieldI = 0;
+			baseMetabolicRateI = 0;
+			worldRadiusI = -5;
+			vegStartFuel = 1.0f;
+			nonvegStartFuel = 0f;
+			popcorn = 100;
+			break;
+		case 4: //turm
+			normScaleI = -1; 
+			abnormScaleI = 4;
 			photoYieldI = 0;
 			baseMetabolicRateI = 0;
 			worldRadiusI = -3;
-			vegStartFuel = 0f;
+			vegStartFuel = 6f;
 			nonvegStartFuel = 0f;
-			popcorn = 100;
+			popcorn = 250;
 			break;
 		default:
 			normScaleI = 6;
@@ -379,7 +402,7 @@ public class bubbleServer : MonoBehaviour {
 		paused = true;
 
 		Bub.initialize();
-		Bots.initialize(currentGame, normScale, normScale*abnormScale);
+		Bots.initialize(currentGame);
 		startFuel();
 		Grid.initialize ();
 		Grid.display(); //since start paused, want to be able to see the paused initial game state.

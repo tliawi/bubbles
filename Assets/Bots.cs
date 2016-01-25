@@ -50,7 +50,7 @@ public class Bots
 	public static void spawnRandomInchworm(float approximateRadius, bool headVeg, bool tailVeg, string clan=""){
 		Vector2 headPosition = Bub.worldRadius * Random.insideUnitCircle;
 		float randomAngle = Random.Range(-Mathf.PI, Mathf.PI);
-		Vector2 tailDelta = 8*(new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle))) ;
+		Vector2 tailDelta = 2.4f*approximateRadius*(new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle))) ;
 		float headRadius = approximateRadius;
 		float tailRadius = approximateRadius*1.4f;
 		spawnInchworm(headPosition,headRadius,headVeg,tailDelta,tailRadius,tailVeg, clan);
@@ -257,124 +257,124 @@ public class Bots
 
 	// initialization
 
-	public static void initialize(int gameNumber, float norm, float abnorm){
+	public static void initialize(int gameNumber){
 		switch (gameNumber){
 		case 1:
 			bubbleServer.gameName = "snark";
-			snarkInit(norm, abnorm);
+			snarkInit();
 			break;
 		case 2:
 			bubbleServer.gameName = "race";
-			inchwormRaceInit(norm, abnorm);
+			inchwormRaceInit();
 			break;
 		case 3:
 			bubbleServer.gameName = "fussball";
-			fussballInit(norm, abnorm);
+			fussballInit();
 			break;
 		case 4:
 			bubbleServer.gameName = "turm";
-			turmInit(norm,abnorm);
+			turmInit();
 			break;
 		case 5:
 			bubbleServer.gameName = "turm2";
-			turmInit2(norm,abnorm);
+			turmInit2();
 			break;
 		default: 
 			bubbleServer.gameName = "sizeTest";
-			testbedInit(norm, abnorm);
+			testbedInit();
 			break;
 		}
 	}
-	
 
-	public static void inchwormRaceInit(float norm, float abnorm){
-		
-		pushVegNode(new Vector2(-Bub.worldRadius,0), norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal left, won't eat anybody moving
-		
-		//evens against odds
-		
-		spawnTricycle(new Vector2( Bub.worldRadius,25)    , abnorm*1, false,
-		                     new Vector2(10,0), 7, abnorm*0.75f, false, "Al"); //nodes 1,2,3
-		
-		spawnInchworm(new Vector2( Bub.worldRadius,35)    , abnorm*1.2f, false,
-		                     new Vector2(10,0) , abnorm*1f, false,"Beth"); //nodes 4,5
-		
-		spawnTricycle(new Vector2( Bub.worldRadius,45)    , abnorm*1, false,
-		                     new Vector2(10,0), 7, abnorm*0.75f, false, "Carl"); //nodes 6,7,8
-		
-		spawnInchworm(new Vector2( Bub.worldRadius,55)    , abnorm*1.2f, false,
-		                     new Vector2(10,0) , abnorm*1f, false,"Dee"); //nodes 9,10
-		
-		
-		spawnTricycle(new Vector2( Bub.worldRadius,-25)   , abnorm*1, false,
-		                     new Vector2( 10,0), 7, abnorm*0.75f, false, "Ed"); //nodes 11.12.13
-		
-		spawnInchworm(new Vector2( Bub.worldRadius,-35)   , abnorm*1.2f, false,
-		                     new Vector2( 10,0), abnorm*1f, false,"Fran"); //nodes 14,15
-		
-		spawnTricycle(new Vector2( Bub.worldRadius,-45)   , abnorm*1, false,
-		                     new Vector2( 10,0), 7, abnorm*0.75f, false, "Greg"); //nodes 16,17,18
-		
-		spawnInchworm(new Vector2( Bub.worldRadius,-55)   , abnorm*1.2f, false,
-		                     new Vector2( 10,0), abnorm*1f, false,"Helen"); //nodes 19,20
-
-
-		pushVegNode(new Vector2(Bub.worldRadius,0), norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal left, won't eat anybody moving
-
-
-		for (int i=0; i<30; i++) pushVegNode( randomRectPosition(0.17f),Random.Range(0.5f, 2.0f)*norm); //random clans
-		
-		
-		Bub.Node head = spawnInchworm(new Vector2(0,10),abnorm*0.6f,false,
-		                     new Vector2(8,0),abnorm*0.5f,false,"pest");
-		Rules.HunterNPCRule.install(head);
-		bubbleServer.registerNPC(head.id,"inchworm pest");
-		
-		//head = spawnTricycle(new Vector2(0,-10),abnorm*0.8f,false,
-		//                     new Vector2(8,0),7, abnorm*0.6f,false,"pest");
-		//Rules.installHunterNPCRule(head);
-		//bubbleServer.registerNPC(head.id,"tricycle pest");
-		
-		for (int i = 0; i<7; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*norm,true,true,"bots");
-
-	}
-
-	public static void snarkInit(float norm, float abnorm){
+	public static void snarkInit(){
 		Bub.Node head;
 
 
-//		head = pushVegNode(new Vector2(0,0), 7, "beast").setDna(CScommon.vegetableBit,false);
-//		Rules.installHunterNPCRule(head);
-//		
-//		head = spawnTricycle(new Vector2(0,-10),0.8f,false,
-//		                     new Vector2(8,-10),7, 0.6f, false,"prowler");
-//		Rules.installHunterNPCRule(head);
+		//		head = pushVegNode(new Vector2(0,0), 7, "beast").setDna(CScommon.vegetableBit,false);
+		//		Rules.installHunterNPCRule(head);
+		//		
+		//		head = spawnTricycle(new Vector2(0,-10),0.8f,false,
+		//		                     new Vector2(8,-10),7, 0.6f, false,"prowler");
+		//		Rules.installHunterNPCRule(head);
 
-		head = spawnTapeworm(new Vector2(100,100),false, 7, abnorm*0.8f, false ,"tapeworm");
+		head = spawnTapeworm(new Vector2(100,100),false, 7, bubbleServer.abnorm*0.8f, false ,"tapeworm");
 		Rules.HunterNPCRule.install(head);
 		// don't track his score on snarks... bubbleServer.registerNPC(head.id,"tapeworm");
 
-		head = spawnInchworm(new Vector2(-3,-3), abnorm*1.2f, false, 
-		                     new Vector2(7,7), abnorm*1f, false,"snark"); 
+		head = spawnInchworm(new Vector2(-3,-3), bubbleServer.abnorm*1.2f, false, 
+			new Vector2(7,7), bubbleServer.abnorm*1f, false,"snark"); 
 		Rules.HunterNPCRule.install(head);
 		head.setDna (CScommon.snarkBit,true);
 		bubbleServer.registerNPC(head.id,"big snark");
-		
-		head = spawnInchworm(new Vector2(0,10),abnorm*0.6f,false,
-		                     new Vector2(8,0), abnorm*0.5f,false,"snark");
+
+		head = spawnInchworm(new Vector2(0,10),bubbleServer.abnorm*0.6f,false,
+			new Vector2(8,0), bubbleServer.abnorm*0.5f,false,"snark");
 		Rules.HunterNPCRule.install(head);
 		head.setDna (CScommon.snarkBit,true);
 		bubbleServer.registerNPC(head.id,"lil snark");
 
-		stdPlayers(abnorm);
+		stdPlayers(bubbleServer.abnorm);
 
-		for (int i=0; i<110; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm); //random clans
+		for (int i=0; i<bubbleServer.popcorn; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*bubbleServer.norm); //random clans
+		for (int i = 0; i<bubbleServer.popcorn/4; i++) spawnRandomInchworm(bubbleServer.norm*Random.Range (0.48f,0.52f),true,true,"popcorn");
+		//		for (int i = 0; i<60; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*normalBubRadius,true,true,"bots");
 
-//		for (int i = 0; i<60; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*normalBubRadius,true,true,"bots");
+	}
+	
+	private static float offset(int i){ return bubbleServer.abnorm*i; }
+
+	public static void inchwormRaceInit(){
+		
+		pushVegNode(new Vector2(-Bub.worldRadius,0),bubbleServer.norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal left, won't eat anybody moving
+		
+		//evens against odds
+		
+		spawnTricycle(new Vector2( Bub.worldRadius,offset(5))    , bubbleServer.abnorm*1, false,
+			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Al"); //nodes 1,2,3
+		
+		spawnInchworm(new Vector2( Bub.worldRadius,offset(8))    , bubbleServer.abnorm*1.2f, false,
+			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Beth"); //nodes 4,5
+		
+		spawnTricycle(new Vector2( Bub.worldRadius,offset(11))    , bubbleServer.abnorm*1, false,
+			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Carl"); //nodes 6,7,8
+		
+		spawnInchworm(new Vector2( Bub.worldRadius,offset(14))    , bubbleServer.abnorm*1.2f, false,
+			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Dee"); //nodes 9,10
+		
+		
+		spawnTricycle(new Vector2( Bub.worldRadius,-offset(5))   , bubbleServer.abnorm*1, false,
+			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Ed"); //nodes 11.12.13
+		
+		spawnInchworm(new Vector2( Bub.worldRadius,-offset(8))   , bubbleServer.abnorm*1.2f, false,
+			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Fran"); //nodes 14,15
+		
+		spawnTricycle(new Vector2( Bub.worldRadius,-offset(11))   , bubbleServer.abnorm*1, false,
+			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Greg"); //nodes 16,17,18
+		
+		spawnInchworm(new Vector2( Bub.worldRadius,-offset(14))   , bubbleServer.abnorm*1.2f, false,
+			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Helen"); //nodes 19,20
+
+
+		//pushVegNode(new Vector2(Bub.worldRadius,0), bubbleServer.norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal dright, won't eat anybody moving
+
+		for (int i=0; i<bubbleServer.popcorn; i++) pushVegNode( randomRectPosition(0.17f),Random.Range(0.5f, 2.0f)*bubbleServer.norm); //random clans
+
+		Bub.Node head = spawnInchworm(new Vector2(0,10),bubbleServer.abnorm*0.6f,false,
+		                     new Vector2(8,0),bubbleServer.abnorm*0.5f,false,"pest");
+		Rules.HunterNPCRule.install(head);
+		bubbleServer.registerNPC(head.id,"inchworm pest");
+		
+		//head = spawnTricycle(new Vector2(0,-10),bubbleServer.abnorm*0.8f,false,
+		//                     new Vector2(8,0),7, bubbleServer.abnorm*0.6f,false,"pest");
+		//Rules.installHunterNPCRule(head);
+		//bubbleServer.registerNPC(head.id,"tricycle pest");
+		
+		for (int i = 0; i<7; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*bubbleServer.norm,true,true,"bots");
 
 	}
 
-	public static void fussballInit(float norm, float abnorm){
+
+	public static void fussballInit(){
 
 		float rad = 12; // turn radius is half of turm side length
 		float height = Mathf.Sqrt((rad*2)*(rad*2)-rad*rad); //height of equilateral triangle of sides = 2 rad
@@ -383,16 +383,16 @@ public class Bots
 		Bub.Node crankA, crankB, crankC, one, two, three, center;
 
 		//make triangle to swing the crank. 
-		center = pushVegNode(new Vector2(0,0),0.7f*abnorm,"crank");
+		center = pushVegNode(new Vector2(0,0),0.7f*bubbleServer.norm,"crank");
 		bubbleServer.registerNPC(center.id,"fussball");
-		one = pushVegNode(new Vector2(-rad,-centerHeight),abnorm,"crank");
-		two = pushVegNode(new Vector2(rad,-centerHeight),abnorm,"crank");
-		three = pushVegNode(new Vector2(0,radius),abnorm,"crank");
+		one = pushVegNode(new Vector2(-rad,-centerHeight),bubbleServer.norm,"crank");
+		two = pushVegNode(new Vector2(rad,-centerHeight),bubbleServer.norm,"crank");
+		three = pushVegNode(new Vector2(0,radius),bubbleServer.norm,"crank");
 
 		//cranks are bigger, generate most power for the whole org
-		crankA = pushVegNode(new Vector2(-rad,centerHeight),abnorm*3,"crank");
-		crankB = pushVegNode(new Vector2(rad,centerHeight),abnorm*3,"crank");
-		crankC = pushVegNode(new Vector2(0,-radius),abnorm*3,"crank");
+		crankA = pushVegNode(new Vector2(-rad,centerHeight),bubbleServer.norm*3,"crank");
+		crankB = pushVegNode(new Vector2(rad,centerHeight),bubbleServer.norm*3,"crank");
+		crankC = pushVegNode(new Vector2(0,-radius),bubbleServer.norm*3,"crank");
 		
 		one.trust(center); two.trust(center); three.trust(center); 
 		crankA.trust(center);crankB.trust(center);crankC.trust(center);
@@ -425,19 +425,21 @@ public class Bots
 		Rules.Crank.install(two,center, crankC, true);
 		Rules.Crank.install(three,center,crankC, true);
 		
-		stdPlayers(abnorm);
+		stdPlayers(bubbleServer.abnorm);
 
-		for (int i=0; i<110; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm); //random clans
-		
+		for (int i=0; i<(bubbleServer.popcorn*3)/4; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*bubbleServer.norm); //random clans
+		for (int i=0; i<(bubbleServer.popcorn*1)/4; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*bubbleServer.norm).setDna(CScommon.vegetableBit,false); //random clans, eaters
+
 		//		for (int i = 0; i<60; i++) spawnRandomInchworm(Random.Range(0.5f, 2.0f)*normalBubRadius,true,true,"bots");
 
 	}
 
-	public static void turmInit(float norm,float abnorm){
+	public static void turmInit(){
 		float rad = 12; // turn radius is half of turm side length
 		float height = Mathf.Sqrt((rad*2)*(rad*2)-rad*rad); //height of equilateral triangle of sides = 2 rad
 		float centerHeight = rad*rad/height; //height of center of that triangle
 		Bub.Node one, two, three, goal, feeder1, feeder2, feeder3;
+		float norm = bubbleServer.norm; float abnorm = bubbleServer.abnorm;
 
 		//not quite on center, so pushing of links within turm will be unstable, so hopefully turm will purge itself of interlopers
 		goal = pushVegNode(new Vector2(0.01f,-0.0223f),norm/4).setClan("turm").setDna(CScommon.noPhotoBit, true);
@@ -469,18 +471,19 @@ public class Bots
 		feeder3.giveBurden (three);
 
 		//munchies
-		for (int i = 0; i<bubbleServer.popcorn; i++) spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn");
+		for (int i = 0; i<bubbleServer.popcorn; i++) spawnRandomInchworm(norm*Random.Range (0.7f,0.8f),true,true,"popcorn");
 
 		stdPlayers(abnorm);
 	}
 
 	//***
-	public static void turmInit2(float norm,float abnorm){
+	public static void turmInit2(){
 		float rad = 30f; // turn radius is half of turm side length
 		float height = Mathf.Sqrt((rad*2)*(rad*2)-rad*rad); //height of equilateral triangle of sides = 2 rad
 		float centerHeight = rad*rad/height; //height of center of that triangle
 		Bub.Node one, two, three, goal, feeder1, feeder2, feeder3;
 		Bub.Node one1, two1, three1, goal1, feeder11, feeder21, feeder31;
+		float norm = bubbleServer.norm;
 		
 		goal = pushVegNode(new Vector2(Bub.worldRadius/2f, Bub.worldRadius/4f),norm/4).setClan("turm");
 		bubbleServer.registerNPC(goal.id,"goal");
@@ -544,43 +547,44 @@ public class Bots
 			if (Engine.nodes[Engine.nodes.Count - 1].distance(goal1) < turmRad1) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
 		}
 		
-		stdPlayers(abnorm);
+		stdPlayers(bubbleServer.abnorm);
 	}
 	//****
 
-	public static void stdPlayers(float abnorm){
+	public static void stdPlayers(float siz){
 		//mountable
-		spawnTricycle(new Vector2( Bub.worldRadius,0)    , 1*abnorm, false,
-		              new Vector2( 10,0), 7, 0.75f*abnorm, false, "p1"); 
+		spawnTricycle(new Vector2( Bub.worldRadius,0)    , 1*siz, false,
+		              new Vector2( 10,0), 7, 0.75f*bubbleServer.abnorm, false, "p1"); 
 		
-		spawnInchworm(new Vector2( Bub.worldRadius, -30)    , 1.2f*abnorm, false,
-		              new Vector2( 10, 0), 1f*abnorm, false,"p2"); 
-		
-		
-		spawnTricycle(new Vector2( 0, Bub.worldRadius)   , 1*abnorm, false,
-		              new Vector2( 0, 10), 7, 0.75f*abnorm, false, "p3"); 
-		
-		spawnInchworm(new Vector2( 30, Bub.worldRadius)   , 1.2f*abnorm, false,
-		              new Vector2( 0, 10), 1f*abnorm, false,"p4");
+		spawnInchworm(new Vector2( Bub.worldRadius, -30)    , 1.2f*siz, false,
+		              new Vector2( 10, 0), 1f*siz, false,"p2"); 
 		
 		
-		spawnTricycle(new Vector2( -Bub.worldRadius,0)   , 1*abnorm, false,
-		              new Vector2( -10,0), 7, 0.75f*abnorm, false, "p5");
+		spawnTricycle(new Vector2( 0, Bub.worldRadius)   , 1*siz, false,
+		              new Vector2( 0, 10), 7, 0.75f*siz, false, "p3"); 
 		
-		spawnInchworm(new Vector2( -Bub.worldRadius,30)   , 1.2f*abnorm, false,
-		              new Vector2( -10,0), 1f*abnorm, false,"p6"); 
+		spawnInchworm(new Vector2( 30, Bub.worldRadius)   , 1.2f*siz, false,
+		              new Vector2( 0, 10), 1f*siz, false,"p4");
 		
 		
-		spawnTricycle(new Vector2( 0, -Bub.worldRadius)   , 1*abnorm, false,
-		              new Vector2( 0, -10), 7, 0.75f*abnorm, false, "p7"); 
+		spawnTricycle(new Vector2( -Bub.worldRadius,0)   , 1*siz, false,
+		              new Vector2( -10,0), 7, 0.75f*siz, false, "p5");
 		
-		spawnInchworm(new Vector2( -30, -Bub.worldRadius)   , 1.2f*abnorm, false,
-		              new Vector2( 0, -10), 1f*abnorm, false,"p8");
+		spawnInchworm(new Vector2( -Bub.worldRadius,30)   , 1.2f*siz, false,
+		              new Vector2( -10,0), 1f*siz, false,"p6"); 
+		
+		
+		spawnTricycle(new Vector2( 0, -Bub.worldRadius)   , 1*siz, false,
+		              new Vector2( 0, -10), 7, 0.75f*siz, false, "p7"); 
+		
+		spawnInchworm(new Vector2( -30, -Bub.worldRadius)   , 1.2f*siz, false,
+		              new Vector2( 0, -10), 1f*siz, false,"p8");
 	}
 
-	public static void testbedInit(float norm,float abnorm){
+	public static void testbedInit(){
 		// Bub.Node pushVegNode(Vector2 position, float radius = 1.0f, string clan="")
-		float small = norm/8;  float large = norm*8;
+
+		float small = bubbleServer.norm/8;  float norm = bubbleServer.norm; float large = bubbleServer.norm*8;
 
 		pushVegNode(new Vector2(17.5f,0)*norm,small);
 		pushVegNode(new Vector2(20,0)*norm,norm);
@@ -607,6 +611,7 @@ public class Bots
 		for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph;
 
 		/////animal
+		float abnorm = bubbleServer.abnorm;
 
 		pushVegNode(new Vector2(70+17.5f,0)*abnorm,small).setDna(CScommon.vegetableBit,false);
 		pushVegNode(new Vector2(70+20,0)*abnorm,norm).setDna(CScommon.vegetableBit,false);
