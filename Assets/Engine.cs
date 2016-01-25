@@ -138,6 +138,10 @@ public class Engine {
 		
 	public static int tickCounter { get; private set; }
 
+	public static void initialize(){
+		tickCounter = 0;
+	}
+
 	//called every fixedUpdate
 	public static void step(){
 		Stopwatch sw = new Stopwatch();
@@ -145,7 +149,7 @@ public class Engine {
 		//x,y == nx, ny
 							//checkXY("pre makeNeighbors");
 		sw.Start();
-		// makeNeighbors MUST run on the first iteration!
+
 		if (tickCounter%5 == 0) makeNeighbors(); //look around, create voronoi neighbor graph.
 		makeNeighborsTime += sw.ElapsedTicks;
 

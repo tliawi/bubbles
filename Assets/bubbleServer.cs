@@ -383,6 +383,7 @@ public class bubbleServer : MonoBehaviour {
 		startFuel();
 		Grid.initialize ();
 		Grid.display(); //since start paused, want to be able to see the paused initial game state.
+		Engine.initialize();
 
 		generateReferences();
 
