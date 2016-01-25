@@ -10,12 +10,12 @@ namespace Delaunay
 	public sealed class Site: ICoord, IComparable
 	{
 		private static Stack<Site> _pool = new Stack<Site> ();
-		public static Site Create (Vector2 p, uint index, float weight, uint color)
+		public static Site Create (Vector2 p, uint index, Bub.Node node) //jf, using node where once there was 'color' throughout this class
 		{
 			if (_pool.Count > 0) {
-				return _pool.Pop ().Init (p, index, weight, color);
+				return _pool.Pop ().Init (p, index, node ); 
 			} else {
-				return new Site (p, index, weight, color);
+				return new Site (p, index, node); 
 			}
 		}
 		
@@ -71,8 +71,7 @@ namespace Delaunay
 			get { return _coord;}
 		}
 		
-		public uint color;
-		public float weight;
+		public Bub.Node node;
 		
 		private uint _siteIndex;
 		
@@ -86,21 +85,20 @@ namespace Delaunay
 		// ordered list of points that define the region clipped to bounds:
 		private List<Vector2> _region;
 
-		private Site (Vector2 p, uint index, float weight, uint color)
+		private Site (Vector2 p, uint index, Bub.Node node)
 		{
 //			if (lock != PrivateConstructorEnforcer)
 //			{
 //				throw new Error("Site constructor is private");
 //			}
-			Init (p, index, weight, color);
+			Init (p, index, node);
 		}
 		
-		private Site Init (Vector2 p, uint index, float weight, uint color)
+		private Site Init (Vector2 p, uint index, Bub.Node node)
 		{
 			_coord = p;
 			_siteIndex = index;
-			this.weight = weight;
-			this.color = color;
+			this.node = node;
 			_edges = new List<Edge> ();
 			_region = null;
 			return this;
@@ -152,7 +150,33 @@ namespace Delaunay
 			});
 			return _edges [0];
 		}
-		
+
+		//jf
+		public int neighborsCount() {return _edges.Count;}  
+
+		//jf
+		public Bub.Node neighbors(int i){ 
+			return NeighborSite(_edges[i]).node;
+		}
+
+		/*jf
+		public List<Bub.Node> NeighborNodes()
+		{
+			if (_edges == null || _edges.Count == 0) {
+				return new List<Bub.Node> ();
+			}
+//			if (_edgeOrientations == null) { 
+//				ReorderEdges ();
+//			} // I don't need edges to be in any particular order
+			List<Bub.Node> list = new List<Bub.Node> (_edges.Count);
+			Edge edge;
+			for (int i = 0; i < _edges.Count; i++) {
+				edge = _edges [i];
+				list.Add (NeighborSite(edge).node);
+			}
+			return list;
+		} */
+			
 		public List<Site> NeighborSites ()
 		{
 			if (_edges == null || _edges.Count == 0) {

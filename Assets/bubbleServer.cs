@@ -23,6 +23,7 @@ public class bubbleServer : MonoBehaviour {
 		if (dbgdsply.activeSelf) {
 			GameObject.Find ("Canvas/Scroll View/Viewport/myScrollContent").GetComponent<Text>().text = ss;
 		}
+		Debug.Log(s);
 	}
 
 	private static bool displayGrid;

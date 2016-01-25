@@ -65,33 +65,31 @@ namespace Delaunay
 			_sitesIndexedByLocation = null;
 		}
 		
-		public Voronoi (List<Vector2> points, List<uint> colors, Rect plotBounds)
+		public Voronoi (List<Bub.Node> nodes, Rect plotBounds) //jf
 		{
 			_sites = new SiteList ();
 			_sitesIndexedByLocation = new Dictionary <Vector2,Site> (); // XXX: Used to be Dictionary(true) -- weak refs. 
-			AddSites (points, colors);
+			AddSites (nodes);//jf
 			_plotBounds = plotBounds;
 			_triangles = new List<Triangle> ();
 			_edges = new List<Edge> ();
 			FortunesAlgorithm ();
 		}
 		
-		private void AddSites (List<Vector2> points, List<uint> colors)
-		{
-			int length = points.Count;
-			for (int i = 0; i < length; ++i) {
-				AddSite (points [i], (colors != null) ? colors [i] : 0, i);
+		private void AddSites (List<Bub.Node> nodes) //jf
+		{	Vector2 p = new Vector2();
+			
+			for (int i = 0; i < nodes.Count; ++i) {
+				Bub.Node node = nodes[i];
+				p.x = node.x; p.y = node.y;
+				//move toward zero, so stay within plotBounds. Guarantee unique position of all nodes
+				while (_sitesIndexedByLocation.ContainsKey(p)) p.x += (p.x<0)? UnityEngine.Random.Range(0,0.000001f): -UnityEngine.Random.Range(0,0.000001f);
+				Site site = Site.Create (p, (uint) i, node );
+				node.site = site; //backpointer, both node and site reference each other
+				_sites.Add (site);
+				_sitesIndexedByLocation [p] = site;
 			}
-		}
-		
-		private void AddSite (Vector2 p, uint color, int index)
-		{
-			if (_sitesIndexedByLocation.ContainsKey (p))
-				return; // Prevent duplicate site! (Adapted from https://github.com/nodename/as3delaunay/issues/1)
-			float weight = UnityEngine.Random.value * 100f;
-			Site site = Site.Create (p, (uint)index, weight, color);
-			_sites.Add (site);
-			_sitesIndexedByLocation [p] = site;
+
 		}
 
 		public List<Edge> Edges ()
@@ -99,31 +97,31 @@ namespace Delaunay
 			return _edges;
 		}
           
-		public List<Vector2> Region (Vector2 p)
-		{
-			Site site = _sitesIndexedByLocation [p];
-			if (site == null) {
-				return new List<Vector2> ();
-			}
-			return site.Region (_plotBounds);
-		}
-
-		// TODO: bug: if you call this before you call region(), something goes wrong :(
-		public List<Vector2> NeighborSitesForSite (Vector2 coord)
-		{
-			List<Vector2> points = new List<Vector2> ();
-			Site site = _sitesIndexedByLocation [coord];
-			if (site == null) {
-				return points;
-			}
-			List<Site> sites = site.NeighborSites ();
-			Site neighbor;
-			for (int nIndex =0; nIndex<sites.Count; nIndex++) {
-				neighbor = sites [nIndex];
-				points.Add (neighbor.Coord);
-			}
-			return points;
-		}
+//		public List<Vector2> Region (Vector2 p)
+//		{
+//			Site site = _sitesIndexedByLocation [p];
+//			if (site == null) {
+//				return new List<Vector2> ();
+//			}
+//			return site.Region (_plotBounds);
+//		}
+//
+//		// TODO: bug: if you call this before you call region(), something goes wrong :(
+//		public List<Vector2> NeighborSitesForSite (Vector2 coord)
+//		{
+//			List<Vector2> points = new List<Vector2> ();
+//			Site site = _sitesIndexedByLocation [coord];
+//			if (site == null) {
+//				return points;
+//			}
+//			List<Site> sites = site.NeighborSites ();
+//			Site neighbor;
+//			for (int nIndex =0; nIndex<sites.Count; nIndex++) {
+//				neighbor = sites [nIndex];
+//				points.Add (neighbor.Coord);
+//			}
+//			return points;
+//		} jf commented out
 
 		public List<Circle> Circles ()
 		{
@@ -199,10 +197,10 @@ namespace Delaunay
 			return _sites.Regions (_plotBounds);
 		}
 		
-		public List<uint> SiteColors (/*BitmapData referenceImage = null*/)
-		{
-			return _sites.SiteColors (/*referenceImage*/);
-		}
+//		public List<uint> SiteColors (/*BitmapData referenceImage = null*/)
+//		{
+//			return _sites.SiteColors (/*referenceImage*/);
+//		} jf
 		
 		/**
 		 * 
@@ -415,26 +413,26 @@ namespace Delaunay
 			return 0;
 		}
 
-		//jf Oct 2015
-		// I abuse color to hold node ids (indices into nodes).
-		// Given the x,y location of a node, returns the ids of neighboring nodes.
-		public List<int> NeighborIDs (Vector2 coord)
-		{
-			List<int> ids = new List<int> ();
-			Site site = _sitesIndexedByLocation [coord];
-			if (site == null) {
-				return ids;
-			}
-
-			ids.Add ((int)site.color); //list starts with the id of the source.
-			// It is conceivable that two sources have exactly the same coordinates, this permits discovery thereof
-
-			List<Site> nsites = site.NeighborSites ();
-			for (int i =0; i<nsites.Count; i++) {
-				ids.Add ((int)nsites [i].color);
-			}
-			return ids;
-		}
+//		//jf Oct 2015
+//		// I abuse color to hold node ids (indices into nodes).
+//		// Given the x,y location of a node, returns the ids of neighboring nodes.
+//		public List<int> NeighborIDs (Vector2 coord)
+//		{
+//			List<int> ids = new List<int> ();
+//			Site site = _sitesIndexedByLocation [coord];
+//			if (site == null) {
+//				return ids;
+//			}
+//
+//			ids.Add ((int)site.color); //list starts with the id of the source.
+//			// It is conceivable that two sources have exactly the same coordinates, this permits discovery thereof
+//
+//			List<Site> nsites = site.NeighborSites ();
+//			for (int i =0; i<nsites.Count; i++) {
+//				ids.Add ((int)nsites [i].color);
+//			}
+//			return ids;
+//		} jf jan 2016 color replaced by node reference
 
 	}
 }

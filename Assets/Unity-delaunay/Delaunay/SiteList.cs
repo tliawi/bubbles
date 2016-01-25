@@ -84,16 +84,16 @@ namespace Delaunay
 			return new Rect (xmin, ymin, xmax - xmin, ymax - ymin);
 		}
 
-		public List<uint> SiteColors (/*BitmapData referenceImage = null*/)
-		{
-			List<uint> colors = new List<uint> ();
-			Site site;
-			for (int i = 0; i< _sites.Count; i++) {
-				site = _sites [i];
-				colors.Add (/*referenceImage ? referenceImage.getPixel(site.x, site.y) :*/site.color);
-			}
-			return colors;
-		}
+//		public List<uint> SiteColors (/*BitmapData referenceImage = null*/)
+//		{
+//			List<uint> colors = new List<uint> ();
+//			Site site;
+//			for (int i = 0; i< _sites.Count; i++) {
+//				site = _sites [i];
+//				colors.Add (/*referenceImage ? referenceImage.getPixel(site.x, site.y) :*/site.color);
+//			}
+//			return colors;
+//		}jf
 
 		public List<Vector2> SiteCoords ()
 		{

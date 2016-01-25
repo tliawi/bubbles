@@ -26,9 +26,6 @@ public class Engine {
 	public static void deallocate(){
 		nodes.Clear (); //all the nodes, their links, their rules, their rules' closures of node references...
 	}
-
-	
-	public static int tickCounter { get; private set; }
 	
 	private static void doAllRules(){
 		for (int i=0; i < nodes.Count; i++) nodes[i].rulesAccion();
@@ -88,71 +85,44 @@ public class Engine {
 	private static long preVoronoi, inVoronoi, postVoronoi;
 	static void printVoronoiTimes(){
 		double sum = preVoronoi + inVoronoi + postVoronoi;
-		UnityEngine.Debug.Log(preVoronoi/sum+" "+inVoronoi/sum+" "+postVoronoi/sum);
+		UnityEngine.Debug.Log(sum/(1000*tickCounter)+" ms:"+preVoronoi/sum+" "+inVoronoi/sum+" "+postVoronoi/sum);
 	}
 
 	private static void makeNeighbors(){
+		
 		Stopwatch sw = new Stopwatch();
 		sw.Start();
 
 		float x, y, maxx = nodes[0].x, maxy = nodes[0].y, minx=nodes[0].x, miny=nodes[0].y;
-		List<Vector2> coords = new List<Vector2>();
-		List<uint>ids = new List<uint>();
+
 		for (int i=0; i < nodes.Count;i++){
 
-			ids.Add ((uint)i); //i = nodes[i].id
 			x = nodes[i].x; y = nodes[i].y;
 			if(float.IsNaN(x) || float.IsNaN (y) || float.IsInfinity(x) || float.IsInfinity (y)){
-				UnityEngine.Debug.Log ("makeNeighbors "+i+" bad x or y");
+				bubbleServer.debugDisplay("ERROR: makeNeighbors Nan or Inf "+i);
+				nodes[i].x = nodes[i].y = 33; //something!
 			}
 			if (maxx < x) maxx = x;
 			if (minx > x) minx = x;
 			if (maxy < y) maxy = y;
 			if (miny > y) miny = y;
-			coords.Add (new Vector2(x,y));
 		}
 
 		preVoronoi += sw.ElapsedTicks;
 
 		sw.Reset(); sw.Start();
-		//use "color" (second parm of Voronoi constructor) to map from voronoi sites to my nodes
-		Delaunay.Voronoi v = new Delaunay.Voronoi (coords, ids, new Rect(minx-1,miny-1, 2+maxx-minx, 2+maxy-miny));
+
+		Delaunay.Voronoi v = new Delaunay.Voronoi (Engine.nodes, new Rect(minx-1,miny-1, 2+maxx-minx, 2+maxy-miny));
 		inVoronoi += sw.ElapsedTicks;
 		sw.Reset(); sw.Start();
-
-		for (int i=0; i < nodes.Count;i++){
-			Bub.Node n = nodes[i];
-			if (n.id != i){
-				UnityEngine.Debug.Log ("i:"+i+" != n.id:"+n.id);
-			}
-			n.neighbors.Clear ();
-			List<int> neighborIDs = v.NeighborIDs (new Vector2(n.x, n.y));
-			if (neighborIDs.Count == 0){
-				UnityEngine.Debug.Log ("no neighborIDs");
-				continue;
-			}
-			
-			if (neighborIDs[0] != n.id){ // a very rare but possible condition caused by loss of numerical distinction due to the many independent influences (muscle, bone, gravity) on nodes
-				UnityEngine.Debug.Log ("nodes["+i+"] and nodes["+neighborIDs[0]+"] have identical coordinates. x:"+n.x+" y:"+n.y+" x:"+nodes[neighborIDs[0]].x+" y:"+nodes[neighborIDs[0]].y);
-				//so what to do? We have to deal with this situation. 
-				//Brute force arbitrarily add distinction so that it doesn't repeat itself
-				n.x += Random.Range (-0.001f, 0.001f);
-				n.y += Random.Range (-0.001f, 0.001f);
-				n.nx = n.x; n.ny = n.y; //at this stage should be no distinction between x,y and nx,ny
-			}
-			
-			for (int j=  1  ;j<neighborIDs.Count; j++){	
-				n.neighbors.Add (nodes[neighborIDs[j]]);
-			}
-		}
-
+	
 		postVoronoi += sw.ElapsedTicks;
-		
+		sw.Reset();
 	}
 	
 	private static void tryToEatNeighbors()
-	{	for (int i=0; i<nodes.Count; i++) if (nodes[i].isEater ()) for (int j=0;j<nodes[i].neighbors.Count; j++) 
-		nodes[i].tryEat(nodes[i].neighbors[j]);
+	{	for (int i=0; i<nodes.Count; i++) if (nodes[i].isEater ()) for (int j=0;j<nodes[i].site.neighborsCount(); j++) 
+		nodes[i].tryEat(nodes[i].site.neighbors(j));
 	}
 
 	private static void doScheduledRelocations(){
@@ -163,20 +133,20 @@ public class Engine {
 	static long makeNeighborsTime, tryToEatNeighborsTime, doAllRulesTime, activateAllTime, updatePositionsTime, relocationsTime, photoOomphTime;
 	static void printTimes(){
 		double sumTimes = makeNeighborsTime+tryToEatNeighborsTime+doAllRulesTime+activateAllTime+updatePositionsTime+relocationsTime+photoOomphTime;
-		UnityEngine.Debug.Log(makeNeighborsTime/sumTimes+" "+tryToEatNeighborsTime/sumTimes+" "+doAllRulesTime/sumTimes+" "+activateAllTime/sumTimes+" "+updatePositionsTime/sumTimes+" "+relocationsTime/sumTimes+" "+photoOomphTime/sumTimes);
+		UnityEngine.Debug.Log(sumTimes/(1000*tickCounter)+" ms:"+makeNeighborsTime/sumTimes+" "+tryToEatNeighborsTime/sumTimes+" "+doAllRulesTime/sumTimes+" "+activateAllTime/sumTimes+" "+updatePositionsTime/sumTimes+" "+relocationsTime/sumTimes+" "+photoOomphTime/sumTimes);
 	}
 		
+	public static int tickCounter { get; private set; }
 
 	//called every fixedUpdate
 	public static void step(){
 		Stopwatch sw = new Stopwatch();
 
-		tickCounter++;
-
 		//x,y == nx, ny
 							//checkXY("pre makeNeighbors");
 		sw.Start();
-		makeNeighbors(); //look around, create voronoi neighbor graph
+		// makeNeighbors MUST run on the first iteration!
+		if (tickCounter%5 == 0) makeNeighbors(); //look around, create voronoi neighbor graph.
 		makeNeighborsTime += sw.ElapsedTicks;
 
 		//collision detection based on voronoi neighbors
@@ -214,7 +184,9 @@ public class Engine {
 		shareOomph();
 		photoOomphTime += sw.ElapsedTicks;
 
-		if (tickCounter%1000 == 1) { printTimes(); printVoronoiTimes();}
+		tickCounter++;
+
+	//	if (tickCounter%1000 == 0) { printTimes(); printVoronoiTimes();}
 	}
 	
 

@@ -349,7 +349,6 @@ public class Bub {
 		public float burden;
 
 		public List<Bone> bones;
-		public List<Node> neighbors;
 
 		public List<Muscle> enemyMuscles;
 
@@ -365,6 +364,8 @@ public class Bub {
 
 		public List<Rules.Rule> rules;
 
+		public Delaunay.Site site; //assigned during voronoi calc to return voronoi neighbors via site.neighbors(i), site.neighborsCount()
+
 		public Node givenTarget {get; private set;}
 
 		public Node(int id0, float x0, float y0, float radius0 ){
@@ -374,7 +375,6 @@ public class Bub {
         	oomph = 0.0f;
 			dna = 0L;
 			bones = new List<Bone>();
-			neighbors = new List<Node>();
 			trusters = new List<Node>();
 			states = new Dictionary<string,int>();
 			rules = new List<Rules.Rule>();
@@ -388,7 +388,6 @@ public class Bub {
 			retakeBurden();
 			clearTrust();
 			clearBones();
-			neighbors.Clear();
 			states.Clear();
 			rules.Clear();
 			enemyMuscles.Clear();
@@ -877,14 +876,17 @@ public class Bub {
 	    //the neighbors list already does that.
 
 		public Node closestStranger(){
-			Node n = null;
+			Node closest = null; Node nbor;
 			float closestDistance = float.MaxValue;
 
-			for (int i=0;i<neighbors.Count;i++)if (neighbors[i].clan != clan && distance(neighbors[i]) < closestDistance){
-				n = neighbors[i];
-				closestDistance = distance(n);
+			for (int i=0;i<site.neighborsCount();i++){
+				nbor = site.neighbors(i);
+				if (nbor.clan != clan && distance(nbor) < closestDistance){
+					closest = nbor;
+					closestDistance = distance(nbor);
+				}
 			}
-			return n;
+			return closest;
 		}
 
 		//These are heuristic, we'll see how effective they are...
@@ -893,8 +895,8 @@ public class Bub {
 			float bestOomph = 0f;
 			Node them = null, bestThem = null;
 
-			for (int i=0;i<neighbors.Count;i++)
-			{	them = neighbors[i];
+			for (int i=0;i<site.neighborsCount();i++)
+			{	them = site.neighbors(i);
 				if (them.clan != clan)
 				{	if (them.isEater() && them.oomph*linkEfficiency(them,this) > this.oomph*linkEfficiency(this,them)) return null; //oops, there's somebody dangerous out there
 					float this2theirs = them.oomph*linkEfficiency(this,them);
@@ -911,8 +913,8 @@ public class Bub {
 			float bestOomph = 0f;
 			Node them = null, bestThem = null;
 			
-			for (int i=0;i<neighbors.Count;i++)
-			{	them = neighbors[i];
+			for (int i=0;i<site.neighborsCount();i++)
+			{	them = site.neighbors(i);
 				if (them.clan != clan) //assume trustgroup is a subset of clan
 				{	if (them.isEater() && them.oomph*linkEfficiency(them,this) > this.oomph*linkEfficiency(this,them)){ //heuristic for which of us would win a struggle
 						float mine2Them = this.oomph*linkEfficiency(them,this); //heuristic for how much I'm worth to them
