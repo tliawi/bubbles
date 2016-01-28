@@ -133,7 +133,9 @@ public class Grid {
 					if (anode.rules[j].muscles(k).notCut){
 						targetNode = anode.rules[j].muscles(k).target;
 						dist = anode.distance (targetNode);
-						r = 3.0f*Mathf.Sqrt(anode.rules[j].muscles(k).strength());//the constant factor is purely display taste
+						if (bubbleServer.constantLinkWidth) r = anode.radius;
+						else r = 3.0f*Mathf.Sqrt(anode.rules[j].muscles(k).strength());//the constant factor is purely display taste
+						
 						dx = r*(targetNode.y - anode.y)/dist;
 						dy = r*(targetNode.x - anode.x)/dist;
 
@@ -142,13 +144,14 @@ public class Grid {
 							new Vector3(anode.x + dx, anode.y - dy), 
 							new Vector3(anode.x - dx, anode.y + dy),
 							uvClass, vix);
+						if (vix == vertices.Length) return true; //not enough vertices etc allocated
 					}
 				}
 			}
-			if (vix == vertices.Length) return true; //not enough vertices etc allocated
 		}
 
 		//fake up unused vertices and triangles???
+		for (int i = vix; i<vertices.Length; i++) vertices[i] = Vector3.zero;
 
 		return false; //had adequate number of vertices etc allocated
 	}

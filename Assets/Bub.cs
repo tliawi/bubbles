@@ -101,13 +101,23 @@ public class Bub {
 
 
 
-	//bitNumber 0 is least significant bit
+	//bitNumber 0 is least significant bit. MUST BE IDENTICAL TO CScommon.testBit
 	public static bool testBit(long dna, int bit)
 	{ return ((dna & (1L << bit)) != 0L);}
 
 	public static long setBit(long dna, int bit, bool value)
 	{	if (testBit(dna, bit) != value) dna = dna ^ (1L<<bit);
 		return dna;
+	}
+
+	//leftBit >= rightBit specifies a field of bits within dna. SetBit sets that field of the dna to the given value.
+	//Any bits of value above the field size will be ignored.
+	//Bits can be recovered using CScommon.dnaNumber(dna,leftBit,rightBit)
+	public static long setBit(long dna, int leftBit, int rightBit, int value)
+	{	long mask = (1<<(1+leftBit-rightBit))-1; // difference of 0 becomes 1b, 1 becomes 11b, 2 becomes 111b etc
+		long lvalue = ((long)value & mask) << rightBit; // kill off all but that many bits of value, and shift left into place
+		mask = ~(mask << rightBit); //shift mask into place and complement, so it is a bunch of 1's with a hole (of zeros) in it
+		return (dna & mask) | lvalue; // clear DNA in the hole, and put value into the hole
 	}
 
 
@@ -423,7 +433,7 @@ public class Bub {
 			if (trustHead == head.trustHead) return; //I already do
 
 			if (trustHead == this){
-				//everyone who trusted me now trusts whoever head trusts
+				//everyone who trusted me now trusts whomever head trusts
 				foreach (Node n in trusters){
 					head.trustHead.addTruster(n);
 				}
@@ -591,6 +601,10 @@ public class Bub {
 			dna = setBit(dna, bitNumber, value); 
 			//maxOomph = CScommon.maxOomph(radius,dna); 
 			return this;}
+		public Node setDna(int leftBit, int rightBit, int value) { 
+			dna = setBit(dna, leftBit, rightBit, value); 
+			//maxOomph = CScommon.maxOomph(radius,dna); 
+			return this;}
 		public bool testDna(int bitNumber) { return testBit(dna, bitNumber);}
 
 		public bool overlaps(Node node) { return distance(node) < radius + node.radius; }
@@ -614,6 +628,24 @@ public class Bub {
 			oomph +=  photoYield*radius2 * (maxOomph - oomph )/maxOomph; //oomph will never quite attain maxOomph, photosyn gets more inefficient as it approaches maxOomph
 		}
 
+		public void bless(Node target){
+
+			float targetOrgCanEat = target.orgHunger ();
+			float thisOrgCanGive = this.orgOomph()/2;
+			float thisSends = Mathf.Min(targetOrgCanEat, thisOrgCanGive);
+			float targetReceives = thisSends * linkEfficiency(this,target);
+
+			if (thisSends > 0) {//guard against zeroDivide
+				foreach (var orgN in this.trustGroup()) { 
+					orgN.oomph -= thisSends*(orgN.oomph/thisOrgCanGive);
+					if (orgN.oomph < minPosValue) orgN.oomph = 0; //mostly to make sure it never goes a smidgeon negative
+				}
+			}
+
+			if (targetReceives>0) {
+				foreach (var orgN in target.trustGroup()) orgN.oomph += targetReceives*(orgN.maxOomph-orgN.oomph)/targetOrgCanEat;
+			}
+		}
 		
 		public float supply { get {return oomph/maxOomph;} }
 
@@ -759,9 +791,10 @@ public class Bub {
 			if (registeredWinners.Count > 0){
 				List<int> registeredLosers = loser.registeredOrgNodes();
 				if (registeredLosers.Count > 0 ) {
+					
 					Engine.scheduledOrgRelocations.Add(loser.trustHead);
-
-					foreach (int loserId in registeredLosers) foreach (int winnerId in registeredWinners) bubbleServer.playerWinLose(winnerId, loserId);
+					foreach (int winnerId in registeredWinners) bubbleServer.scorePlus(winnerId);
+					foreach (int loserId in registeredLosers) bubbleServer.scoreMinus(loserId);
 				}
 			}
 		}

@@ -37,9 +37,15 @@ namespace Delaunay
 		public Rect plotBounds {
 			get { return _plotBounds;}
 		}
-		
+
+		//jfcomment: This is never called, so pools are not maintained. I tried calling it before every use of new Voronoi, but it only slowed things down.
+		//Some of the _pools are used during voronoi computation, but the _sites._sites pool is only pushed into on _sites.Dispose. 
+		//_pools are statics. Since I now maintain pointers to sites in Engine.nodes, there is no need to pool sites, and calling _sites.Dispose
+		//would fill up the _sites pool, and make a memory leak. 
+		//I think the coder of Voronoi made a mistake to abuse iDispose and dispose to frustrate the gc (keep pools), it's the exact opposite of their normal usage. 
+		//It would have been better to name them "recycle" or something.
 		public void Dispose ()
-		{
+		{   bubbleServer.debugDisplay("ERROR, Voronoi.Dispose!!");
 			int i, n;
 			if (_sites != null) {
 				_sites.Dispose ();
@@ -67,7 +73,7 @@ namespace Delaunay
 		
 		public Voronoi (List<Bub.Node> nodes, Rect plotBounds) //jf
 		{
-			_sites = new SiteList ();
+			if (_sites == null) _sites = new SiteList (); //thereafter maintain it in parallel with nodes
 			_sitesIndexedByLocation = new Dictionary <Vector2,Site> (); // XXX: Used to be Dictionary(true) -- weak refs. 
 			AddSites (nodes);//jf
 			_plotBounds = plotBounds;
@@ -84,10 +90,11 @@ namespace Delaunay
 				p.x = node.x; p.y = node.y;
 				//move toward zero, so stay within plotBounds. Guarantee unique position of all nodes
 				while (_sitesIndexedByLocation.ContainsKey(p)) p.x += (p.x<0)? UnityEngine.Random.Range(0,0.000001f): -UnityEngine.Random.Range(0,0.000001f);
-				Site site = Site.Create (p, (uint) i, node );
-				node.site = site; //backpointer, both node and site reference each other
-				_sites.Add (site);
-				_sitesIndexedByLocation [p] = site;
+				if (node.site == null) node.site = Site.Create (p, (uint) i, node );
+				else node.site.Init(p, (uint) i, node );// both node and site reference each other
+				if (i >= _sites.Count) _sites.Add (node.site);
+				else _sites.Plant(node.site,i);
+				_sitesIndexedByLocation [p] = node.site;
 			}
 
 		}

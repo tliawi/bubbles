@@ -19,9 +19,10 @@ namespace Delaunay
 			_sites = new List<Site> ();
 			_sorted = false;
 		}
-		
+
+		//jf is never called
 		public void Dispose ()
-		{
+		{	bubbleServer.debugDisplay("ERROR, SiteList.Dispose!!");
 			if (_sites != null) {
 				for (int i = 0; i < _sites.Count; i++) {
 					Site site = _sites [i];
@@ -38,6 +39,12 @@ namespace Delaunay
 			_sites.Add (site);
 			return _sites.Count;
 		}
+
+		//jf. Only valid for 0 <= index < _sites.Count
+		public void Plant (Site site, int index){
+			_sorted = false;
+			_sites[index]=site;
+		}//jf
 		
 		public int Count {
 			get { return _sites.Count;}

@@ -34,6 +34,7 @@ public class bubbleServer : MonoBehaviour {
 
 	private static bool paused = true;
 	//private static int gamePhase = 1; //1 if paused start of new game, 2 if game running
+	public static bool constantLinkWidth = false;
 
 	private static float normScale;
 	private static float abnormScale;
@@ -42,6 +43,8 @@ public class bubbleServer : MonoBehaviour {
 	private static int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
 	private static float vegStartFuel, nonvegStartFuel;
 	public static int popcorn {get; private set;} 
+
+	private static List<int> scheduledScores;
 
 	private void resetDefaultScales(int newGame){
 		switch (newGame) {
@@ -133,7 +136,7 @@ public class bubbleServer : MonoBehaviour {
 		}
 	}
 
-	private List<JKStruct> referenceLinkJK;
+	private JKStruct[] referenceLinkJK;
 
 	private int oldTickCounter;
 	private Text reminderText;
@@ -144,6 +147,8 @@ public class bubbleServer : MonoBehaviour {
 		public string name;
 		public int scorePlus;
 		public int scoreMinus;
+		public float performance;
+		public byte neither0Eater1Eaten2;
 
 		public PlayerInfo(){
 			connectionId = -1;
@@ -151,7 +156,7 @@ public class bubbleServer : MonoBehaviour {
 			name = "";
 		}
 
-		public void clearScore(){ scorePlus = 0; scoreMinus=0;}
+		public void clearScore(){ scorePlus = 0; scoreMinus=0; performance = 0; neither0Eater1Eaten2 = 0; }
 	}
 
 	private static Dictionary<int, PlayerInfo> connectionIdPlayerInfo = new Dictionary<int, PlayerInfo>();
@@ -164,15 +169,32 @@ public class bubbleServer : MonoBehaviour {
 
 	public static bool registered(int nodeId) {return nodeIdPlayerInfo.ContainsKey (nodeId);}
 
-	public static void playerWinLose(int winnerId, int loserId){
 
-		if (nodeIdPlayerInfo.ContainsKey (winnerId) && nodeIdPlayerInfo.ContainsKey(loserId)) { //don't track interactions between non-registrants
 
-			nodeIdPlayerInfo[winnerId].scorePlus += 1;
-			nodeIdPlayerInfo[loserId].scoreMinus += 1;
+//	public static void playerWinLose(int winnerId, int loserId){
+//
+//		if (nodeIdPlayerInfo.ContainsKey (winnerId) && nodeIdPlayerInfo.ContainsKey(loserId)) { //don't track interactions between non-registrants
+//
+//			nodeIdPlayerInfo[winnerId].scorePlus += 1;
+//			nodeIdPlayerInfo[loserId].scoreMinus += 1;
+//
+//			send2ScoresToAll(winnerId, loserId);
+//
+//		}
+//	}
 
-			send2ScoresToAll(winnerId, loserId);
 
+	public static void scorePlus(int nodeId){
+		if (nodeIdPlayerInfo.ContainsKey(nodeId)) { 
+			nodeIdPlayerInfo[nodeId].scorePlus += 1;
+			if (!scheduledScores.Contains(nodeId)) scheduledScores.Add(nodeId);
+		}
+	}
+
+	public static void scoreMinus(int nodeId){
+		if (nodeIdPlayerInfo.ContainsKey(nodeId)) { 
+			nodeIdPlayerInfo[nodeId].scoreMinus += 1;
+			if (!scheduledScores.Contains(nodeId)) scheduledScores.Add(nodeId);
 		}
 	}
 
@@ -247,7 +269,9 @@ public class bubbleServer : MonoBehaviour {
 
 		referenceInitMsg = null;
 		referenceLinkMsg = null;
-		referenceLinkJK = null;
+		referenceLinkJK = new JKStruct[0];
+
+		scheduledScores = null;
 
 		Grid.deallocate ();
 		Engine.deallocate(); //kills all nodes, with their rules, with their muscles, so whole bots setup is destroyed
@@ -304,6 +328,23 @@ public class bubbleServer : MonoBehaviour {
 //			xing = !xing; 
 //		}
 
+		if (Input.GetKeyDown(KeyCode.T)){ //testing sandbox
+			long lng;
+			Debug.Log(CScommon.longToString(Bub.setBit(1023L,0,0,1)));
+			Debug.Log(CScommon.longToString(Bub.setBit(1023L,0,0,0)));
+			lng = Bub.setBit(1023L,3,2,0);
+			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+			lng = Bub.setBit(1023L,3,2,1);
+			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+			lng = Bub.setBit(1023L,3,2,2);
+			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+			lng = Bub.setBit(1023L,3,2,3);
+			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+
+			lng = Bub.setBit(1023L,14,4,255*2);
+			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,14,4));
+
+		}
 
 		if (Input.GetKeyDown (KeyCode.S) && paused){ //step
 			togglePause();
@@ -312,6 +353,10 @@ public class bubbleServer : MonoBehaviour {
 			paused = true;
 		}
 
+		if (Input.GetKeyDown(KeyCode.L)){
+			constantLinkWidth = !constantLinkWidth;
+		}
+			
 		if (Input.GetKeyDown (KeyCode.G)) { 
 			displayGrid = !displayGrid; 
 		} 
@@ -400,6 +445,7 @@ public class bubbleServer : MonoBehaviour {
 	void initCurrentGame()
 	{	
 		paused = true;
+		scheduledScores  = new List<int>();
 
 		Bub.initialize();
 		Bots.initialize(currentGame);
@@ -457,6 +503,7 @@ public class bubbleServer : MonoBehaviour {
 		NetworkServer.RegisterHandler (CScommon.restartMsgType, onRestartMsg);
 		NetworkServer.RegisterHandler (CScommon.speedMsgType, onSpeedMsg);
 		NetworkServer.RegisterHandler (CScommon.broadCastMsgType, onBroadCastMsg);
+		NetworkServer.RegisterHandler (CScommon.blessMsgType, onBlessMsg);
 
 	}
 	
@@ -485,7 +532,7 @@ public class bubbleServer : MonoBehaviour {
 	void sendGameSize(int connectionId){
 		CScommon.GameSizeMsg gameSizeMsg = new CScommon.GameSizeMsg();
 		gameSizeMsg.numNodes = Engine.nodes.Count;
-		gameSizeMsg.numLinks = referenceLinkJK.Count;
+		gameSizeMsg.numLinks = referenceLinkMsg.links.Length;
 		gameSizeMsg.worldRadius = Bub.worldRadius;
 		checkSendToClient(connectionId,CScommon.gameSizeMsgType,gameSizeMsg);
 		debugDisplay("gameSize sent to conId "+connectionId);
@@ -532,10 +579,20 @@ public class bubbleServer : MonoBehaviour {
 		Bots.onTarget(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, targetMsg.nodeIndex, targetMsg.linkType, targetMsg.hand);
 	}
 
+	private void onBlessMsg(NetworkMessage netMsg){
+		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId < 0) return;
+
+		CScommon.intMsg blessMsg = netMsg.ReadMessage<CScommon.intMsg>();
+
+		if (blessMsg.value < 0 || blessMsg.value >= Engine.nodes.Count) return;
+
+		Engine.nodes[connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId].bless(Engine.nodes[blessMsg.value]);
+	}
+
 	private void onTurnMsg(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId <0) return;
 		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
-		debugDisplay("turn "+intMsg.value+" on node "+connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId);
+		//debugDisplay("turn "+intMsg.value+" on node "+connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId);
 		Bots.onTurn(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, intMsg.value);
 	}
 
@@ -614,7 +671,8 @@ public class bubbleServer : MonoBehaviour {
 		else newNodeId = Engine.nodes[nixMsg.value].trustHead.id; // move to the id of the head of that organism
 
 		//enforce that only one player can mount a node.
-		if (nodeIdPlayerInfo.ContainsKey(newNodeId))newNodeId = oldNodeId;
+		//if (nodeIdPlayerInfo.ContainsKey(newNodeId))newNodeId = oldNodeId;
+		if (!Bots.mountable(newNodeId)) return;
 
 		nixMsg.value = newNodeId;
 		checkSendToClient(conId,CScommon.nodeIdMsgType,nixMsg);
@@ -625,11 +683,11 @@ public class bubbleServer : MonoBehaviour {
 		//newNodeId != oldNodeId
 	
 		connectionIdPlayerInfo[conId].nodeId = newNodeId;
-		connectionIdPlayerInfo[conId].clearScore ();
+		connectionIdPlayerInfo[conId].clearScore();
 
 		if (oldNodeId >= 0) {
 			nodeIdPlayerInfo.Remove (oldNodeId);
-			Bots.dismount(oldNodeId);
+			if (!Bots.dismount(oldNodeId)) debugDisplay("Error, onRequestNodeId oldNodeId not mounted");
 		}
 
 		if (newNodeId >= 0) {
@@ -705,7 +763,7 @@ public class bubbleServer : MonoBehaviour {
 		int i = 0;
 		foreach (int nodeId in nodeIdPlayerInfo.Keys){
 			PlayerInfo pi = nodeIdPlayerInfo[nodeId];
-			if (nnmsg.arry[i].nodeId != nodeId) debugDisplay("error in sendAllNodeNames");
+			if (pi.nodeId != nodeId) debugDisplay("error in sendAllNodeNames");
 			nnmsg.arry[i].nodeId = pi.nodeId; // == nodeId
 			nnmsg.arry[i].name = pi.name;
 			i += 1;
@@ -715,7 +773,6 @@ public class bubbleServer : MonoBehaviour {
 
 	private static void sendAllScoresToClient(int connectionId){
 		CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
-		smsg.zeroAteOne = false;
 		smsg.arry = new CScommon.ScoreStruct[nodeIdPlayerInfo.Count];
 		int i = 0;
 		foreach (int nodeId in nodeIdPlayerInfo.Keys){
@@ -728,26 +785,26 @@ public class bubbleServer : MonoBehaviour {
 		checkSendToClient(connectionId,CScommon.scoreMsgType,smsg);
 	}
 	
-	private static void send2ScoresToAll(int winnerId, int loserId){
+	private static void sendScheduledScores(){
 		PlayerInfo pi;
-		if (nodeIdPlayerInfo.ContainsKey(winnerId)  && nodeIdPlayerInfo.ContainsKey(loserId)){
-			CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
-			smsg.zeroAteOne = true;
-			smsg.arry = new CScommon.ScoreStruct[2];
+		if (scheduledScores.Count == 0) return;
+
+		CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
+		smsg.arry = new CScommon.ScoreStruct[scheduledScores.Count];
+
+		for (int i=0; i<scheduledScores.Count; i++) {
 			
-			pi = nodeIdPlayerInfo[winnerId];
-			smsg.arry[0].nodeId = pi.nodeId;
-			smsg.arry[0].plus = pi.scorePlus; 
-			smsg.arry[0].minus = pi.scoreMinus;
-			
-			pi = nodeIdPlayerInfo[loserId];
-			smsg.arry[1].nodeId = pi.nodeId;
-			smsg.arry[1].plus = pi.scorePlus; 
-			smsg.arry[1].minus = pi.scoreMinus;
-			
-			NetworkServer.SendToAll (CScommon.scoreMsgType,smsg);
+			pi = nodeIdPlayerInfo[scheduledScores[i]];
+			smsg.arry[i].nodeId = pi.nodeId;
+			smsg.arry[i].plus = pi.scorePlus; 
+			smsg.arry[i].minus = pi.scoreMinus;
+			smsg.arry[i].neither0Eater1Eaten2 = pi.neither0Eater1Eaten2;
 		}
-	}
+
+		NetworkServer.SendToAll (CScommon.scoreMsgType,smsg);
+
+		scheduledScores.Clear();
+	}	
 
 
 	private static void send1or2NodeNamesToAll(int nodeId0, string name0, int nodeId1=int.MaxValue, string name1 = ""){
@@ -848,7 +905,8 @@ public class bubbleServer : MonoBehaviour {
 		return sni;
 	}
 
-
+	//referenceInitMsg.linkId, and referenceLinkJK are write once, read many times, i.e. must never change. 
+	//The linkId identifies the row of the referenceMsg. Also, the sourceID of each row must never change.
 	void generateReferences(){
 
 		referenceInitMsg = fillInInitMsg(allocateInitMsg(Engine.nodes.Count),0);
@@ -861,13 +919,14 @@ public class bubbleServer : MonoBehaviour {
 				linkCount += Engine.nodes[i].rules[j].musclesCount; 
 		}
 
-		referenceLinkJK = new List<JKStruct>();
+		referenceLinkJK = new JKStruct[linkCount];
 		referenceLinkMsg = new CScommon.LinksMsg();
 		referenceLinkMsg.links = new CScommon.LinkInfo[linkCount];
 
-		for (int i=0, lnkcntr = 0; i<Engine.nodes.Count;i++) { 
+		int lnkcntr = 0;
+		for (int i=0; i<Engine.nodes.Count;i++) { 
 			for (int j=0; j<Engine.nodes[i].rules.Count; j++) for (int k = 0; k<Engine.nodes[i].rules[j].musclesCount; k++) {
-				referenceLinkJK.Add(new JKStruct(j,k));
+				referenceLinkJK[lnkcntr] = new JKStruct(j,k);
 				Bub.Muscle muscle = Engine.nodes[i].rules[j].muscles (k);
 				referenceLinkMsg.links[lnkcntr].linkId = lnkcntr;
 				referenceLinkMsg.links[lnkcntr].linkData.enabled = muscle.enabled;
@@ -877,7 +936,7 @@ public class bubbleServer : MonoBehaviour {
 				lnkcntr += 1;
 			}
 			for (int j=0; j<Engine.nodes[i].bones.Count; j++) {
-				referenceLinkJK.Add(new JKStruct(j,-1));
+				referenceLinkJK[lnkcntr] = new JKStruct(j,-1);
 				referenceLinkMsg.links[lnkcntr].linkId = lnkcntr;
 				referenceLinkMsg.links[lnkcntr].linkData.enabled = true;
 				referenceLinkMsg.links[lnkcntr].linkData.linkType = CScommon.LinkType.bone;
@@ -913,6 +972,9 @@ public class bubbleServer : MonoBehaviour {
 
 	}
 
+
+	//checkForLinkRevisions is the only consumer of referenceLinkJK content
+	//which is written elsewhere, but only read here
 	void checkForLinkRevisions(){
 		Bub.Node source;
 

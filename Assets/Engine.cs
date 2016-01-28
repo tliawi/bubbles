@@ -112,7 +112,9 @@ public class Engine {
 
 		sw.Reset(); sw.Start();
 
-		Delaunay.Voronoi v = new Delaunay.Voronoi (Engine.nodes, new Rect(minx-1,miny-1, 2+maxx-minx, 2+maxy-miny));
+		//if (voronoi != null) voronoi.Dispose(); slowed things down! pools not efficiently implemented
+
+		Delaunay.Voronoi voronoi = new Delaunay.Voronoi (Engine.nodes, new Rect(minx-1,miny-1, 2+maxx-minx, 2+maxy-miny));
 		inVoronoi += sw.ElapsedTicks;
 		sw.Reset(); sw.Start();
 	
@@ -190,7 +192,7 @@ public class Engine {
 
 		tickCounter++;
 
-	//	if (tickCounter%1000 == 0) { printTimes(); printVoronoiTimes();}
+		if (tickCounter%1000 == 0) { printTimes(); printVoronoiTimes();}
 	}
 	
 

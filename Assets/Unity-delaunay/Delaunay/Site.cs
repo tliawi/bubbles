@@ -94,8 +94,8 @@ namespace Delaunay
 			Init (p, index, node);
 		}
 		
-		private Site Init (Vector2 p, uint index, Bub.Node node)
-		{
+		public Site Init (Vector2 p, uint index, Bub.Node node) //jf made public
+		{	Clear(); //jf added, so I can recycle used sites
 			_coord = p;
 			_siteIndex = index;
 			this.node = node;
@@ -114,9 +114,12 @@ namespace Delaunay
 			Clear ();
 			_coord = p;
 		}
-		
+
+		//jf each site is preserved in nodes[i].site, and is garbage collected when nodes are.
+		//So if I kept a reference in static _pool, that would make a memory leak, because I no longer pop them out of there, instead recycling node.site. 
+		//So I never want anything in this Site._pool. This is the only way stuff gets in there.
 		public void Dispose ()
-		{
+		{	bubbleServer.debugDisplay("ERROR: Site.Dispose!");
 //			_coord = null;
 			Clear ();
 			_pool.Push (this);
