@@ -148,7 +148,7 @@ public class bubbleServer : MonoBehaviour {
 		public int scorePlus;
 		public int scoreMinus;
 		public float performance;
-		public byte neither0Eater1Eaten2;
+		public byte neither0Winner1Loser2;
 
 		public PlayerInfo(){
 			connectionId = -1;
@@ -156,7 +156,7 @@ public class bubbleServer : MonoBehaviour {
 			name = "";
 		}
 
-		public void clearScore(){ scorePlus = 0; scoreMinus=0; performance = 0; neither0Eater1Eaten2 = 0; }
+		public void clearScore(){ scorePlus = 0; scoreMinus=0; performance = 0; neither0Winner1Loser2 = 0; }
 	}
 
 	private static Dictionary<int, PlayerInfo> connectionIdPlayerInfo = new Dictionary<int, PlayerInfo>();
@@ -798,7 +798,7 @@ public class bubbleServer : MonoBehaviour {
 			smsg.arry[i].nodeId = pi.nodeId;
 			smsg.arry[i].plus = pi.scorePlus; 
 			smsg.arry[i].minus = pi.scoreMinus;
-			smsg.arry[i].neither0Eater1Eaten2 = pi.neither0Eater1Eaten2;
+			smsg.arry[i].neither0Winner1Loser2 = pi.neither0Winner1Loser2;
 		}
 
 		NetworkServer.SendToAll (CScommon.scoreMsgType,smsg);
@@ -877,15 +877,13 @@ public class bubbleServer : MonoBehaviour {
 		if (!s.Equals (oldConnections)){ debugDisplay(oldConnections + " /"); debugDisplay(s); oldConnections = s;}
 
 		while ( start+segmentLength <= Engine.nodes.Count ){
-			//NetworkServer.SendToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(segmentLength), start));
 			//reliable SendToAll fails with "ChannelBuffer buffer limit of 16 packets reached." if client is paused, like for dragging window around on screen
-			//unity bug: sendbychanneltoall dies on disconnect
+			//unity pause button: if set, sendbychanneltoall pauses editor on disconnect
 			NetworkServer.SendByChannelToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(segmentLength), start), Channels.DefaultUnreliable);
 			start += segmentLength;
 		}
 
 		if (start < Engine.nodes.Count){
-			//SendToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(Engine.nodes.Count-start), start));
 			NetworkServer.SendByChannelToAll (CScommon.updateMsgType, fillInUpdateMsg(allocateUpdateMsg(Engine.nodes.Count-start), start), Channels.DefaultUnreliable);
 		}
 
@@ -894,6 +892,8 @@ public class bubbleServer : MonoBehaviour {
 		checkForInitRevisions();
 
 		checkForLinkRevisions();
+
+		sendScheduledScores();
 
 	}
 

@@ -107,8 +107,8 @@ public static class CScommon {
 		public int nodeId;
 		public int plus;
 		public int minus;
-		public float performance; // recent rate at which this player has generated plus (and avoided minus).
-		public byte neither0Eater1Eaten2; //0 if is an initial score, like when you first join an ongoing game. Nobody got eaten.
+		public byte  neither0Winner1Loser2; //0 if is an initial score, like when you first join an ongoing game. Nobody got eaten.
+	//	public float performance; // recent rate at which this player has generated plus (and avoided minus).
 	}
 
 	public class ScoreMsg: MessageBase{
