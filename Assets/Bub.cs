@@ -793,8 +793,8 @@ public class Bub {
 				if (registeredLosers.Count > 0 ) {
 					
 					Engine.scheduledOrgRelocations.Add(loser.trustHead);
-					foreach (int winnerId in registeredWinners) bubbleServer.scorePlus(winnerId);
-					foreach (int loserId in registeredLosers) bubbleServer.scoreMinus(loserId);
+					foreach (int winnerId in registeredWinners) bubbleServer.scoreWinner(winnerId);
+					foreach (int loserId in registeredLosers) bubbleServer.scoreLoser(loserId);
 				}
 			}
 		}

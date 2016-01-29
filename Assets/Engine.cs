@@ -192,7 +192,7 @@ public class Engine {
 
 		tickCounter++;
 
-		if (tickCounter%1000 == 0) { printTimes(); printVoronoiTimes();}
+		//if (tickCounter%1000 == 0) { printTimes(); printVoronoiTimes();}
 	}
 	
 

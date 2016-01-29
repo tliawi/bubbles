@@ -108,7 +108,8 @@ public static class CScommon {
 		public int plus;
 		public int minus;
 		public byte  neither0Winner1Loser2; //0 if is an initial score, like when you first join an ongoing game. Nobody got eaten.
-	//	public float performance; // recent rate at which this player has generated plus (and avoided minus).
+		public float performance; // recent rate at which this player has generated plus (and avoided minus).
+		public long gameMilliseconds;
 	}
 
 	public class ScoreMsg: MessageBase{
@@ -251,5 +252,7 @@ public static class CScommon {
 	//the returned value will be between 0 and 2^(leftBit-rightBit)-1;
 	public static long dnaNumber(long dna, int leftBit, int rightBit)
 	{	return (dna >> rightBit) & ~(int.MaxValue << (1+leftBit-rightBit)); }
+
+	public static float performanceHalfLifeMilliseconds = 5*60*1000; // number of milliseconds until performance reverts half way to zero
 		
 }
