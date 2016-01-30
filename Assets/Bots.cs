@@ -46,15 +46,7 @@ public class Bots
 		Rules.NearFarPush1Pull2Cmdr.install(head, tailList, tailDelta.magnitude*0.2f,tailDelta.magnitude);
 		return head;
 	}
-
-	public static Bub.Node spawnRandomInchworm(float approximateRadius, bool headVeg, bool tailVeg, string clan=""){
-		Vector2 headPosition = Bub.worldRadius * Random.insideUnitCircle;
-		float randomAngle = Random.Range(-Mathf.PI, Mathf.PI);
-		Vector2 tailDelta = 2.4f*approximateRadius*(new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle))) ;
-		float headRadius = approximateRadius;
-		float tailRadius = approximateRadius*1.4f;
-		return spawnInchworm(headPosition,headRadius,headVeg,tailDelta,tailRadius,tailVeg, clan);
-	}
+		
 
 	public static Bub.Node spawnTricycle(Vector2 headPosition, float headRadius, bool headVegetable, 
 	                                          Vector2 tailsMidpointDelta, float widthBetweenTails, float tailsRadius, bool tailsVegetable, 
@@ -91,7 +83,6 @@ public class Bots
 		return angle + Random.Range (-wander, wander);
 	}
 
-	//it's a good idea to make headRadius tiny compared with tailRadius, unless you install a rule on head that lets head shift its burden when being pushed forward...
 	public static Bub.Node spawnTapeworm(Vector2 headPosition, bool headVeg, 
 	                              int numSegments, float radius, bool tailVeg , string clan = ""){
 
@@ -116,11 +107,63 @@ public class Bots
 			Rules.SegmentPulltokenServo.install(priorTail,tail);
 		}
 
-		//make final tail tiny, so is light to push, since that weight won't be shifted off it
+		//make final tail tiny, so is light to pull, since that weight won't be shifted off it
 		tail.setRadius(radius/5);
 
 		return head;
 	}
+
+	public static Bub.Node spawnRandomInchworm(float approximateRadius, bool headVeg, bool tailVeg, string clan=""){
+		Vector2 headPosition = Bub.worldRadius * Random.insideUnitCircle;
+		float randomAngle = Random.Range(-Mathf.PI, Mathf.PI);
+		Vector2 tailDelta = Random.Range(2.3f,2.5f)*approximateRadius*(new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle))) ;
+		float headRadius = approximateRadius * Random.Range(0.9f,0.1f);
+		float tailRadius = headRadius*Random.Range(1.3f,1.5f);
+		return spawnInchworm(headPosition,headRadius,headVeg,tailDelta,tailRadius,tailVeg, clan);
+	}
+
+	public static Bub.Node spawnRandomTricycle(float approximateRadius, bool headVeg, bool tailVeg, string clan=""){
+		Vector2 headPosition = Bub.worldRadius * Random.insideUnitCircle;
+		float randomAngle = Random.Range(-Mathf.PI, Mathf.PI);
+		Vector2 tailDelta = 2.4f*approximateRadius*(new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle))) ;
+		float headRadius = approximateRadius * Random.Range(0.9f,0.1f);
+		float tailRadius = headRadius*Random.Range(0.7f,0.8f);
+		return spawnTricycle(headPosition,headRadius,headVeg,tailDelta,tailRadius*Random.Range(1.9f,2.1f),tailRadius,tailVeg, clan);
+	}
+
+	public static Bub.Node spawnRandomTapeworm(float approximateRadius, bool headVeg, bool tailVeg,int numSegments = 0, string clan="" ){
+		Vector2 headPosition = Bub.worldRadius * Random.insideUnitCircle;
+		if (numSegments == 0) numSegments = Random.Range(2,7);
+		return spawnTapeworm(headPosition,headVeg,numSegments,approximateRadius*Random.Range(0.9f,0.111111f),tailVeg, clan);
+	}
+
+	private static Bub.Node setUpPlayer(Bub.Node head, int teamNumber,  Bub.Node goal){
+		head.setDna(CScommon.leftTeamBit, CScommon.rightTeamBit,teamNumber);
+		head.setDna(CScommon.playerBit,true);
+		Rules.Autopilot.install(head,goal); //does nothing if goal is null
+		return head;
+	}
+
+	public static List<Bub.Node> spawnRandomTeam(float siz, int inchworms, int tricycles, int tapeworms, int teamNumber, string clan = "", Bub.Node goal = null){
+		List<Bub.Node> players = new List<Bub.Node>();
+
+		for (int i = 0; i< inchworms; i++){
+			players.Add(setUpPlayer(spawnRandomInchworm(siz,false,false,clan), teamNumber, goal));
+		}
+
+		for (int i=0; i<tricycles; i++){
+			players.Add(setUpPlayer(spawnRandomTricycle(siz,false,false,clan), teamNumber, goal));
+		}
+
+		for (int i=0; i<tapeworms; i++){
+			players.Add(setUpPlayer(spawnRandomTapeworm(siz,false,false,5,clan), teamNumber, goal));
+		}
+
+		return players;
+	}
+
+
+
 
 
 	////////Event handlers called from bubbleServer
@@ -340,42 +383,50 @@ public class Bots
 	private static float offset(int i){ return bubbleServer.abnorm*i; }
 
 	public static void inchwormRaceInit(){
-		
-		pushVegNode(new Vector2(-Bub.worldRadius,0),bubbleServer.norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal left, won't eat anybody moving
+		Bub.Node head, goal;
+
+		goal = pushVegNode(new Vector2(-Bub.worldRadius,0),bubbleServer.norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal left, won't eat anybody moving
 		
 		//evens against odds
-		
-		spawnTricycle(new Vector2( Bub.worldRadius,offset(5))    , bubbleServer.abnorm*1, false,
-			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Al").setDna(CScommon.playerBit, true); //nodes 1,2,3
-		
-		spawnInchworm(new Vector2( Bub.worldRadius,offset(8))    , bubbleServer.abnorm*1.2f, false,
-			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Beth").setDna(CScommon.playerBit, true); //nodes 4,5
-		
-		spawnTricycle(new Vector2( Bub.worldRadius,offset(11))    , bubbleServer.abnorm*1, false,
-			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Carl").setDna(CScommon.playerBit, true); //nodes 6,7,8
-		
-		spawnInchworm(new Vector2( Bub.worldRadius,offset(14))    , bubbleServer.abnorm*1.2f, false,
-			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Dee").setDna(CScommon.playerBit, true); //nodes 9,10
-		
-		
-		spawnTricycle(new Vector2( Bub.worldRadius,-offset(5))   , bubbleServer.abnorm*1, false,
-			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Ed").setDna(CScommon.playerBit, true); //nodes 11.12.13
-		
-		spawnInchworm(new Vector2( Bub.worldRadius,-offset(8))   , bubbleServer.abnorm*1.2f, false,
-			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Fran").setDna(CScommon.playerBit, true); //nodes 14,15
-		
-		spawnTricycle(new Vector2( Bub.worldRadius,-offset(11))   , bubbleServer.abnorm*1, false,
-			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Greg").setDna(CScommon.playerBit, true); //nodes 16,17,18
-		
-		spawnInchworm(new Vector2( Bub.worldRadius,-offset(14))   , bubbleServer.abnorm*1.2f, false,
-			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Helen").setDna(CScommon.playerBit, true); //nodes 19,20
 
+		head = spawnTricycle(new Vector2( Bub.worldRadius,offset(5))    , bubbleServer.abnorm*1, false,
+			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Al").setDna(CScommon.playerBit, true); //nodes 1,2,3
+		Rules.Autopilot.install(head,goal);
+
+		head = spawnInchworm(new Vector2( Bub.worldRadius,offset(8))    , bubbleServer.abnorm*1.2f, false,
+			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Beth").setDna(CScommon.playerBit, true); //nodes 4,5
+		Rules.Autopilot.install(head,goal);
+
+		head = spawnTricycle(new Vector2( Bub.worldRadius,offset(11))    , bubbleServer.abnorm*1, false,
+			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Carl").setDna(CScommon.playerBit, true); //nodes 6,7,8
+		Rules.Autopilot.install(head,goal);
+
+		head = spawnInchworm(new Vector2( Bub.worldRadius,offset(14))    , bubbleServer.abnorm*1.2f, false,
+			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Dee").setDna(CScommon.playerBit, true); //nodes 9,10
+		Rules.Autopilot.install(head,goal);
+
+		
+		head = spawnTricycle(new Vector2( Bub.worldRadius,-offset(5))   , bubbleServer.abnorm*1, false,
+			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Ed").setDna(CScommon.playerBit, true); //nodes 11.12.13
+		Rules.Autopilot.install(head,goal);
+
+		head = spawnInchworm(new Vector2( Bub.worldRadius,-offset(8))   , bubbleServer.abnorm*1.2f, false,
+			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Fran").setDna(CScommon.playerBit, true); //nodes 14,15
+		Rules.Autopilot.install(head,goal);
+
+		head = spawnTricycle(new Vector2( Bub.worldRadius,-offset(11))   , bubbleServer.abnorm*1, false,
+			new Vector2(2,0), 1.4f, bubbleServer.abnorm*0.75f, false, "Greg").setDna(CScommon.playerBit, true); //nodes 16,17,18
+		Rules.Autopilot.install(head,goal);
+
+		head = spawnInchworm(new Vector2( Bub.worldRadius,-offset(14))   , bubbleServer.abnorm*1.2f, false,
+			new Vector2(2,0), bubbleServer.abnorm*1f, false,"Helen").setDna(CScommon.playerBit, true); //nodes 19,20
+		Rules.Autopilot.install(head,goal);
 
 		//pushVegNode(new Vector2(Bub.worldRadius,0), bubbleServer.norm*7, "goal").setDna(CScommon.vegetableBit,false); //goal dright, won't eat anybody moving
 
 		for (int i=0; i<bubbleServer.popcorn; i++) pushVegNode( randomRectPosition(0.17f),Random.Range(0.5f, 2.0f)*bubbleServer.norm); //random clans
 
-		Bub.Node head = spawnInchworm(new Vector2(0,10),bubbleServer.abnorm*0.6f,false,
+		head = spawnInchworm(new Vector2(0,10),bubbleServer.abnorm*0.6f,false,
 		                     new Vector2(8,0),bubbleServer.abnorm*0.5f,false,"pest");
 		Rules.HunterNPCRule.install(head);
 		bubbleServer.registerNPC(head.id,"inchworm pest");
@@ -495,6 +546,7 @@ public class Bots
 		return goal;
 	}
 
+
 	public static void turmInit(){
 		
 		Bub.Node goal1 = plantTurm(new Vector2(-150, 30), 12);
@@ -517,7 +569,9 @@ public class Bots
 			Rules.Autopilot.install(head,goal2);
 		}
 
-		stdPlayers(bubbleServer.abnorm);
+		spawnRandomTeam(bubbleServer.norm*1.4f, 3, 3, 1, 1, "shirts", goal2);
+		spawnRandomTeam(bubbleServer.norm*1.4f, 3, 3, 1, 2, "skins" , goal1);
+
 		installAllPCRules();
 	}
 

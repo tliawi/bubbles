@@ -149,7 +149,7 @@ public class Bub {
 		public bool enabled {get{ return demand > 0;}} 
 		public bool disabled { get {return demand == 0;}}
 
-		// cut implies wholly (pastdemand == demand == 0) disabled. Disabled does not imply cut.
+		// cut implies disabled, but disabled does not imply cut.
 		public Muscle cut() { reTarget(source); pastDemand = demand = 0; return this;}
 		public bool notCut { get {return target != source;}}
 
