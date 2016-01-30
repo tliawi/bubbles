@@ -13,7 +13,6 @@ public class bubbleServer : MonoBehaviour {
 	private static List<string> debugDisplayList = new List<string>();
 
 	public static void debugDisplay(string s){
-
 		if (debugDisplayList.Count>8) debugDisplayList.RemoveAt(0);
 		debugDisplayList.Add (s);
 
@@ -82,7 +81,7 @@ public class bubbleServer : MonoBehaviour {
 			abnormScaleI = 4;
 			photoYieldI = 0;
 			baseMetabolicRateI = 0;
-			worldRadiusI = -3;
+			worldRadiusI = 1;
 			vegStartFuel = 6f;
 			nonvegStartFuel = 0f;
 			popcorn = 250;
@@ -330,7 +329,7 @@ public class bubbleServer : MonoBehaviour {
 		float b = inf - len;
 		float c = inf/inf;
 		float d = (inf - len)/Mathf.Max (inf, len);
-		Debug.Log ("inf - inf:"+a+" inf-12:"+b+" inf/inf:"+c+" (inf-12)/Max(inf, 12):"+d);
+		if (Debug.isDebugBuild) debugDisplay ("inf - inf:"+a+" inf-12:"+b+" inf/inf:"+c+" (inf-12)/Max(inf, 12):"+d);
 		//output:inf - inf:NaN inf-12:Infinity inf/inf:NaN (inf-12)/Max(inf, 12):NaN
 		*/
 
@@ -364,19 +363,19 @@ public class bubbleServer : MonoBehaviour {
 
 		if (Input.GetKeyDown(KeyCode.T)){ //testing sandbox
 			long lng;
-			Debug.Log(CScommon.longToString(Bub.setBit(1023L,0,0,1)));
-			Debug.Log(CScommon.longToString(Bub.setBit(1023L,0,0,0)));
+			if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(Bub.setBit(1023L,0,0,1)));
+			if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(Bub.setBit(1023L,0,0,0)));
 			lng = Bub.setBit(1023L,3,2,0);
-			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+			if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
 			lng = Bub.setBit(1023L,3,2,1);
-			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+			if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
 			lng = Bub.setBit(1023L,3,2,2);
-			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+			if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
 			lng = Bub.setBit(1023L,3,2,3);
-			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+			if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
 
 			lng = Bub.setBit(1023L,14,4,255*2);
-			Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,14,4));
+			if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,14,4));
 
 		}
 
@@ -397,7 +396,7 @@ public class bubbleServer : MonoBehaviour {
 
 		if (Input.GetKeyDown (KeyCode.D)){
 			dbgdsply.SetActive (!dbgdsply.activeSelf);
-			if (dbgdsply.activeSelf) debugDisplay(""); //to render annotations made while it was inactive
+			if (dbgdsply.activeSelf) if (Debug.isDebugBuild) debugDisplay(""); //to render annotations made while it was inactive
 		}
 
 		if (Input.GetKey(KeyCode.Z)){
@@ -483,7 +482,7 @@ public class bubbleServer : MonoBehaviour {
 //	{
 //		if (matchResponse.success)
 //		{
-//			Debug.Log("Create match succeeded");
+//			if (Debug.isDebugBuild) debugDisplay("Create match succeeded");
 //			matchCreated = true;
 //			Utility.SetAccessTokenForNetwork(matchResponse.networkId, new NetworkAccessToken(matchResponse.accessTokenString));
 //			/////////////NetworkServer.Listen(new MatchInfo(matchResponse), 9000);
@@ -502,7 +501,7 @@ public class bubbleServer : MonoBehaviour {
 
 		NetworkServer.Listen(CScommon.serverPort);
 
-		//debugDisplay("Registering server callbacks");
+		//if (Debug.isDebugBuild) debugDisplay("Registering server callbacks");
 		NetworkServer.RegisterHandler (MsgType.Connect, OnConnectedS);
 		NetworkServer.RegisterHandler (MsgType.Disconnect, OnDisconnectedS);
 		NetworkServer.RegisterHandler (CScommon.requestNodeIdMsgType, onRequestNodeId);
@@ -532,11 +531,11 @@ public class bubbleServer : MonoBehaviour {
 
 	static void checkSendToClient(int connectionId, short msgType, MessageBase msg){
 		if (NetworkServer.connections[connectionId].connectionId != connectionId) { 
-			debugDisplay("checkSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId); 
+			if (Debug.isDebugBuild) debugDisplay("checkSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId); 
 			return;
 		}
 		if (NetworkServer.connections.Count <= connectionId || NetworkServer.connections[connectionId] == null ){
-			debugDisplay("checkSend WARNING: client disconnected "+connectionId);
+			if (Debug.isDebugBuild) debugDisplay("checkSend WARNING: client disconnected "+connectionId);
 			return;
 		}
 		NetworkServer.SendToClient(connectionId, msgType, msg);
@@ -549,14 +548,14 @@ public class bubbleServer : MonoBehaviour {
 		gameSizeMsg.numLinks = referenceLinkMsg.links.Length;
 		gameSizeMsg.worldRadius = Bub.worldRadius;
 		checkSendToClient(connectionId,CScommon.gameSizeMsgType,gameSizeMsg);
-		debugDisplay("gameSize sent to conId "+connectionId);
+		if (Debug.isDebugBuild) debugDisplay("gameSize sent to conId "+connectionId);
 	}
 
 	// // // handlers
 
 	public void OnDisconnectedS(NetworkMessage netMsg)
 	{	int cId = netMsg.conn.connectionId;
-		debugDisplay("Disconnection id:"+cId);
+		if (Debug.isDebugBuild) debugDisplay("Disconnection id:"+cId);
 
 		//netMsg.conn.FlushChannels(); causes "attempt to send to not connected connection."
 		netMsg.conn.Dispose(); //get rid of any existing buffers of stuff being sent? doesn't help
@@ -587,7 +586,7 @@ public class bubbleServer : MonoBehaviour {
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId <0) return;
 
 		CScommon.TargetNodeMsg targetMsg = netMsg.ReadMessage<CScommon.TargetNodeMsg>();
-		//debugDisplay ("onTargetNode "+targetMsg.nodeIndex+" "+targetMsg.linkType);
+		//if (Debug.isDebugBuild) debugDisplay ("onTargetNode "+targetMsg.nodeIndex+" "+targetMsg.linkType);
 		//		if (xing) Bots.onXTarget(connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId, targetMsg.nodeIndex, targetMsg.linkType);
 //		else 
 		Bots.onTarget(connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId, targetMsg.nodeIndex, targetMsg.linkType, targetMsg.hand);
@@ -606,7 +605,7 @@ public class bubbleServer : MonoBehaviour {
 	private void onTurnMsg(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId <0) return;
 		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
-		//debugDisplay("turn "+intMsg.value+" on node "+connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId);
+		//if (Debug.isDebugBuild) debugDisplay("turn "+intMsg.value+" on node "+connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId);
 		Bots.onTurn(connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId, intMsg.value);
 	}
 
@@ -619,7 +618,7 @@ public class bubbleServer : MonoBehaviour {
 	private void onLookAtNode(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId <0) return;
 		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
-		debugDisplay ("onLookAtNode unimplemented"+nixMsg.value );
+		if (Debug.isDebugBuild) debugDisplay ("onLookAtNode unimplemented"+nixMsg.value );
 	}
 
 	private void onRestartMsg(NetworkMessage netMsg){
@@ -701,7 +700,7 @@ public class bubbleServer : MonoBehaviour {
 
 		if (oldNodeId >= 0) {
 			nodeIdPlayerInfo.Remove (oldNodeId);
-			if (!Bots.dismount(oldNodeId)) debugDisplay("Error, onRequestNodeId oldNodeId not mounted");
+			if (!Bots.dismount(oldNodeId)) if (Debug.isDebugBuild) debugDisplay("Error, onRequestNodeId oldNodeId not mounted");
 		}
 
 		if (newNodeId >= 0) {
@@ -760,7 +759,7 @@ public class bubbleServer : MonoBehaviour {
 
 	private void sendWorldToClient(int connectionId){
 
-		debugDisplay("Sending world to "+connectionIdPlayerInfo[connectionId].name);
+		if (Debug.isDebugBuild) debugDisplay("Sending world to "+connectionIdPlayerInfo[connectionId].name);
 
 		sendInitToClient(connectionId);
 		sendUpdateToClient(connectionId);
@@ -777,7 +776,7 @@ public class bubbleServer : MonoBehaviour {
 		int i = 0;
 		foreach (int nodeId in nodeIdPlayerInfo.Keys){
 			PlayerInfo pi = nodeIdPlayerInfo[nodeId];
-			if (pi.data.nodeId != nodeId) debugDisplay("error in sendAllNodeNames");
+			if (pi.data.nodeId != nodeId) if (Debug.isDebugBuild) debugDisplay("error in sendAllNodeNames");
 			nnmsg.arry[i].nodeId = pi.data.nodeId; // == nodeId
 			nnmsg.arry[i].name = pi.name;
 			i += 1;
@@ -881,7 +880,7 @@ public class bubbleServer : MonoBehaviour {
 		foreach (NetworkConnection conn in NetworkServer.connections){
 			s += conn == null?"null":conn.connectionId+", ";
 		}
-		if (!s.Equals (oldConnections)){ debugDisplay(oldConnections + " /"); debugDisplay(s); oldConnections = s;}
+		if (!s.Equals (oldConnections)){ if (Debug.isDebugBuild) debugDisplay(oldConnections + " /"); if (Debug.isDebugBuild) debugDisplay(s); oldConnections = s;}
 
 		while ( start+segmentLength <= Engine.nodes.Count ){
 			//reliable SendToAll fails with "ChannelBuffer buffer limit of 16 packets reached." if client is paused, like for dragging window around on screen
@@ -1039,7 +1038,7 @@ public class bubbleServer : MonoBehaviour {
 		
 		if (nodeInfoList.Count == 0) return;
 
-		if (nodeInfoList.Count > 80) bubbleServer.debugDisplay("Warning, initRevision may need segmentation: "+nodeInfoList.Count);
+		if (nodeInfoList.Count > 80) if (Debug.isDebugBuild) debugDisplay("Warning, initRevision may need segmentation: "+nodeInfoList.Count);
 
 		//copy list into an array. Messages can't contain complex classes or generic containers
 		//(see http://docs.unity3d.com/Manual/UNetMessages.html )

@@ -21,10 +21,17 @@ public class Bub {
 	private static float gGravity;//see resetGravity. OccaSsional large perterbations in gravity can have a pleasing and disruptive effect on circling
 	private static Vector2 gCG = new Vector2(0.0f,0.0f); //Center of world is 0,0, but CG, Center of Gravity, can be moved about a bit to give a nice effect
 
+
+	public struct SteeringStruct{
+		public Node target;
+		public float sideEffect; //positive if pull will pull you to the left, negative if pull will pull you to the right, and proportional to the steering effect
+	}
+
+
 	public static bool checkVals(float x, float y, string msg){
 		bool b = false;
-		if (float.IsNaN(x) || float.IsNaN (y)) { Debug.Log ("XXX Nan: "+msg); b = true;}
-		if (float.IsInfinity(x) || float.IsInfinity(y)) { Debug.Log ("XXX Inf: "+msg); b = true;}
+		if (float.IsNaN(x) || float.IsNaN (y)) { if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("XXX Nan: "+msg); b = true;}
+		if (float.IsInfinity(x) || float.IsInfinity(y)) { if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("XXX Inf: "+msg); b = true;}
 		return b;
 	}
 
@@ -227,7 +234,8 @@ public class Bub {
 			if (deliveredOomph <= 0) return;
 
 			// friction narrative: the force of a link operates independently on both ends. 
-			// A better way of putting it: each end gets half the oomph expended on it. That way, the amount one end moves
+			// A better way of putting it: energy of action == energy of reaction, i.e.
+			// each end gets half the oomph expended on it. That way, the amount one end moves
 			// is independent of how much the other end moves--it all depends on their individual burdens.
 			// The unit of oomph is a burden meter
 
@@ -235,7 +243,7 @@ public class Bub {
 			// Each experiences the same 'force', they react to it in inverse proportion to their burden.
 			// oomph is displacement of a unit burden,
 			// but in general both ends don't have unit burden
-
+			// Net: gap between them will shorten (puller) by displacement, where
 			displacement = 0.5f*deliveredOomph/source.burden + 0.5f*deliveredOomph/target.burden;
 
 			// insure that puller doesn't overshoot zero.
@@ -307,9 +315,9 @@ public class Bub {
 
 			dislocation = boneLength - dist;
 //			if (boneLength > 20){
-//				Debug.Log ("BONEACTION "+boneLength+","+source.distance (target));
-//				Debug.Log ("("+source.x + ","+source.y+") ("+target.x+","+target.y+")");
-//				Debug.Log ("dx,dy "+dx+","+dy);
+//				if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("BONEACTION "+boneLength+","+source.distance (target));
+//				if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("("+source.x + ","+source.y+") ("+target.x+","+target.y+")");
+//				if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("dx,dy "+dx+","+dy);
 //			}
 
 			effect = boneStiffness*dislocation;// - if too long, + if too short.
@@ -322,13 +330,13 @@ public class Bub {
 
 			effect *= target.burden /(source.burden + target.burden);
 
-			//if (source.burden + target.burden ==0) Debug.Log ("boneAction burdens zero!");
+			//if (source.burden + target.burden ==0) if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("boneAction burdens zero!");
 			//checkVals(effect,effect,"bonaction bone effect "+source.id+":"+target.id);
 
 			source.nx -= effect*dx/dist;
 			source.ny -= effect*dy/dist;
 
-//			if (boneLength > 20) Debug.Log("  effect "+effect+": ("+(-dx*effect)+","+(-dy*effect)+")");
+//			if (boneLength > 20) if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay("  effect "+effect+": ("+(-dx*effect)+","+(-dy*effect)+")");
 //
 //			checkVals(source.nx, source.ny, "bonaction nxny "+source.id+":"+target.id);
 
@@ -467,21 +475,39 @@ public class Bub {
 			return group;
 		}
 
-		public Rules.Rule removeAI(){
-			Rules.Rule ai;
-			for (int i=0; i<rules.Count; i++) if (rules[i].amAI){
-					ai = rules[i];
-					rules.RemoveAt(i);
-					return ai;
-				}
-			return null;
+		//center of balance
+		public Vector2 orgCOB(){
+			Vector2 response;
+			response.x = trustHead.x;
+			response.y = trustHead.y;
+			for (int i=0; i<trusters.Count; i++) {response.x += trusters[i].x; response.y += trusters[i].y;}
+			response /= trusters.Count + 1;
+			return response;
 		}
 
-		public List<Rules.Rule> removeAIs(){
-			List<Rules.Rule> ais = new List<Rules.Rule>();
-			for (Rules.Rule ai = removeAI(); ai != null; ai = removeAI()){ ais.Add(ai); }
-			return ais;
+		//direction from COB to trustHead
+		public float orgOrientation(){
+			if (trusters.Count == 0) return 0f;
+			Vector2 cb = orgCOB();
+			return  Mathf.Atan2(trustHead.y-cb.y, trustHead.x-cb.x);
 		}
+
+		//unused
+//		public Rules.Rule removeAI(){
+//			Rules.Rule ai;
+//			for (int i=0; i<rules.Count; i++) if (rules[i].amAI){
+//					ai = rules[i];
+//					rules.RemoveAt(i);
+//					return ai;
+//				}
+//			return null;
+//		}
+//
+//		public List<Rules.Rule> removeAIs(){
+//			List<Rules.Rule> ais = new List<Rules.Rule>();
+//			for (Rules.Rule ai = removeAI(); ai != null; ai = removeAI()){ ais.Add(ai); }
+//			return ais;
+//		}
 
 		public void enableInternalMuscles(int percent){
 			for (int i = 0; i<rules.Count; i++) rules[i].enableInternalMuscles(percent);
@@ -575,7 +601,7 @@ public class Bub {
 
 			for (int i=0; i<targets.Count; i++) removeBone(targets[i]);
 			if (bones.Count > 0) {
-				bubbleServer.debugDisplay("clearBones error on node "+id);
+				if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay("clearBones error on node "+id);
 				bones.Clear (); 
 			}
 		}
@@ -660,7 +686,7 @@ public class Bub {
 				givenTarget = target;
 				float givenBurden = naiveAvailableBurden();
 				if (givenBurden > availableBurden()+0.00001){
-					Debug.Log ("giveBurden loss" + givenBurden + " " + availableBurden ());
+					if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("giveBurden loss" + givenBurden + " " + availableBurden ());
 					givenBurden = availableBurden ();
 				}
 				target.burden += givenBurden;
@@ -672,7 +698,7 @@ public class Bub {
 			if (givenTarget != null){
 				float givenBurden = naiveAvailableBurden();
 				if (givenBurden > givenTarget.availableBurden()){
-					Debug.Log ("retakeBurden loss" + givenBurden + " " + givenTarget.availableBurden ());
+					if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("retakeBurden loss" + givenBurden + " " + givenTarget.availableBurden ());
 					givenBurden = givenTarget.availableBurden ();
 				}
 				givenTarget.burden -= givenBurden;
@@ -815,7 +841,7 @@ public class Bub {
 			foreach (var node in org) node.cutExternalMuscles();
 		}
 
-		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that
+		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that.
 		public void randomRelocateOrganism(){
 			Vector2 here = new Vector2(trustHead.x, trustHead.y);
 			Vector2 delta = (Bub.worldRadius * Random.insideUnitCircle)-here;
@@ -856,10 +882,10 @@ public class Bub {
 						float nodeOrgCanGive = node.orgOomph ();
 						float canTransfer = Mathf.Min(thisOrgCanEat, nodeOrgCanGive);
 						
-//						Debug.Log ("eat "+thisOrgCanEat+" "+nodeOrgCanGive+" " + canTransfer);
-//						Debug.Log (this.trustGroup ().Count+":"+node.trustGroup().Count);
-//						Debug.Log ("this(0) " + this.trustGroup()[0].maxOomph + "-" + this.trustGroup()[0].oomph);
-//						Debug.Log ("that(0) " + node.trustGroup()[0].maxOomph + "-" + node.trustGroup()[0].oomph);
+//						if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("eat "+thisOrgCanEat+" "+nodeOrgCanGive+" " + canTransfer);
+//						if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay (this.trustGroup ().Count+":"+node.trustGroup().Count);
+//						if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("this(0) " + this.trustGroup()[0].maxOomph + "-" + this.trustGroup()[0].oomph);
+//						if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("that(0) " + node.trustGroup()[0].maxOomph + "-" + node.trustGroup()[0].oomph);
 
 						if (canTransfer > 0){ //guard against zeroDivide by zero thisOrgCanEat or nodeOrgCanGive
 							foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanEat;
@@ -920,6 +946,39 @@ public class Bub {
 				}
 			}
 			return closest;
+		}
+			
+		//returns the neighbor best suited to steer the organism, in a SteeringStruct that also shows what the expected effect will be
+		public SteeringStruct bestSteeringNeighbor(){
+
+			if (trustHead != this) return trustHead.bestSteeringNeighbor();
+			//this is a trustHead
+
+			SteeringStruct best = new SteeringStruct();
+
+			best.target = null;
+			if (trusters.Count == 0) return best; //can't determine an orientation of this organism
+			
+			Node them = null; 
+			float sideEffect;
+			float suitability, bestSuitability=-1;
+
+			Vector2 cob = orgCOB();
+
+			for (int i=0;i<site.neighborsCount();i++)
+			{	them = site.neighbors(i);
+				if (them.trustHead != this) { //don't try to steer by pushing on self
+					float angl = Rules.signedAngle(this,cob,them); //positive to the left, negative to the right
+					sideEffect = Mathf.Sin(angl) * (them.burden/(them.burden+this.burden)) * linkEfficiency(this,them); // think pull or push orthogonal to the org orientation
+					suitability = Mathf.Abs(sideEffect); //min value is 0
+					if (suitability > bestSuitability) {
+						best.target = them;
+						best.sideEffect = sideEffect;
+						bestSuitability = suitability;
+					}
+				}
+			}
+			return best; //best.target may still be null
 		}
 
 		//These are heuristic, we'll see how effective they are...

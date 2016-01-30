@@ -13,9 +13,23 @@ public class Rules {
 	
 	// Angle abc. Given three points a,b,c
 	// returns the angle at the middle one, b.
-	// Is positive if angle from a to b to c is ccwise(standard math positive angle direction), 
+	// Is positive if angle from a to b to c is ccwise(standard math positive angle direction, think of a lying on the +x axis, b at origin), 
 	// negative if cwise.
 	public static float signedAngle( Bub.Node a, Bub.Node b, Bub.Node c)
+	{	float angle1 = Mathf.Atan2(a.y-b.y, a.x-b.x);
+		float angle2 = Mathf.Atan2(c.y-b.y, c.x-b.x);
+		return stdAngle(angle2 - angle1);
+	}
+
+	//for use with b from orgCOB
+	public static float signedAngle(Bub.Node a, Vector2 b, Bub.Node c)
+	{	float angle1 = Mathf.Atan2(a.y-b.y, a.x-b.x);
+		float angle2 = Mathf.Atan2(c.y-b.y, c.x-b.x);
+		return stdAngle(angle2 - angle1);
+	}
+
+	//for use with c from orgCOB
+	public static float signedAngle(Bub.Node a, Bub.Node b, Vector2 c)
 	{	float angle1 = Mathf.Atan2(a.y-b.y, a.x-b.x);
 		float angle2 = Mathf.Atan2(c.y-b.y, c.x-b.x);
 		return stdAngle(angle2 - angle1);
@@ -47,7 +61,7 @@ public class Rules {
 
 		public Bub.Node source {get; protected set;}
 		private List<Bub.Muscle> _muscles;
-		public bool amAI {get; protected set;}
+		//public bool amAI {get; protected set;}
 
 		public Bub.Muscle muscles( int i) { return _muscles[i]; }
 		
@@ -98,7 +112,7 @@ public class Rules {
 		protected Rule(Bub.Node source0) {
 			source = source0;
 			_muscles = new List<Bub.Muscle>();
-			amAI = false;
+//			amAI = false;
 		}
 	}
 	
@@ -320,7 +334,7 @@ public class Rules {
 		abstract override public void accion();
 
 		public HunterBase(Bub.Node source0):base(source0){
-			amAI = true;
+//			amAI = true;
 		}
 	}
 
@@ -571,7 +585,7 @@ public class Rules {
 			perimeter = perimeter0;
 			pusher = addMuscle(source0).makePusher(); //a cut muscle, disabled
 			//pusher just convenience for muscles(0)
-			amAI = true;
+//			amAI = true;
 		}
 
 		override public void accion(){
@@ -622,4 +636,45 @@ public class Rules {
 			}
 		}
 	}
+
+
+	//steers organism by pushing or pulling on nodes to left or right of direction of travel, to steer organism toward the goal.
+	//can only be installed on org head.
+	//only works in forward! Don't know what effects will be in reverse...
+	public class Autopilot: Rule {
+
+		public static void install(Bub.Node source0, Bub.Node goal0){
+			if (source0 == null || source0.trustHead != source0 || goal0 == null) return;
+			source0.rules.Add (new Autopilot(source0, goal0));
+		}
+
+		private Bub.Muscle muscl;
+		private Bub.Node goal;
+
+		private Autopilot(Bub.Node source0, Bub.Node goal0):base(source0){
+			goal = goal0;
+			muscl = addMuscle(source0); //a cut muscle, disabled
+			//muscle just convenience for muscles(0)
+//			amAI = true;
+		}
+
+		override public void accion(){
+			
+			if (source.testDna(CScommon.playerPlayingBit)) return;
+
+			float angleToGoal = signedAngle(goal, source, source.orgCOB());
+			angleToGoal = angleToGoal>0?Mathf.PI-angleToGoal:-(Mathf.PI+angleToGoal); //does not change sign of angleToGoal
+			
+			Bub.SteeringStruct ss = source.bestSteeringNeighbor();
+			ss.sideEffect *= source.naiveBurden()/source.burden; //muscle power (demand) will have more effect if burden's been shifted off me
+	
+			if (ss.target == null || ss.sideEffect < 0.01) muscl.disable();
+			else {
+				if (muscl.target != ss.target) muscl.reTarget(ss.target);
+				if (ss.sideEffect*angleToGoal > 0) muscl.makePuller(); else muscl.makePusher();
+				muscl.enable(Mathf.RoundToInt(100*Mathf.Abs(angleToGoal/ss.sideEffect))); //coefficient tuned
+			}
+		}
+	}
+
 }
