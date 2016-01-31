@@ -20,7 +20,7 @@ public class Bub {
 
 	private static float gGravity;//see resetGravity. OccaSsional large perterbations in gravity can have a pleasing and disruptive effect on circling
 	private static Vector2 gCG = new Vector2(0.0f,0.0f); //Center of world is 0,0, but CG, Center of Gravity, can be moved about a bit to give a nice effect
-
+	private static float maxRelSpeed = CScommon.inefficientLink/2; // maximum relative speed (movement in one fixedframe /radius).
 
 	public struct SteeringStruct{
 		public Node target;
@@ -758,7 +758,7 @@ public class Bub {
 
 		//called after nx and ny have been fully hallucinated, and before they've been folded back into x and y
 		public void doGravity(){
-			float dx, dy, speed2, factor;
+			float dx, dy, speed2, speed, factor;
 			dx = x - gCG.x; //distance from center of gravity
 			dy = y - gCG.y;
 
@@ -767,7 +767,6 @@ public class Bub {
 			checkVals(nx,ny,"nx||ny before speed2 calc");
 
 			speed2 = (x - nx)*(x - nx) + (y - ny)*(y - ny);
-			checkVals(speed2,speed2,"speed2.");
 			//speed is zero if node is not moving
 			//Without speed unmoving nodes would slowly migrate to the center.
 			//Without speed, during pushing part of cycle *both* ends would get moved inwards, towards the origin,
@@ -777,11 +776,11 @@ public class Bub {
 			//more than the high-burden low-spead head, imparting a rotating effect to the bot as a whole
 			// Note that if speed is too great, gravity can sling someone off the map. Need to have an upper limit on speed, 
 			// or I can't use the gravity approach. The only current upper limit is imposed by link efficiency.
-			factor = gGravity*Mathf.Sqrt(speed2); 
+			speed = Mathf.Sqrt(speed2);
+			factor = gGravity*speed; 
 
-			checkVals(factor, factor, "factor.");
 			if ( !(factor<=0.999f)) factor = 0.999f;//Use negation so that if factor is NaN will fix. Use 0.999f so several points aren't all imposed directly on gCG. 
-			checkVals(factor, factor, "factor.");
+
 			//Greater effect on those far from origin
 			if (pushedMinusPulled >= 0)
 			{	nx -= dx*factor; ny -= dy*factor; //move towards gCG those being pushed. 
@@ -791,19 +790,44 @@ public class Bub {
 			checkVals(nx,ny,"nx||ny");
 		}
 
+		private void imposeMaxRelativeSpeed(){
+			float dx, dy, speed;
+			float relSpeed, newRelSpeed, ratio;
+
+			dx = nx-x; dy = ny-y;
+			speed = Mathf.Sqrt((nx*nx)+(ny*ny));
+			
+			relSpeed = speed/radius;
+			if (relSpeed < minPosValue) return; //avoid numerical problems at and close to zero
+
+			newRelSpeed = (maxRelSpeed * relSpeed)/(maxRelSpeed + relSpeed);
+			// newRelSpeed <= relSpeed (and is only equal when both zero)
+			// as relSpeed approaches 0, newRelSpeed approaches relSpeed
+			// as relSpeed approaches maxRelSpeed, newRelSpeed approaches maxRelSpeed/2
+			// as relSpeed approaches infinity, newRelSpeed approaches maxRelSpeed
+			ratio = newRelSpeed/relSpeed; // ratio between 0 and 1, at slow relSpeeds nearly 1
+			// diminish relSpeed to newRelSpeed
+			dx *= ratio;
+			dy *= ratio;
+
+			nx = x+dx;
+			ny = y+dy;
+
+		}
+
 		public void updatePosition()
 		{	
 			doGravity ();
+
+			imposeMaxRelativeSpeed();
 
 			//bring future into the present, injecting a small amount of chaos to prevent convergent forces on nx,ny
 			//(like a surrounding triad of pushers pushing several nodes to their midpoint) from achieving perfect overlap
 			// (which is hard on voronoi calculations)
 			Vector2 chaos = 0.000023f*Random.insideUnitCircle;
-			checkVals(chaos.x, chaos.y, "chaos");
 			x = nx = nx + chaos.x;
 			y = ny = ny + chaos.y;
 			pushedMinusPulled = 0;
-			checkVals(x,y,"final x||y");
 		}
 
 		private List<int> registeredOrgNodes(){

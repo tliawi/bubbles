@@ -81,7 +81,7 @@ public class bubbleServer : MonoBehaviour {
 			abnormScaleI = 4;
 			photoYieldI = 0;
 			baseMetabolicRateI = 0;
-			worldRadiusI = 1;
+			worldRadiusI = 0;
 			vegStartFuel = 6f;
 			nonvegStartFuel = 0f;
 			popcorn = 250;

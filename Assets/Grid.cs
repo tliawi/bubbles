@@ -130,7 +130,7 @@ public class Grid {
 			anode = Engine.nodes[i];
 			for (int j = 0; j<anode.rules.Count; j++) {
 				for (int k = 0; k<anode.rules[j].musclesCount; k++){
-					if (anode.rules[j].muscles(k).notCut){
+					if (anode.rules[j].muscles(k).enabled ){
 						targetNode = anode.rules[j].muscles(k).target;
 						dist = anode.distance (targetNode);
 						if (bubbleServer.constantLinkWidth) r = anode.radius;

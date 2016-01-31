@@ -61,7 +61,6 @@ public class Rules {
 
 		public Bub.Node source {get; protected set;}
 		private List<Bub.Muscle> _muscles;
-		//public bool amAI {get; protected set;}
 
 		public Bub.Muscle muscles( int i) { return _muscles[i]; }
 		
@@ -112,7 +111,6 @@ public class Rules {
 		protected Rule(Bub.Node source0) {
 			source = source0;
 			_muscles = new List<Bub.Muscle>();
-//			amAI = false;
 		}
 	}
 	
@@ -334,7 +332,6 @@ public class Rules {
 		abstract override public void accion();
 
 		public HunterBase(Bub.Node source0):base(source0){
-//			amAI = true;
 		}
 	}
 
@@ -355,6 +352,9 @@ public class Rules {
 		}
 
 		override public void accion(){
+
+
+			if (source.testDna(CScommon.playerPlayingBit)){ fightingMuscle.cut(); return;} //disabled if org is mounted by human
 
 			Bub.Node bully, munchies;
 
@@ -476,7 +476,7 @@ public class Rules {
 		}
 		
 		public override void accion() {
-			int forward0Reverse1; //for now simplify htings
+			int forward0Reverse1; //for now simplify things
 			int push1Pull2 = source.getState ("push1Pull2");
 
 			if (push1Pull2 == 0) { 
@@ -585,10 +585,12 @@ public class Rules {
 			perimeter = perimeter0;
 			pusher = addMuscle(source0).makePusher(); //a cut muscle, disabled
 			//pusher just convenience for muscles(0)
-//			amAI = true;
 		}
 
 		override public void accion(){
+
+			if (source.testDna(CScommon.playerPlayingBit)){ pusher.cut(); return;} //disabled if org is mounted by human
+
 			Bub.Node targt = source.closestStranger ();
 			if (targt == null || source.distance (targt) > perimeter ) pusher.cut();
 			else {
@@ -655,12 +657,11 @@ public class Rules {
 			goal = goal0;
 			muscl = addMuscle(source0); //a cut muscle, disabled
 			//muscle just convenience for muscles(0)
-//			amAI = true;
 		}
 
 		override public void accion(){
 			
-			if (source.testDna(CScommon.playerPlayingBit)) return;
+			if (source.testDna(CScommon.playerPlayingBit)){ muscl.cut(); return;} //disabled if org is mounted by human
 
 			float angleToGoal = signedAngle(goal, source, source.orgCOB());
 			angleToGoal = angleToGoal>0?Mathf.PI-angleToGoal:-(Mathf.PI+angleToGoal); //does not change sign of angleToGoal
@@ -672,7 +673,7 @@ public class Rules {
 			else {
 				if (muscl.target != ss.target) muscl.reTarget(ss.target);
 				if (ss.sideEffect*angleToGoal > 0) muscl.makePuller(); else muscl.makePusher();
-				muscl.enable(Mathf.RoundToInt(100*Mathf.Abs(angleToGoal/ss.sideEffect))); //coefficient tuned
+				muscl.enable(Mathf.RoundToInt(23*Mathf.Abs(angleToGoal/ss.sideEffect))); //coefficient tuned
 			}
 		}
 	}
