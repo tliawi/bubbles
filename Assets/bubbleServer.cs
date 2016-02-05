@@ -48,9 +48,9 @@ public class bubbleServer : MonoBehaviour {
 		switch (newGame) {
 		case 1: //snark
 			normScaleI = 9;
-			abnormScaleI = 2;
-			photoYieldI = 0;
-			baseMetabolicRateI = 0;
+			abnormScaleI = 0;
+			photoYieldI = 10;
+			baseMetabolicRateI = 4;
 			worldRadiusI = 0;
 			vegStartFuel = 1.0f;
 			nonvegStartFuel = 0f;
@@ -58,9 +58,9 @@ public class bubbleServer : MonoBehaviour {
 			break;
 		case 2: // race
 			normScaleI = 2;
-			abnormScaleI = 6;
-			photoYieldI = -3;
-			baseMetabolicRateI = -1;
+			abnormScaleI = 4;
+			photoYieldI = 5;
+			baseMetabolicRateI = 5;
 			worldRadiusI = 0;
 			vegStartFuel = 1.0f;
 			nonvegStartFuel = 0f;
@@ -77,11 +77,11 @@ public class bubbleServer : MonoBehaviour {
 			popcorn = 100;
 			break;
 		case 4: //turm
-			normScaleI = -1; 
+			normScaleI = 3; 
 			abnormScaleI = 4;
 			photoYieldI = 0;
 			baseMetabolicRateI = 0;
-			worldRadiusI = 0;
+			worldRadiusI = -2;
 			vegStartFuel = 6f;
 			nonvegStartFuel = 0f;
 			popcorn = 250;
@@ -276,7 +276,7 @@ public class bubbleServer : MonoBehaviour {
 		
 		paused = true;
 		gameStopwatch.Reset();
-		dbgdsply.SetActive(true);
+		dbgdsply.SetActive(false);
 
 		referenceInitMsg = null;
 		referenceLinkMsg = null;
@@ -557,7 +557,7 @@ public class bubbleServer : MonoBehaviour {
 	{	int cId = netMsg.conn.connectionId;
 		if (Debug.isDebugBuild) debugDisplay("Disconnection id:"+cId);
 
-		//netMsg.conn.FlushChannels(); causes "attempt to send to not connected connection."
+		netMsg.conn.FlushChannels(); //causes "attempt to send to not connected connection." but apparently that's normal
 		netMsg.conn.Dispose(); //get rid of any existing buffers of stuff being sent? doesn't help
 
 		//don't disconnect it... disconnect could provoke infinite recursion?
@@ -684,7 +684,6 @@ public class bubbleServer : MonoBehaviour {
 		else newNodeId = Engine.nodes[nixMsg.value].trustHead.id; // move to the id of the head of that organism
 
 		//enforce that only one player can mount a node.
-		//if (nodeIdPlayerInfo.ContainsKey(newNodeId))newNodeId = oldNodeId;
 		if (!Bots.mountable(newNodeId)) return;
 
 		nixMsg.value = newNodeId;

@@ -492,6 +492,14 @@ public class Bub {
 			return  Mathf.Atan2(trustHead.y-cb.y, trustHead.x-cb.x);
 		}
 
+		public int getTeam(){
+			return (int) CScommon.dnaNumber (dna, CScommon.leftTeamBit, CScommon.rightTeamBit);
+		}
+
+		public void setTeam(int teamNumber){
+			setDna(CScommon.leftTeamBit, CScommon.rightTeamBit, teamNumber);
+		}
+
 		//unused
 //		public Rules.Rule removeAI(){
 //			Rules.Rule ai;
@@ -836,19 +844,27 @@ public class Bub {
 			return registeredIds;
 		}
 
+//		private void thisOrgBeats(Node loser){
+//			List<int> registeredWinners = this.registeredOrgNodes();
+//			if (registeredWinners.Count > 0){
+//				List<int> registeredLosers = loser.registeredOrgNodes();
+//				if (registeredLosers.Count > 0 ) {
+//
+//					Engine.scheduledOrgRelocations.Add(loser.trustHead);
+//					foreach (int winnerId in registeredWinners) bubbleServer.scoreWinner(winnerId);
+//					foreach (int loserId in registeredLosers) bubbleServer.scoreLoser(loserId);
+//				}
+//			}
+//		}
+
 		private void thisOrgBeats(Node loser){
-			List<int> registeredWinners = this.registeredOrgNodes();
-			if (registeredWinners.Count > 0){
-				List<int> registeredLosers = loser.registeredOrgNodes();
-				if (registeredLosers.Count > 0 ) {
-					
-					Engine.scheduledOrgRelocations.Add(loser.trustHead);
-					foreach (int winnerId in registeredWinners) bubbleServer.scoreWinner(winnerId);
-					foreach (int loserId in registeredLosers) bubbleServer.scoreLoser(loserId);
-				}
+			if (bubbleServer.registered(trustHead.id) && bubbleServer.registered(loser.trustHead.id)){
+				Engine.scheduledOrgRelocations.Add(loser.trustHead);
+				bubbleServer.scoreWinner(trustHead.id);
+				bubbleServer.scoreLoser(loser.trustHead.id);
 			}
 		}
-		
+
 		//cuts links from this organism to loser organism
 		private void cutOrgsMusclesToOrg(Node targetOrg){
 			List<Node> org = trustGroup();
