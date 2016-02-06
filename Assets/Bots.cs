@@ -246,22 +246,31 @@ public class Bots
 		if (turn >= -1 && turn <= 1) Engine.nodes[sourceId].setState("turn",turn);
 	}
 
+
+
 	//Mounting and dismounting.
 
 	//returns whether or not there was anything to dismount
 	public static bool dismount(int nodeId){
 		if (nodeId < 0 || nodeId >= Engine.nodes.Count) return false;
-		if (!Engine.nodes[nodeId].testDna(CScommon.playerPlayingBit)) return false;
+		Bub.Node node = Engine.nodes [nodeId];
+		if (!node.testDna(CScommon.playerPlayingBit)) return false;
+		if (node != node.trustHead) return false; //can only do orgs
 
-		Engine.nodes[nodeId].setDna(CScommon.playerPlayingBit, false);
+		node.setDna(CScommon.playerPlayingBit, false);
+		pushTeamOrgBack (nodeId);
+
 		return true;
 	}
 
-	//returns whether nodeId is mountable
-	public static bool mountable(int nodeId){
+	//returns whether nodeId is mountable org
+	public static bool mountable(int nodeId, bool checkTeam = true ){
 		if (nodeId < 0 || nodeId >= Engine.nodes.Count) return false;
-		if (!Engine.nodes[nodeId].testDna(CScommon.playerBit)) return false;
-		if (Engine.nodes[nodeId].testDna(CScommon.playerPlayingBit)) return false; //already mounted
+		Bub.Node node = Engine.nodes [nodeId];
+		if (!node.testDna(CScommon.playerBit)) return false;
+		if (node.testDna(CScommon.playerPlayingBit)) return false; //already mounted
+		if (node != node.trustHead) return false; //has to be org
+		if (checkTeam && !teams[node.getTeam()].Contains(nodeId)) return false; // team 0 orgs can't be mounted
 		return true;
 	}
 
@@ -269,42 +278,92 @@ public class Bots
 	//and they get the ability to flee/attack via targeting
 	public static bool mount(int nodeId){
 		if (mountable(nodeId))  {
+			
 			Engine.nodes[nodeId].setDna(CScommon.playerPlayingBit, true);
+			pullOrgFromTeam (nodeId);
+
 			return true;
 		}
 		return false;
 	}
 
+
+	static List<int>[] teams = new List<int>[4]; //lists of ids of heads of all team member orgs
+
+	static void makeTeams(){
+
+		for (int i = 0; i<teams.Length; i++) teams[i] = new List<int>();
+
+		for (int i = 0; i < Engine.nodes.Count; i++) if (Engine.nodes[i].trustHead == Engine.nodes[i]) {
+				int t = Engine.nodes [i].getTeam ();
+				if (t > 0) {//don't bother with team 0, is most of nodes, is "no team".
+					if (!mountable(i, false)) bubbleServer.debugDisplay("Error unmountable team org."); //don't check team, you're building team.
+					teams [t].Add(i); 
+				}
+			}
+	}
+
+	static int popTeam(int t){
+		int result;
+		if (teams [t].Count == 0) return -1;
+		result = teams [t] [0];
+		teams [t].RemoveAt(0);
+		return result;
+	}
+
+	public static int popOrgFromLargestTeam(){
+		int longest = 0;
+		for (int i=0;i<teams.Length;i++) if (teams[i].Count > teams[longest].Count) longest = i;
+
+		return popTeam (longest); //-1 if all teams empty
+	}
+
+	static void pullOrgFromTeam (int id){
+		int t = Engine.nodes [id].getTeam ();
+		teams [t].Remove (id);
+	}
+
+	//for putting back ones that have been popped off
+	static void pushTeamOrgBack( int id){
+		int t = Engine.nodes [id].getTeam ();
+		teams [t].Add(id);
+	}
+
+
 	// initialization
 
 	public static void initialize(int gameNumber){
-		switch (gameNumber){
+		
+		switch (gameNumber) {
 		case 1:
 			bubbleServer.gameName = "snark";
-			snarkInit();
+			snarkInit ();
 			break;
 		case 2:
 			bubbleServer.gameName = "race";
-			inchwormRaceInit();
+			inchwormRaceInit ();
 			break;
 		case 3:
 			bubbleServer.gameName = "fussball";
-			fussballInit();
+			fussballInit ();
 			break;
 		case 4:
 			bubbleServer.gameName = "turm";
-			turmInit();
+			turmInit ();
 			break;
 		case 5:
 			bubbleServer.gameName = "turm2";
-			turmInit2();
+			turmInit2 ();
 			break;
 		default: 
 			bubbleServer.gameName = "sizeTest";
-			testbedInit();
+			testbedInit ();
 			break;
 		}
+
+		makeTeams ();
 	}
+
 
 	//only specify goal if all PC's, as NPC's, should seek the same goal. Otherwise, add Autopilot individually
 //	private static void installAllPCRules(Bub.Node goal = null){

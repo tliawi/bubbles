@@ -51,6 +51,11 @@ public static class CScommon {
 //	Client responds with initRequestMsg including a name
 //	Server replies with a suite of reliable initMsgs and updateMsgs and linkMsgs that cover the whole world.
 
+//	One half second later (so that hopefully client will already have world messages before getting a node reference), 
+//  server will send a nodeIdMsg which contains their nodeId, which may be -1 if none are available.
+//  If not -1, server also sends nameNodeIdmsg to all clients associating the name to the node,
+//  and server will issue an initRevisionMsg of the changed DNA (reflecting that the node is mounted) to all clients.
+
 //  If user clicks on a desired node to mount, client sends a requestNodeId for that node.
 //	The server replies with a nodeIdMsg which either contains their old, unchanged bubble assignment
 //  (which may have been -1) which indicates their request is denied for some reason, OR it contains an assigned nodeId 

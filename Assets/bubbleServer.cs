@@ -44,7 +44,7 @@ public class bubbleServer : MonoBehaviour {
 
 	private static Dictionary<int,bool> scheduledScores = new Dictionary<int,bool>();
 
-	private void resetDefaultScales(int newGame){
+	private static void resetDefaultScales(int newGame){
 		switch (newGame) {
 		case 1: //snark
 			normScaleI = 9;
@@ -107,7 +107,7 @@ public class bubbleServer : MonoBehaviour {
 			Mathf.Round(vegStartFuel*10)+" "+Mathf.Round (nonvegStartFuel*10)+"  "+popcorn;
 	}
 
-	private void setScales(){
+	private static void setScales(){
 		normScale = Mathf.Pow(1.2f, normScaleI);
 		abnormScale = Mathf.Pow(1.2f, abnormScaleI);
 		Bub.photoYield =0.08f* Mathf.Pow(1.2f, photoYieldI);
@@ -121,10 +121,10 @@ public class bubbleServer : MonoBehaviour {
 		sendScalesToAll();
 	}
 	
-	private int currentGame = 1;
+	static private int currentGame = 1;
 
-	private CScommon.InitMsg referenceInitMsg;
-	private CScommon.LinksMsg referenceLinkMsg;
+	static private CScommon.InitMsg referenceInitMsg;
+	static private CScommon.LinksMsg referenceLinkMsg;
 
 	public struct JKStruct { 
 		public int j; 
@@ -134,10 +134,10 @@ public class bubbleServer : MonoBehaviour {
 		}
 	}
 
-	private JKStruct[] referenceLinkJK;
+	static private JKStruct[] referenceLinkJK;
 
-	private int oldTickCounter;
-	private Text reminderText;
+	static private int oldTickCounter;
+	static private Text reminderText;
 	private static System.Diagnostics.Stopwatch gameStopwatch = new System.Diagnostics.Stopwatch();
 
 	public class PlayerInfo {
@@ -272,7 +272,7 @@ public class bubbleServer : MonoBehaviour {
 		SetupServer();
 	}
 
-	void quitGame(int newgame){
+	static void quitGame(int newgame){
 		
 		paused = true;
 		gameStopwatch.Reset();
@@ -302,7 +302,7 @@ public class bubbleServer : MonoBehaviour {
 		initCurrentGame();
 	}
 
-	void initCurrentGame()
+	static void initCurrentGame()
 	{	
 		paused = true;
 		scheduledScores.Clear();
@@ -337,20 +337,20 @@ public class bubbleServer : MonoBehaviour {
 
 	public static string gameName = "";
 
-	string reminder(){
+	static string reminder(){
 		string s = gameName+": arrows Zz s d g 1 2 3 4 +- 0";
 		foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.data.nodeId;
 		s += "  "+(paused?"(PAUSED)":"")+scaleString();
 		return s;
 	}
 
-	void togglePause(){
+	static void togglePause(){
 		paused = !paused;
 		if (paused) gameStopwatch.Stop();
 		else gameStopwatch.Start(); //starts from wherever it left off
 	}
 		
-		void Update(){
+	void Update(){
 
 //		if (gameChosen>0){
 
@@ -452,7 +452,7 @@ public class bubbleServer : MonoBehaviour {
 		execute();
 	}
 
-	void execute(){
+	static void execute(){
 		if (!paused){
 			if (displayGrid) {
 				Grid.display();
@@ -496,7 +496,7 @@ public class bubbleServer : MonoBehaviour {
 	//byte reliableChannel, unreliableChannel, bigMsgChannel;
 
 	// Create a server and listen on a port
-	void SetupServer()
+	static void SetupServer()
 	{
 
 		NetworkServer.Listen(CScommon.serverPort);
@@ -521,7 +521,7 @@ public class bubbleServer : MonoBehaviour {
 	}
 	
 
-	void OnConnectedS(NetworkMessage netMsg) 
+	static void OnConnectedS(NetworkMessage netMsg) 
 	{	connectionIdPlayerInfo[netMsg.conn.connectionId] = new PlayerInfo();
 		connectionIdPlayerInfo[netMsg.conn.connectionId].connectionId = netMsg.conn.connectionId;
 		sendGameSize(netMsg.conn.connectionId);
@@ -542,7 +542,7 @@ public class bubbleServer : MonoBehaviour {
 	}
 	
 
-	void sendGameSize(int connectionId){
+	static void sendGameSize(int connectionId){
 		CScommon.GameSizeMsg gameSizeMsg = new CScommon.GameSizeMsg();
 		gameSizeMsg.numNodes = Engine.nodes.Count;
 		gameSizeMsg.numLinks = referenceLinkMsg.links.Length;
@@ -553,7 +553,7 @@ public class bubbleServer : MonoBehaviour {
 
 	// // // handlers
 
-	public void OnDisconnectedS(NetworkMessage netMsg)
+	public static void OnDisconnectedS(NetworkMessage netMsg)
 	{	int cId = netMsg.conn.connectionId;
 		if (Debug.isDebugBuild) debugDisplay("Disconnection id:"+cId);
 
@@ -582,7 +582,7 @@ public class bubbleServer : MonoBehaviour {
 	//		Bots.onPush1Pull2(connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId, push1Pull2Msg.value);
 //	}
 	
-	private void onTargetNode(NetworkMessage netMsg){
+	private static void onTargetNode(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId <0) return;
 
 		CScommon.TargetNodeMsg targetMsg = netMsg.ReadMessage<CScommon.TargetNodeMsg>();
@@ -592,7 +592,7 @@ public class bubbleServer : MonoBehaviour {
 		Bots.onTarget(connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId, targetMsg.nodeIndex, targetMsg.linkType, targetMsg.hand);
 	}
 
-	private void onBlessMsg(NetworkMessage netMsg){
+	private static void onBlessMsg(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId < 0) return;
 
 		CScommon.intMsg blessMsg = netMsg.ReadMessage<CScommon.intMsg>();
@@ -602,26 +602,26 @@ public class bubbleServer : MonoBehaviour {
 		Engine.nodes[connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId].bless(Engine.nodes[blessMsg.value]);
 	}
 
-	private void onTurnMsg(NetworkMessage netMsg){
+	private static void onTurnMsg(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId <0) return;
 		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
 		//if (Debug.isDebugBuild) debugDisplay("turn "+intMsg.value+" on node "+connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId);
 		Bots.onTurn(connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId, intMsg.value);
 	}
 
-//	private void onForward0Reverse1(NetworkMessage netMsg){
+//	private static void onForward0Reverse1(NetworkMessage netMsg){
 //		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId <0) return;
 //		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
 //		Bots.onForward0Reverse1(connectionIdPlayerInfo[netMsg.conn.connectionId].nodeId, intMsg.value);
 //	}
 
-	private void onLookAtNode(NetworkMessage netMsg){
+	private static void onLookAtNode(NetworkMessage netMsg){
 		if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId <0) return;
 		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
 		if (Debug.isDebugBuild) debugDisplay ("onLookAtNode unimplemented"+nixMsg.value );
 	}
 
-	private void onRestartMsg(NetworkMessage netMsg){
+	private static void onRestartMsg(NetworkMessage netMsg){
 		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
 		restartGame(intMsg.value);
 	}
@@ -632,7 +632,7 @@ public class bubbleServer : MonoBehaviour {
 		NetworkServer.SendToAll(CScommon.broadCastMsgType, chatMsg);
 	}
 
-	private void restartGame(int v){
+	private static void restartGame(int v){
 
 		if (v == 0) { togglePause(); return; }
 		if (v == -1) { quitGame(currentGame); return;}
@@ -659,39 +659,69 @@ public class bubbleServer : MonoBehaviour {
 		quitGame(currentGame); // relaunches the current game
 	}
 
-	private void onSpeedMsg(NetworkMessage netMsg){
+	private static void onSpeedMsg(NetworkMessage netMsg){
 		CScommon.intMsg intMsg = netMsg.ReadMessage<CScommon.intMsg>();
 		if ( connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId < 0 ) return;
 		Bots.onSpeed (Engine.nodes[connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId], intMsg.value);
 	}
 
-	private void onInitRequest(NetworkMessage netMsg){
+	private static void onInitRequest(NetworkMessage netMsg){
 		CScommon.stringMsg strMsg = netMsg.ReadMessage<CScommon.stringMsg>();
 		strMsg.value += netMsg.conn.connectionId; //so even if multiple identical names are requested, all names are unique
 		connectionIdPlayerInfo[netMsg.conn.connectionId].name = strMsg.value;
 		sendWorldToClient(netMsg.conn.connectionId);
+
+		scheduleRequestNodeId (netMsg.conn.connectionId);
 	}
 
-	private void onRequestNodeId(NetworkMessage netMsg){
+
+	private static Dictionary<int,System.Timers.Timer> timers = new Dictionary<int,System.Timers.Timer>();//one per connectionId
+
+	private static void scheduleRequestNodeId(int conId){
+		System.Timers.Timer aTimer = new System.Timers.Timer (500); //may replace an old one
+		aTimer.Elapsed += delegate { giveMount (conId); };
+		aTimer.AutoReset = false; //one shot
+		aTimer.Enabled = true;
+		timers [conId] = aTimer;
+	}
+
+	public static void giveMount(int conId){
+		CScommon.intMsg nixMsg = new CScommon.intMsg ();
+		nixMsg.value = Bots.popOrgFromLargestTeam ();//only popOrg after the timer fires, otherwise someone else could mount during the wait
+
+		checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
+		changeMounts(-1,nixMsg.value,conId); 
+	}
+
+	private static void onRequestNodeId(NetworkMessage netMsg){
 		int oldNodeId, newNodeId, conId = netMsg.conn.connectionId;
 
 		//all connections have an entry in connectionIdPlayerInfo, though for some the nodeId might be -1, so no need to try-catch
-		oldNodeId = connectionIdPlayerInfo[conId].data.nodeId;
+		oldNodeId = connectionIdPlayerInfo [conId].data.nodeId;
 
-		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
+		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg> ();
 
-		if (nixMsg.value < 0 || nixMsg.value >= Engine.nodes.Count  ) newNodeId = -1;
-		else newNodeId = Engine.nodes[nixMsg.value].trustHead.id; // move to the id of the head of that organism
+		if (nixMsg.value < 0 || nixMsg.value >= Engine.nodes.Count)
+			newNodeId = -1;
+		else
+			newNodeId = Engine.nodes [nixMsg.value].trustHead.id; // move to the id of the head of that organism
 
 		//enforce that only one player can mount a node.
-		if (!Bots.mountable(newNodeId)) return;
+		if (!Bots.mountable (newNodeId))
+			return;
 
 		nixMsg.value = newNodeId;
-		checkSendToClient(conId,CScommon.nodeIdMsgType,nixMsg);
+		checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
 
 		//both could be -1
-		if (oldNodeId == newNodeId ) return; //no dna changes...
-		
+		if (oldNodeId == newNodeId)
+			return; //no dna changes...
+
+		changeMounts (oldNodeId, newNodeId, conId);
+
+	}
+
+	private static void changeMounts( int oldNodeId, int newNodeId, int conId){
 		//newNodeId != oldNodeId
 	
 		connectionIdPlayerInfo[conId].data.nodeId = newNodeId;
@@ -724,7 +754,7 @@ public class bubbleServer : MonoBehaviour {
 
 
 	//allocate an initMsg to cover a segment of the total message
-	private CScommon.InitMsg allocateInitMsg(int size){
+	private static CScommon.InitMsg allocateInitMsg(int size){
 		CScommon.InitMsg initMsg = new CScommon.InitMsg();
 		initMsg.nodeData = new CScommon.StaticNodeData[size];
 		return initMsg;
@@ -732,7 +762,7 @@ public class bubbleServer : MonoBehaviour {
 
 
 	//start + initMsg.nodeData.Length must be <= Engine.nodes.Count
-	private CScommon.InitMsg fillInInitMsg(CScommon.InitMsg initMsg, int start){
+	private static CScommon.InitMsg fillInInitMsg(CScommon.InitMsg initMsg, int start){
 		initMsg.start = start;
 		for (int i = start; i < start+initMsg.nodeData.Length; i++){
 			Bub.Node node = Engine.nodes[i];
@@ -743,7 +773,7 @@ public class bubbleServer : MonoBehaviour {
 		return initMsg;
 	}
 
-	private void sendInitToClient(int connectionId){
+	private static void sendInitToClient(int connectionId){
 		int start = 0;
 		int segmentLength = 100;
 
@@ -756,7 +786,7 @@ public class bubbleServer : MonoBehaviour {
 		if (start < Engine.nodes.Count)checkSendToClient(connectionId, CScommon.initMsgType, fillInInitMsg(allocateInitMsg(Engine.nodes.Count-start),start));
 	}
 
-	private void sendWorldToClient(int connectionId){
+	private static void sendWorldToClient(int connectionId){
 
 		if (Debug.isDebugBuild) debugDisplay("Sending world to "+connectionIdPlayerInfo[connectionId].name);
 
@@ -835,14 +865,14 @@ public class bubbleServer : MonoBehaviour {
 
 
 	//allocate an updateMsg to cover a segment of the total message
-	private CScommon.UpdateMsg allocateUpdateMsg(int size){
+	static private CScommon.UpdateMsg allocateUpdateMsg(int size){
 		CScommon.UpdateMsg updateMsg = new CScommon.UpdateMsg();
 		updateMsg.nodeData = new CScommon.DynamicNodeData[size];
 		return updateMsg;
 	}
 
 	//start + updateMsg.nodeData.Length must be <= Engine.nodes.Count
-	private CScommon.UpdateMsg fillInUpdateMsg(CScommon.UpdateMsg updateMsg, int start){
+	static private CScommon.UpdateMsg fillInUpdateMsg(CScommon.UpdateMsg updateMsg, int start){
 		updateMsg.start = start;
 		for (int i = start; i < start+updateMsg.nodeData.Length; i++){
 			Bub.Node node = Engine.nodes[i];
@@ -854,7 +884,7 @@ public class bubbleServer : MonoBehaviour {
 		return updateMsg;
 	}
 
-	private void sendUpdateToClient(int connectionId){
+	private static void sendUpdateToClient(int connectionId){
 		int start = 0;
 		int segmentLength = 100;
 		
@@ -870,7 +900,7 @@ public class bubbleServer : MonoBehaviour {
 
 	private static string oldConnections = "";
 
-	private void sendUpdateMsg(){
+	static private void sendUpdateMsg(){
 
 		int start = 0;
 		int segmentLength = 100;
@@ -902,7 +932,7 @@ public class bubbleServer : MonoBehaviour {
 
 	}
 
-	CScommon.StaticNodeInfo staticNodeInfoFor(int i){
+	static CScommon.StaticNodeInfo staticNodeInfoFor(int i){
 		CScommon.StaticNodeInfo sni = new CScommon.StaticNodeInfo();
 		sni.nodeIndex = i;
 		sni.staticNodeData.radius = Engine.nodes[i].radius;
@@ -912,7 +942,7 @@ public class bubbleServer : MonoBehaviour {
 
 	//referenceInitMsg.linkId, and referenceLinkJK are write once, read many times, i.e. must never change. 
 	//The linkId identifies the row of the referenceMsg. Also, the sourceID of each row must never change.
-	void generateReferences(){
+	static void generateReferences(){
 
 		referenceInitMsg = fillInInitMsg(allocateInitMsg(Engine.nodes.Count),0);
 
@@ -952,18 +982,18 @@ public class bubbleServer : MonoBehaviour {
 		}
 	}
 
-	private CScommon.LinksMsg allocateLinksMsg(int size){
+	static private CScommon.LinksMsg allocateLinksMsg(int size){
 		CScommon.LinksMsg linksMsg = new CScommon.LinksMsg();
 		linksMsg.links = new CScommon.LinkInfo[size];
 		return linksMsg;
 	}
 
-	private CScommon.LinksMsg fillInLinksMsg(CScommon.LinksMsg linksMsg, int start){
+	static private CScommon.LinksMsg fillInLinksMsg(CScommon.LinksMsg linksMsg, int start){
 		for (int i = 0; i < linksMsg.links.Length; i++) linksMsg.links[i] = referenceLinkMsg.links[i+start];
 		return linksMsg;
 	}
 
-	private void sendLinksToClient(int connectionId){
+	static private void sendLinksToClient(int connectionId){
 		int start = 0;
 		int segmentLength = 50;
 		
@@ -980,7 +1010,7 @@ public class bubbleServer : MonoBehaviour {
 
 	//checkForLinkRevisions is the only consumer of referenceLinkJK content
 	//which is written elsewhere, but only read here
-	void checkForLinkRevisions(){
+	static void checkForLinkRevisions(){
 		Bub.Node source;
 
 		List<CScommon.LinkInfo> linkInfo = new List<CScommon.LinkInfo>();
@@ -1025,7 +1055,7 @@ public class bubbleServer : MonoBehaviour {
 
 	}
 
-	void checkForInitRevisions(){
+	static void checkForInitRevisions(){
 
 		List<CScommon.StaticNodeInfo> nodeInfoList = new List<CScommon.StaticNodeInfo>();
 
