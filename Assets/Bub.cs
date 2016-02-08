@@ -103,7 +103,7 @@ public class Bub {
 	}
 
 
-    private static string getRandomClan()
+    public static string getRandomClan()
     {return Random.Range(0,int.MaxValue).ToString();}
 
 
@@ -141,9 +141,9 @@ public class Bub {
 		public bool external {get{ return target.trustHead != source.trustHead;}} // a cut muscle is not external. Nor is it internal.
 
 		public void reTarget(Node n) {
-			if (external) target.enemyMuscles.Remove(this); 
+			if (external) target.trustHead.enemyMuscles.Remove(this); 
 			target = n;
-			if (external) target.enemyMuscles.Add(this); 
+			if (external) target.trustHead.enemyMuscles.Add(this); 
 		}
 
 		public bool enabled {get{ return demand > 0;}} 
@@ -182,7 +182,7 @@ public class Bub {
 			//is cut if source == target
 			if (notCut) { 
 				enable(100); 
-				if (external) target.enemyMuscles.Add(this); 
+				if (external) target.trustHead.enemyMuscles.Add(this); 
 			}
 			pulling = true;
 		}
@@ -368,7 +368,7 @@ public class Bub {
 
 		public List<Bone> bones;
 
-		public List<Muscle> enemyMuscles;
+		public List<Muscle> enemyMuscles; //org property, only used on trustHeads
 
 		public float nx, ny; //hallucinated evolving next position of node
 		public string clan  { get; private set; }
@@ -462,7 +462,7 @@ public class Bub {
 
 		public void breakTrust(){
 			if (trustHead == this) return; //don't break trust in self. Implies that a trustHead can't leave an org
-			trustHead.trusters.Remove(this);
+			trustHead.trusters.Remove(this); //INCONSISTENCY IN ENEMYMUSCLES--those targeting me should be removed from that org's enemymuscles
 			trustHead = this;
 		}
 
@@ -522,8 +522,10 @@ public class Bub {
 			for (int i = 0; i<rules.Count; i++) rules[i].enableInternalMuscles(percent);
 		}
 
-		public void cutExternalMuscles(){
-			for (int i=0; i<rules.Count; i++) rules[i].cutExternalMuscles();
+		public int cutExternalMuscles(){
+			int sum = 0;
+			for (int i=0; i<rules.Count; i++) sum += rules[i].cutExternalMuscles();
+			return sum;
 		}
 
 		public void cutMusclesTargetingOrg(Node orgMember){
@@ -854,19 +856,6 @@ public class Bub {
 			return registeredIds;
 		}
 
-//		private void thisOrgBeats(Node loser){
-//			List<int> registeredWinners = this.registeredOrgNodes();
-//			if (registeredWinners.Count > 0){
-//				List<int> registeredLosers = loser.registeredOrgNodes();
-//				if (registeredLosers.Count > 0 ) {
-//
-//					Engine.scheduledOrgRelocations.Add(loser.trustHead);
-//					foreach (int winnerId in registeredWinners) bubbleServer.scoreWinner(winnerId);
-//					foreach (int loserId in registeredLosers) bubbleServer.scoreLoser(loserId);
-//				}
-//			}
-//		}
-
 		private void thisOrgBeats(Node loser){
 			if (bubbleServer.registered(trustHead.id) && bubbleServer.registered(loser.trustHead.id)){
 				Engine.scheduledOrgRelocations.Add(loser.trustHead);
@@ -885,10 +874,13 @@ public class Bub {
 		private void cutOutOrganism(){
 			//take out all muscles attacking me
 			List<Muscle> attackers = new List<Muscle>(trustHead.enemyMuscles);
+			//Debug.Log (attackers.Count + " attackers cut.");
 			foreach (var muscl in attackers) muscl.cut ();
 			//take out all of my attack muscles
-			List<Node> org = trustGroup();
-			foreach (var node in org) node.cutExternalMuscles();
+			List<Node> myOrg = trustGroup();
+			int sum = 0;
+			foreach (var node in myOrg) sum += node.cutExternalMuscles();
+			//Debug.Log ("trustGroup " + myOrg.Count + " externals cut:" + sum);
 		}
 
 		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that.
@@ -926,12 +918,12 @@ public class Bub {
 			float eatenOrgCanGive = eaten.orgOomph ();
 			float canTransfer = Mathf.Min(thisOrgCanEat, eatenOrgCanGive);
 
-			if (UnityEngine.Debug.isDebugBuild && eaten.id == 0){
-				bubbleServer.debugDisplay ("eat "+thisOrgCanEat+" "+eatenOrgCanGive+" " + canTransfer);
-				bubbleServer.debugDisplay (this.trustGroup ().Count+":"+eaten.trustGroup().Count);
-				bubbleServer.debugDisplay ("this(0) " + this.trustGroup()[0].maxOomph + "-" + this.trustGroup()[0].oomph);
-				bubbleServer.debugDisplay ("that(0) " + eaten.trustGroup()[0].maxOomph + "-" + eaten.trustGroup()[0].oomph);
-			}
+//			if (UnityEngine.Debug.isDebugBuild && eaten.id == 0){
+//				bubbleServer.debugDisplay ("eat "+thisOrgCanEat+" "+eatenOrgCanGive+" " + canTransfer);
+//				bubbleServer.debugDisplay (this.trustGroup ().Count+":"+eaten.trustGroup().Count);
+//				bubbleServer.debugDisplay ("this(0) " + this.trustGroup()[0].maxOomph + "-" + this.trustGroup()[0].oomph);
+//				bubbleServer.debugDisplay ("that(0) " + eaten.trustGroup()[0].maxOomph + "-" + eaten.trustGroup()[0].oomph);
+//			}
 
 			if (canTransfer > 0){ //guard against zeroDivide by zero thisOrgCanEat or eatenOrgCanGive
 				foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanEat;

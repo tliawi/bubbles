@@ -43,6 +43,8 @@ public class Bots
 	public static Bub.Node spawnInchworm(Vector2 headPosition, float headRadius, bool headVeg, 
 	                                 Vector2 tailDelta, float tailRadius, bool tailVeg, string clan=""){
 
+		if (clan == "") clan = Bub.getRandomClan (); // want all nodes within an org to be of the same clan
+
 		// mimic human or npc behavior building the scaffolding, i.e. establishing nodes and muscles and bones
 		Bub.Node head = pushVegNode( headPosition, headRadius, clan).setDna(CScommon.vegetableBit, headVeg);
 		Bub.Node tail = pushVegNode( headPosition+tailDelta, tailRadius, clan).setDna(CScommon.vegetableBit, tailVeg);
@@ -58,7 +60,9 @@ public class Bots
 	public static Bub.Node spawnTricycle(Vector2 headPosition, float headRadius, bool headVegetable, 
 	                                          Vector2 tailsMidpointDelta, float widthBetweenTails, float tailsRadius, bool tailsVegetable, 
 	                                          string clan=""){
-		
+
+		if (clan == "") clan = Bub.getRandomClan (); // want all nodes within an org to be of the same clan
+
 		// mimic human or npc behavior building the scaffolding, i.e. establishing nodes and muscles and bones
 		Bub.Node head = pushVegNode( headPosition, headRadius, clan).setDna(CScommon.vegetableBit, headVegetable);
 		
@@ -92,6 +96,8 @@ public class Bots
 
 	public static Bub.Node spawnTapeworm(Vector2 headPosition, bool headVeg, 
 	                              int numSegments, float radius, bool tailVeg , string clan = ""){
+
+		if (clan == "") clan = Bub.getRandomClan (); // want all nodes within an org to be of the same clan
 
 		float randomAngle = Random.Range(-Mathf.PI, Mathf.PI);
 		Vector2 tailDelta,tailPosition;
@@ -370,6 +376,10 @@ public class Bots
 			gameName = "turm2";
 			turmInit2 ();
 			break;
+		case 6:
+			gameName = "tryEat";
+			tryEat ();
+			break;
 		default: 
 			gameName = "sizeTest";
 			testbedInit ();
@@ -396,13 +406,13 @@ public class Bots
 
 	private static Bub.Node setUpPlayer(Bub.Node head, int teamNumber,  string name, Bub.Node goal = null, int internalSpeed = 100){
 
-		//onSpeed(head,internalSpeed); 
+		onSpeed(head,internalSpeed);
 
 		//note that team number 0 is unscored, i.e. indicates no team at all, singleton
 		head.setTeam(teamNumber);
 		head.setDna(CScommon.playerBit,true); //ie is mountable
 
-		//Rules.Autopilot.install(head,goal); //does nothing if goal is null
+		Rules.Autopilot.install(head,goal); //does nothing if goal is null
 		Rules.HunterNPCRule.install(head);
 		Rules.HunterPCRule.install(head,0);
 		Rules.HunterPCRule.install(head,1);
@@ -462,7 +472,7 @@ public class Bots
 //		spawnRandomTeam(abnorm,2,2,1,2,"people",bs);
 //		spawnRandomTeam(abnorm,2,2,1,2,"people",ls);
 
-		spawnRandomTeam (abnorm, 8, 0, 0, 1, "", null, 50);
+		spawnRandomTeam (abnorm, 8, 0, 0, 1, "", null, 50); //null clan means each org will have unique clan
 
 	}
 
@@ -816,5 +826,10 @@ public class Bots
 		
 	}
 
+	private static void tryEat(){
+
+		spawnRandomTeam(abnorm, 1, 1, 0, 1);
+
+	}
 
 }

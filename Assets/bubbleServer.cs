@@ -86,6 +86,16 @@ public class bubbleServer : MonoBehaviour {
 			nonvegStartFuel = 0f;
 			Bots.popcorn = 250;
 			break;
+		case 6: //tryEat
+			normScaleI = 6;
+			abnormScaleI = 1;
+			photoYieldI = 0;
+			baseMetabolicRateI = 0;
+			worldRadiusI = -6;
+			vegStartFuel = 1.0f;
+			nonvegStartFuel = 0.5f;
+			Bots.popcorn = 10;
+			break;
 		default:
 			normScaleI = 6;
 			abnormScaleI = 1;
@@ -306,7 +316,6 @@ public class bubbleServer : MonoBehaviour {
 
 	void initCurrentGame()
 	{	
-		paused = true;
 		scheduledScores.Clear();
 
 		Bub.initialize();
@@ -322,6 +331,8 @@ public class bubbleServer : MonoBehaviour {
 
 		Camera.main.orthographicSize = Bub.worldRadius/2;
 		Camera.main.transform.position = new Vector3(0,0,-100);
+
+		paused = false;
 
 	}
 
@@ -824,7 +835,8 @@ public class bubbleServer : MonoBehaviour {
 		}
 		checkSendToClient(connectionId,CScommon.scoreMsgType,smsg);
 	}
-	
+
+
 	private void sendScheduledScores(){
 		if (scheduledScores.Count == 0) return;
 
