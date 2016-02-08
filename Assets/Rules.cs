@@ -88,8 +88,14 @@ public class Rules {
 			for (int i = 0; i< _muscles.Count; i++) _muscles[i].reEnable ();
 		}
 
-		public void cutExternalMuscles(){
-			for (int i=0; i< _muscles.Count; i++) if (_muscles[i].external ) _muscles[i].cut();
+		public int cutExternalMuscles(){
+			int sum = 0;
+			for (int i = 0; i < _muscles.Count; i++)
+				if (_muscles [i].external) {
+					sum += 1;
+					_muscles [i].cut ();
+				}
+			return sum;
 		}
 
 		public void cutMusclesTargetingOrg(Bub.Node orgMember){

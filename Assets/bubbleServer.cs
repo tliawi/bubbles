@@ -9,62 +9,62 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 
 public class bubbleServer : MonoBehaviour {
-	
+
+	private static GameObject dbgdsply;
+	private static Text dbgdsplyText;
 	private static List<string> debugDisplayList = new List<string>();
 
-	public static void debugDisplay(string s){
+	//unity doesn't like dbgdsply.activeSelf being called outside the main thread, in particular
+	//when I use a timer to mount an org automatically some time after a connection--apparently that's not in the same thread.
+	public static void debugDisplay(string s) {
+
 		if (debugDisplayList.Count>8) debugDisplayList.RemoveAt(0);
 		debugDisplayList.Add (s);
 
 		string ss = "";
 		for (int i=0;i<debugDisplayList.Count; i++) ss += debugDisplayList[i] + "\n";
 
-		if (dbgdsply.activeSelf) {
-			GameObject.Find ("Canvas/Scroll View/Viewport/myScrollContent").GetComponent<Text>().text = ss;
-		}
-		Debug.Log(s);
+		if (dbgdsply.activeSelf)  dbgdsplyText.text = ss;
+
+		if (s != "") Debug.Log(s);
 	}
 
-	private static bool displayGrid;
+	private bool displayGrid;
 
 	//Bubbles will spawn with radii approximately 1 (i.e. from let's say 1/10 to 10).
 
 	//private bool xing = false;
 
-	private static bool paused = true;
+	private  bool paused = true;
+
 	public static bool constantLinkWidth = false;
 
-	private static float normScale;
-	private static float abnormScale;
-	public static float norm {get {return normScale;}}
-	public static float abnorm {get{ return normScale*abnormScale;} }
-	private static int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
-	private static float vegStartFuel, nonvegStartFuel;
-	public static int popcorn {get; private set;} 
+	private  int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
+	private  float vegStartFuel, nonvegStartFuel;
 
 	private static Dictionary<int,bool> scheduledScores = new Dictionary<int,bool>();
 
-	private void resetDefaultScales(int newGame){
+	private  void resetDefaultScales(int newGame){
 		switch (newGame) {
 		case 1: //snark
 			normScaleI = 9;
-			abnormScaleI = 2;
-			photoYieldI = 0;
-			baseMetabolicRateI = 0;
+			abnormScaleI = 0;
+			photoYieldI = 10;
+			baseMetabolicRateI = 4;
 			worldRadiusI = 0;
 			vegStartFuel = 1.0f;
 			nonvegStartFuel = 0f;
-			popcorn = 100;
+			Bots.popcorn = 100;
 			break;
 		case 2: // race
 			normScaleI = 2;
-			abnormScaleI = 6;
-			photoYieldI = -3;
-			baseMetabolicRateI = -1;
+			abnormScaleI = 4;
+			photoYieldI = 5;
+			baseMetabolicRateI = 5;
 			worldRadiusI = 0;
 			vegStartFuel = 1.0f;
-			nonvegStartFuel = 0f;
-			popcorn = 100;
+			nonvegStartFuel = 1.0f;
+			Bots.popcorn = 100;
 			break;
 		case 3: //fussball
 			normScaleI = 5;
@@ -74,17 +74,27 @@ public class bubbleServer : MonoBehaviour {
 			worldRadiusI = -5;
 			vegStartFuel = 1.0f;
 			nonvegStartFuel = 0f;
-			popcorn = 100;
+			Bots.popcorn = 100;
 			break;
 		case 4: //turm
-			normScaleI = -1; 
+			normScaleI = 3; 
 			abnormScaleI = 4;
 			photoYieldI = 0;
 			baseMetabolicRateI = 0;
-			worldRadiusI = 0;
+			worldRadiusI = -2;
 			vegStartFuel = 6f;
 			nonvegStartFuel = 0f;
-			popcorn = 250;
+			Bots.popcorn = 250;
+			break;
+		case 6: //tryEat
+			normScaleI = 6;
+			abnormScaleI = 1;
+			photoYieldI = 0;
+			baseMetabolicRateI = 0;
+			worldRadiusI = -6;
+			vegStartFuel = 1.0f;
+			nonvegStartFuel = 0.5f;
+			Bots.popcorn = 10;
 			break;
 		default:
 			normScaleI = 6;
@@ -94,22 +104,22 @@ public class bubbleServer : MonoBehaviour {
 			worldRadiusI = 0;
 			vegStartFuel = 1.0f;
 			nonvegStartFuel = 0f;
-			popcorn = 100;
+			Bots.popcorn = 100;
 			break;
 		}
 		setScales();
 		quitGame(newGame);
 	}
 
-	private static string scaleString(){
+	private  string scaleString(){
 		return "| "+normScaleI+" "+abnormScaleI+"   "+
 			photoYieldI+" "+baseMetabolicRateI+" "+worldRadiusI+"   "+
-			Mathf.Round(vegStartFuel*10)+" "+Mathf.Round (nonvegStartFuel*10)+"  "+popcorn;
+			Mathf.Round(vegStartFuel*10)+" "+Mathf.Round (nonvegStartFuel*10)+"  "+Bots.popcorn;
 	}
 
-	private void setScales(){
-		normScale = Mathf.Pow(1.2f, normScaleI);
-		abnormScale = Mathf.Pow(1.2f, abnormScaleI);
+	private  void setScales(){
+		Bots.norm = Mathf.Pow(1.2f, normScaleI);
+		Bots.abnormScale = Mathf.Pow(1.2f, abnormScaleI);
 		Bub.photoYield =0.08f* Mathf.Pow(1.2f, photoYieldI);
 		Bub.baseMetabolicRate = 0.0035f * Mathf.Pow (1.2f, baseMetabolicRateI);
 		Bub.worldRadius = 400f * Mathf.Pow(1.2f, worldRadiusI);
@@ -117,14 +127,14 @@ public class bubbleServer : MonoBehaviour {
 		if (vegStartFuel > 1) vegStartFuel = 1;
 		if (nonvegStartFuel < 0) nonvegStartFuel = 0;
 		if (nonvegStartFuel > 1) nonvegStartFuel = 1;
-		if (popcorn < 0) popcorn = 0;
+		if (Bots.popcorn < 0) Bots.popcorn = 0;
 		sendScalesToAll();
 	}
 	
-	private int currentGame = 1;
+	 private int currentGame = 1;
 
-	private CScommon.InitMsg referenceInitMsg;
-	private CScommon.LinksMsg referenceLinkMsg;
+	 private CScommon.InitMsg referenceInitMsg;
+	 private CScommon.LinksMsg referenceLinkMsg;
 
 	public struct JKStruct { 
 		public int j; 
@@ -155,10 +165,11 @@ public class bubbleServer : MonoBehaviour {
 			data.gameMilliseconds = gameStopwatch.ElapsedMilliseconds; }
 	}
 
-	private static Dictionary<int, PlayerInfo> connectionIdPlayerInfo = new Dictionary<int, PlayerInfo>();
+	private Dictionary<int, PlayerInfo> connectionIdPlayerInfo = new Dictionary<int, PlayerInfo>();
 	// replaces private Dictionary<int,int> connectionIdNodeId = new Dictionary<int,int>();
 	// and private Dictionary<int,string> connectionIdName = new Dictionary<int,string>();
-	
+
+
 	//NOTE: some players (NPC's like snarks) may be in nodeIdPlayerInfo but they are not "connected" and so are not in connectionIdPlayerInfo.
 	//Some players (connected spectators) may be in connectionIdPlayerInfo but they are not associated with any node, so are not in nodeIdPlayerInfo.
 	private static Dictionary<int, PlayerInfo> nodeIdPlayerInfo = new Dictionary<int,PlayerInfo>();
@@ -166,8 +177,7 @@ public class bubbleServer : MonoBehaviour {
 	public static bool registered(int nodeId) {return nodeIdPlayerInfo.ContainsKey (nodeId);}
 
 
-
-//	public static void playerWinLose(int winnerId, int loserId){
+//	public void playerWinLose(int winnerId, int loserId){
 //
 //		if (nodeIdPlayerInfo.ContainsKey (winnerId) && nodeIdPlayerInfo.ContainsKey(loserId)) { //don't track interactions between non-registrants
 //
@@ -179,13 +189,13 @@ public class bubbleServer : MonoBehaviour {
 //		}
 //	}
 
-	static Dictionary<int,System.Diagnostics.Stopwatch> stopwatches = new Dictionary<int,System.Diagnostics.Stopwatch>();
+//	Dictionary<int,System.Diagnostics.Stopwatch> stopwatches = new Dictionary<int,System.Diagnostics.Stopwatch>();
 	//holds one stopwatch for every nodeId for which you want to display performance.
 	//Whenever you get a scoreMsg for a nodeId, you .Reset() and .Start() its stopwatch.
-	public static float currentPerformance(CScommon.ScoreStruct ss){
-		long delta = stopwatches[ss.nodeId].ElapsedMilliseconds; //the amount of time, in milliseconds, since you last received a scoreMsg for this player
-		return ss.performance*Mathf.Pow(2,-delta/CScommon.performanceHalfLifeMilliseconds);
-	}
+//	public float currentPerformance(CScommon.ScoreStruct ss){
+//		long delta = stopwatches[ss.nodeId].ElapsedMilliseconds; //the amount of time, in milliseconds, since you last received a scoreMsg for this player
+//		return ss.performance*Mathf.Pow(2,-delta/CScommon.performanceHalfLifeMilliseconds);
+//	}
 
 	public static void score(int nodeId, byte neither0Winner1Loser2){
 		if (nodeIdPlayerInfo.ContainsKey(nodeId)){
@@ -204,21 +214,20 @@ public class bubbleServer : MonoBehaviour {
 		}
 	}
 
+
+
 	public static void scoreWinner(int nodeId){ score(nodeId,1);}
 	public static void scoreLoser(int nodeId){ score(nodeId,2);}
 		
-
 	public static void registerNPC(int nodeId,string name){
 		nodeIdPlayerInfo[nodeId] = new PlayerInfo();
 		nodeIdPlayerInfo[nodeId].data.nodeId = nodeId;
 		nodeIdPlayerInfo[nodeId].name = name;
 	}
-
-
-	private static GameObject dbgdsply;
+		
 	
-	private static float zoom = 1;
-	private static float zoomSpeed = 1.05f;
+	private float zoom = 1;
+	private float zoomSpeed = 1.05f;
 
 	void zoomCameraIn() {
 		zoom /= zoomSpeed;
@@ -243,12 +252,15 @@ public class bubbleServer : MonoBehaviour {
 	void Awake () { 
 
 		QualitySettings.vSyncCount = 0;  // VSync must be disabled
-		Application.targetFrameRate = 50;
+		Application.targetFrameRate = 30;
 
 		Grid.initialize();
 		reminderText = GameObject.FindWithTag ("betweenGames").GetComponent<Text>();
 		dbgdsply = GameObject.FindWithTag("scrollView");
+		dbgdsplyText = GameObject.Find ("Canvas/Scroll View/Viewport/myScrollContent").GetComponent<Text> ();
 		displayGrid = true;
+
+		timers = new Dictionary<int,System.Timers.Timer>();
 
 //		networkMatch = gameObject.AddComponent<NetworkMatch>();
 //
@@ -276,7 +288,7 @@ public class bubbleServer : MonoBehaviour {
 		
 		paused = true;
 		gameStopwatch.Reset();
-		dbgdsply.SetActive(true);
+		dbgdsply.SetActive(false);
 
 		referenceInitMsg = null;
 		referenceLinkMsg = null;
@@ -304,7 +316,6 @@ public class bubbleServer : MonoBehaviour {
 
 	void initCurrentGame()
 	{	
-		paused = true;
 		scheduledScores.Clear();
 
 		Bub.initialize();
@@ -321,6 +332,8 @@ public class bubbleServer : MonoBehaviour {
 		Camera.main.orthographicSize = Bub.worldRadius/2;
 		Camera.main.transform.position = new Vector3(0,0,-100);
 
+		paused = false;
+
 	}
 
 	/*
@@ -335,10 +348,9 @@ public class bubbleServer : MonoBehaviour {
 
 	void FixedUpdate(){ if (!paused) Engine.step();}
 
-	public static string gameName = "";
 
 	string reminder(){
-		string s = gameName+": arrows Zz s d g 1 2 3 4 +- 0";
+		string s = Bots.gameName+": arrows Zz s d g 1 2 3 4 +- 0";
 		foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.data.nodeId;
 		s += "  "+(paused?"(PAUSED)":"")+scaleString();
 		return s;
@@ -350,7 +362,7 @@ public class bubbleServer : MonoBehaviour {
 		else gameStopwatch.Start(); //starts from wherever it left off
 	}
 		
-		void Update(){
+	void Update(){
 
 //		if (gameChosen>0){
 
@@ -383,7 +395,7 @@ public class bubbleServer : MonoBehaviour {
 			togglePause();
 			Engine.step ();
 			execute();
-			paused = true;
+			togglePause ();
 		}
 
 		if (Input.GetKeyDown(KeyCode.L)){
@@ -468,7 +480,7 @@ public class bubbleServer : MonoBehaviour {
 		}
 	}
 
-	public static void startFuel(){
+	public void startFuel(){
 		for (int i = 1; i< Engine.nodes.Count; i++) {
 			if (CScommon.testBit (Engine.nodes[i].dna,CScommon.vegetableBit)) Engine.nodes[i].oomph = Engine.nodes[i].maxOomph*vegStartFuel; 
 			else Engine.nodes[i].oomph = Engine.nodes[i].maxOomph*nonvegStartFuel;
@@ -529,7 +541,7 @@ public class bubbleServer : MonoBehaviour {
 
 
 
-	static void checkSendToClient(int connectionId, short msgType, MessageBase msg){
+	void checkSendToClient(int connectionId, short msgType, MessageBase msg){
 		if (NetworkServer.connections[connectionId].connectionId != connectionId) { 
 			if (Debug.isDebugBuild) debugDisplay("checkSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId); 
 			return;
@@ -557,7 +569,7 @@ public class bubbleServer : MonoBehaviour {
 	{	int cId = netMsg.conn.connectionId;
 		if (Debug.isDebugBuild) debugDisplay("Disconnection id:"+cId);
 
-		//netMsg.conn.FlushChannels(); causes "attempt to send to not connected connection."
+		netMsg.conn.FlushChannels(); //causes "attempt to send to not connected connection." but apparently that's normal
 		netMsg.conn.Dispose(); //get rid of any existing buffers of stuff being sent? doesn't help
 
 		//don't disconnect it... disconnect could provoke infinite recursion?
@@ -626,7 +638,7 @@ public class bubbleServer : MonoBehaviour {
 		restartGame(intMsg.value);
 	}
 
-	private static void onBroadCastMsg(NetworkMessage netMsg){
+	private void onBroadCastMsg(NetworkMessage netMsg){
 		CScommon.stringMsg chatMsg = netMsg.ReadMessage<CScommon.stringMsg>();
 		chatMsg.value = connectionIdPlayerInfo[netMsg.conn.connectionId].name + ": " + chatMsg.value;
 		NetworkServer.SendToAll(CScommon.broadCastMsgType, chatMsg);
@@ -653,8 +665,8 @@ public class bubbleServer : MonoBehaviour {
 		else if (v == 72) vegStartFuel += 0.1f;
 		else if (v == 81) nonvegStartFuel -= 0.1f;
 		else if (v == 82) nonvegStartFuel += 0.1f;
-		else if (v == 91) popcorn -= 20;
-		else if (v == 92) popcorn += 20;
+		else if (v == 91) Bots.popcorn -= 20;
+		else if (v == 92) Bots.popcorn += 20;
 		setScales();
 		quitGame(currentGame); // relaunches the current game
 	}
@@ -670,29 +682,58 @@ public class bubbleServer : MonoBehaviour {
 		strMsg.value += netMsg.conn.connectionId; //so even if multiple identical names are requested, all names are unique
 		connectionIdPlayerInfo[netMsg.conn.connectionId].name = strMsg.value;
 		sendWorldToClient(netMsg.conn.connectionId);
+
+		scheduleRequestNodeId (netMsg.conn.connectionId);
+	}
+
+
+	private Dictionary<int,System.Timers.Timer> timers;//one per connectionId
+
+	private void scheduleRequestNodeId(int conId){
+		System.Timers.Timer aTimer = new System.Timers.Timer (500); //may replace an old one
+		aTimer.Elapsed += delegate { giveMount (conId); };
+		aTimer.AutoReset = false; //one shot
+		aTimer.Enabled = true;
+		timers [conId] = aTimer;
+	}
+
+	public void giveMount(int conId){
+		CScommon.intMsg nixMsg = new CScommon.intMsg ();
+		nixMsg.value = Bots.mountOrgFromLargestTeam ();//only popOrg after the timer fires, otherwise someone else could mount during the wait
+
+		checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
+		changeMounts(-1,nixMsg.value,conId); 
 	}
 
 	private void onRequestNodeId(NetworkMessage netMsg){
 		int oldNodeId, newNodeId, conId = netMsg.conn.connectionId;
 
 		//all connections have an entry in connectionIdPlayerInfo, though for some the nodeId might be -1, so no need to try-catch
-		oldNodeId = connectionIdPlayerInfo[conId].data.nodeId;
+		oldNodeId = connectionIdPlayerInfo [conId].data.nodeId;
 
-		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
+		CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg> ();
 
-		if (nixMsg.value < 0 || nixMsg.value >= Engine.nodes.Count  ) newNodeId = -1;
-		else newNodeId = Engine.nodes[nixMsg.value].trustHead.id; // move to the id of the head of that organism
+		if (nixMsg.value < 0 || nixMsg.value >= Engine.nodes.Count)
+			newNodeId = -1;
+		else
+			newNodeId = Engine.nodes [nixMsg.value].trustHead.id; // move to the id of the head of that organism
 
 		//enforce that only one player can mount a node.
-		//if (nodeIdPlayerInfo.ContainsKey(newNodeId))newNodeId = oldNodeId;
-		if (!Bots.mountable(newNodeId)) return;
+		if (!Bots.mountable (newNodeId))
+			return;
 
 		nixMsg.value = newNodeId;
-		checkSendToClient(conId,CScommon.nodeIdMsgType,nixMsg);
+		checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
 
 		//both could be -1
-		if (oldNodeId == newNodeId ) return; //no dna changes...
-		
+		if (oldNodeId == newNodeId)
+			return; //no dna changes...
+
+		changeMounts (oldNodeId, newNodeId, conId);
+
+	}
+
+	private void changeMounts( int oldNodeId, int newNodeId, int conId){
 		//newNodeId != oldNodeId
 	
 		connectionIdPlayerInfo[conId].data.nodeId = newNodeId;
@@ -770,7 +811,7 @@ public class bubbleServer : MonoBehaviour {
 	}
 
 
-	private static void sendAllNodeNamesToClient(int connectionId){
+	private void sendAllNodeNamesToClient(int connectionId){
 		CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
 		nnmsg.arry = new CScommon.NodeName[nodeIdPlayerInfo.Keys.Count];
 		int i = 0;
@@ -784,7 +825,7 @@ public class bubbleServer : MonoBehaviour {
 		checkSendToClient(connectionId,CScommon.nodeNamesMsgType,nnmsg);
 	}
 
-	private static void sendAllScoresToClient(int connectionId){
+	private void sendAllScoresToClient(int connectionId){
 		CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
 		smsg.arry = new CScommon.ScoreStruct[nodeIdPlayerInfo.Count];
 		int i = 0;
@@ -794,8 +835,9 @@ public class bubbleServer : MonoBehaviour {
 		}
 		checkSendToClient(connectionId,CScommon.scoreMsgType,smsg);
 	}
-	
-	private static void sendScheduledScores(){
+
+
+	private void sendScheduledScores(){
 		if (scheduledScores.Count == 0) return;
 
 		CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
@@ -813,7 +855,7 @@ public class bubbleServer : MonoBehaviour {
 	}	
 
 
-	private static void send1or2NodeNamesToAll(int nodeId0, string name0, int nodeId1=int.MaxValue, string name1 = ""){
+	private void send1or2NodeNamesToAll(int nodeId0, string name0, int nodeId1=int.MaxValue, string name1 = ""){
 		CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
 		nnmsg.arry = new CScommon.NodeName[nodeId1==int.MaxValue?1:2];
 
@@ -828,7 +870,7 @@ public class bubbleServer : MonoBehaviour {
 		NetworkServer.SendToAll (CScommon.nodeNamesMsgType,nnmsg);
 	}
 
-	private static void sendScalesToAll(){
+	private void sendScalesToAll(){
 		CScommon.stringMsg scaleMsg = new CScommon.stringMsg();
 		scaleMsg.value = scaleString();
 		NetworkServer.SendToAll (CScommon.scaleMsgType,scaleMsg);
@@ -869,12 +911,12 @@ public class bubbleServer : MonoBehaviour {
 
 	}
 
-	private static string oldConnections = "";
+	private string oldConnections = "";
 
 	private void sendUpdateMsg(){
 
 		int start = 0;
-		int segmentLength = 100;
+		int segmentLength = 90; // was 100, 60 doesn't help, it's not the size that's a problem...
 
 		string s = "";
 		foreach (NetworkConnection conn in NetworkServer.connections){

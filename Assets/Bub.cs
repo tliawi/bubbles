@@ -20,7 +20,7 @@ public class Bub {
 
 	private static float gGravity;//see resetGravity. OccaSsional large perterbations in gravity can have a pleasing and disruptive effect on circling
 	private static Vector2 gCG = new Vector2(0.0f,0.0f); //Center of world is 0,0, but CG, Center of Gravity, can be moved about a bit to give a nice effect
-	private static float maxRelSpeed = CScommon.inefficientLink/2; // maximum relative speed (movement in one fixedframe /radius).
+	private static float maxRelSpeed = CScommon.inefficientLink/2; // maximum relative speed (movement in one fixedframe /radius). Strong medicine, setting it much lower really slows everything down
 
 	public struct SteeringStruct{
 		public Node target;
@@ -103,7 +103,7 @@ public class Bub {
 	}
 
 
-    private static string getRandomClan()
+    public static string getRandomClan()
     {return Random.Range(0,int.MaxValue).ToString();}
 
 
@@ -141,9 +141,9 @@ public class Bub {
 		public bool external {get{ return target.trustHead != source.trustHead;}} // a cut muscle is not external. Nor is it internal.
 
 		public void reTarget(Node n) {
-			if (external) target.enemyMuscles.Remove(this); 
+			if (external) target.trustHead.enemyMuscles.Remove(this); 
 			target = n;
-			if (external) target.enemyMuscles.Add(this); 
+			if (external) target.trustHead.enemyMuscles.Add(this); 
 		}
 
 		public bool enabled {get{ return demand > 0;}} 
@@ -182,7 +182,7 @@ public class Bub {
 			//is cut if source == target
 			if (notCut) { 
 				enable(100); 
-				if (external) target.enemyMuscles.Add(this); 
+				if (external) target.trustHead.enemyMuscles.Add(this); 
 			}
 			pulling = true;
 		}
@@ -368,7 +368,7 @@ public class Bub {
 
 		public List<Bone> bones;
 
-		public List<Muscle> enemyMuscles;
+		public List<Muscle> enemyMuscles; //org property, only used on trustHeads
 
 		public float nx, ny; //hallucinated evolving next position of node
 		public string clan  { get; private set; }
@@ -462,7 +462,7 @@ public class Bub {
 
 		public void breakTrust(){
 			if (trustHead == this) return; //don't break trust in self. Implies that a trustHead can't leave an org
-			trustHead.trusters.Remove(this);
+			trustHead.trusters.Remove(this); //INCONSISTENCY IN ENEMYMUSCLES--those targeting me should be removed from that org's enemymuscles
 			trustHead = this;
 		}
 
@@ -492,6 +492,14 @@ public class Bub {
 			return  Mathf.Atan2(trustHead.y-cb.y, trustHead.x-cb.x);
 		}
 
+		public int getTeam(){
+			return (int) CScommon.dnaNumber (dna, CScommon.leftTeamBit, CScommon.rightTeamBit);
+		}
+
+		public void setTeam(int teamNumber){
+			setDna(CScommon.leftTeamBit, CScommon.rightTeamBit, teamNumber);
+		}
+
 		//unused
 //		public Rules.Rule removeAI(){
 //			Rules.Rule ai;
@@ -509,12 +517,15 @@ public class Bub {
 //			return ais;
 //		}
 
+
 		public void enableInternalMuscles(int percent){
 			for (int i = 0; i<rules.Count; i++) rules[i].enableInternalMuscles(percent);
 		}
 
-		public void cutExternalMuscles(){
-			for (int i=0; i<rules.Count; i++) rules[i].cutExternalMuscles();
+		public int cutExternalMuscles(){
+			int sum = 0;
+			for (int i=0; i<rules.Count; i++) sum += rules[i].cutExternalMuscles();
+			return sum;
 		}
 
 		public void cutMusclesTargetingOrg(Node orgMember){
@@ -622,7 +633,16 @@ public class Bub {
 
 		//these functions return this to support function chaining
 		public Node setClan(string c){ clan = c; return this; }
-		public Node setOomph(float mph){ if (mph>=0) if (mph <= maxOomph) oomph = mph; else oomph = maxOomph; return this;}
+		public Node setOomph(float mph){
+			if (mph >= 0) {
+				if (mph <= maxOomph)
+					oomph = mph;
+				else
+					oomph = maxOomph;
+			}
+			return this;
+		}
+
 		public Node setDna(int bitNumber, bool value) { 
 			dna = setBit(dna, bitNumber, value); 
 			//maxOomph = CScommon.maxOomph(radius,dna); 
@@ -837,18 +857,13 @@ public class Bub {
 		}
 
 		private void thisOrgBeats(Node loser){
-			List<int> registeredWinners = this.registeredOrgNodes();
-			if (registeredWinners.Count > 0){
-				List<int> registeredLosers = loser.registeredOrgNodes();
-				if (registeredLosers.Count > 0 ) {
-					
-					Engine.scheduledOrgRelocations.Add(loser.trustHead);
-					foreach (int winnerId in registeredWinners) bubbleServer.scoreWinner(winnerId);
-					foreach (int loserId in registeredLosers) bubbleServer.scoreLoser(loserId);
-				}
+			if (bubbleServer.registered(trustHead.id) && bubbleServer.registered(loser.trustHead.id)){
+				Engine.scheduledOrgRelocations.Add(loser.trustHead);
+				bubbleServer.scoreWinner(trustHead.id);
+				bubbleServer.scoreLoser(loser.trustHead.id);
 			}
 		}
-		
+
 		//cuts links from this organism to loser organism
 		private void cutOrgsMusclesToOrg(Node targetOrg){
 			List<Node> org = trustGroup();
@@ -859,10 +874,13 @@ public class Bub {
 		private void cutOutOrganism(){
 			//take out all muscles attacking me
 			List<Muscle> attackers = new List<Muscle>(trustHead.enemyMuscles);
+			//Debug.Log (attackers.Count + " attackers cut.");
 			foreach (var muscl in attackers) muscl.cut ();
 			//take out all of my attack muscles
-			List<Node> org = trustGroup();
-			foreach (var node in org) node.cutExternalMuscles();
+			List<Node> myOrg = trustGroup();
+			int sum = 0;
+			foreach (var node in myOrg) sum += node.cutExternalMuscles();
+			//Debug.Log ("trustGroup " + myOrg.Count + " externals cut:" + sum);
 		}
 
 		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that.
@@ -893,6 +911,29 @@ public class Bub {
 
 		public bool isEater(){return (!CScommon.testBit(dna, CScommon.vegetableBit));} 
 
+		private void orgEatOrg(Node eaten){
+			
+			//take all the oomph you can
+			float thisOrgCanEat = this.orgHunger ();
+			float eatenOrgCanGive = eaten.orgOomph ();
+			float canTransfer = Mathf.Min(thisOrgCanEat, eatenOrgCanGive);
+
+//			if (UnityEngine.Debug.isDebugBuild && eaten.id == 0){
+//				bubbleServer.debugDisplay ("eat "+thisOrgCanEat+" "+eatenOrgCanGive+" " + canTransfer);
+//				bubbleServer.debugDisplay (this.trustGroup ().Count+":"+eaten.trustGroup().Count);
+//				bubbleServer.debugDisplay ("this(0) " + this.trustGroup()[0].maxOomph + "-" + this.trustGroup()[0].oomph);
+//				bubbleServer.debugDisplay ("that(0) " + eaten.trustGroup()[0].maxOomph + "-" + eaten.trustGroup()[0].oomph);
+//			}
+
+			if (canTransfer > 0){ //guard against zeroDivide by zero thisOrgCanEat or eatenOrgCanGive
+				foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanEat;
+				foreach (var orgN in eaten.trustGroup()) { 
+					orgN.oomph -= canTransfer*(orgN.oomph/eatenOrgCanGive);
+					if (orgN.oomph < minPosValue) orgN.oomph = 0; //mostly to make sure it never goes a numeric smidgeon negative
+				}
+			}
+		}
+
 	  	public void tryEat(Node node)
 	    {   // If both eaters, the one having access to greater stomach.oomph eats lesser, must be different clans, must overlap
 	        if (this.isEater())
@@ -901,50 +942,18 @@ public class Bub {
 	            {
 	                if (this.clan != node.clan && this.overlaps(node))
 	                {
-	                    //take all the org you can
-						float thisOrgCanEat = this.orgHunger ();
-						float nodeOrgCanGive = node.orgOomph ();
-						float canTransfer = Mathf.Min(thisOrgCanEat, nodeOrgCanGive);
-						
-//						if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("eat "+thisOrgCanEat+" "+nodeOrgCanGive+" " + canTransfer);
-//						if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay (this.trustGroup ().Count+":"+node.trustGroup().Count);
-//						if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("this(0) " + this.trustGroup()[0].maxOomph + "-" + this.trustGroup()[0].oomph);
-//						if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("that(0) " + node.trustGroup()[0].maxOomph + "-" + node.trustGroup()[0].oomph);
-
-						if (canTransfer > 0){ //guard against zeroDivide by zero thisOrgCanEat or nodeOrgCanGive
-							foreach (var orgN in this.trustGroup()) orgN.oomph += canTransfer*(orgN.maxOomph-orgN.oomph)/thisOrgCanEat;
-							foreach (var orgN in node.trustGroup()) { 
-								orgN.oomph -= canTransfer*(orgN.oomph/nodeOrgCanGive);
-								if (orgN.oomph < minPosValue) orgN.oomph = 0; //mostly to make sure it never goes a smidgeon negative
-							}
-						}
-
-						//cut all of winner orgs muscles to loser node's org. For both their sakes.
-						cutOrgsMusclesToOrg(node); 
+						orgEatOrg(node);
+					
+						node.cutOutOrganism(); //cut all muscles, from/to anywhere to/from the loser org
 
 						//could take all their burden too
 
 						thisOrgBeats(node); //keep score
 					
 						/*
-						switch (this.eatPolicy)
-	                    {
-	                        case "chomp":
-	                            //Most primitive policy: If they are a stomach, take all their oomph (which is all the whole bot's oomph) and 
-	                            //kill the whole bot.
-	                            this.stomach.oomph += node.oomph + (node.burden - node.MinBurden); //take all their oomph and burden. burden to oomph conversion
-	                            node.burden = node.minBurden;
-	                            node.oomph = 0;
-	                            node.deleteOrphanedLinksR();//will reset to nativeState, i.e. change clan, and clobber node.smarts.
-	                            break;
-	                        case "suck":    //take all its oomph, but leave it to grow again
-	                        default:
-	                            this.oomph += node.oomph;
-	                            node.oomph = 0;
-	                    } //other cases: "keep" would addBotToBotR. Do I assume there is a tractor present? No, but must either use it or destroy
-	                      //it first, before adding BotToBotR. Sets clan, and removes all smarts. 
-	                      // Install other smarts or consume all burden down to minBurden,
-	                      //else will be more than energy min to drag them along (you always must pay at least that much).
+						could also consider destroying eaten organism (all bones and muscles),
+						moving them into an inventory (to be used later to assemble stuff. Don't want to make transport so easy), 
+						eating burden converting it to oomph, etc
 						*/
 					}
 	            }
