@@ -1,16 +1,19 @@
-﻿using UnityEngine;
+﻿// copyright 2015-2016 John Fairfield
+
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics; //for stopwatch
 
+namespace Bubbles{
 public class Engine {
 
 	private static int gInterval = 2;
 
 	//list of all nodes in universe
-	public static readonly List<Bub.Node> nodes = new List<Bub.Node>();
+	public static readonly List<Node> nodes = new List<Node>();
 
-	public static readonly List<Bub.Node> scheduledOrgRelocations = new List<Bub.Node>();
+	public static readonly List<Node> scheduledOrgRelocations = new List<Node>();
 	
 	public static int closestNodeId(float x, float y){
 		float closestD2 = 40000000;
@@ -45,7 +48,7 @@ public class Engine {
 	private static void updatePositions()
 	{	
 		if ( tickCounter%gInterval == 0)
-		{	Bub.resetGravity();
+		{	Node.resetGravity();
 			gInterval = Random.Range(500,1000); //even if large next interval could be very short, depending on tickCounter
 		}
 		
@@ -64,17 +67,17 @@ public class Engine {
 
 	private static void checknXnY(string msg){
 		for (int i=0; i < nodes.Count;i++){
-			Bub.checkVals (nodes[i].nx,nodes[i].ny,msg+":"+nodes[i].id+":nXnY");
+			bubbleServer.checkVals (nodes[i].nx,nodes[i].ny,msg+":"+nodes[i].id+":nXnY");
 		}
 	}
 
 	private static void checkXY(string msg){
 		for (int i=0; i < nodes.Count;i++){
 
-			
-			Bub.checkVals(nodes[i].x,nodes[i].y,msg+":"+nodes[i].id+":XY");
-			
-			Bub.checkVals(nodes[i].nx,nodes[i].ny,msg+":"+nodes[i].id+":NXNY");
+		
+			bubbleServer.checkVals(nodes[i].x,nodes[i].y,msg+":"+nodes[i].id+":XY");
+		
+			bubbleServer.checkVals(nodes[i].nx,nodes[i].ny,msg+":"+nodes[i].id+":NXNY");
 			
 			UnityEngine.Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+":"+nodes[i].id+": x!=nx or y!=ny");
 
@@ -196,4 +199,4 @@ public class Engine {
 	}
 	
 
-}
+	}}

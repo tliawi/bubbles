@@ -1,9 +1,10 @@
-﻿
+﻿// copyright 2015-2016 John Fairfield
+
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-
+namespace Bubbles{
 public class Grid {
 
 	private static float uvSquareSize = 1024.0f;
@@ -79,7 +80,7 @@ public class Grid {
 		int vix = 0; //vix index into vertices, triangles and uv arrays
 		// you can reuse a vertex in multiple triangles, but only if it uses the same UV coords in all--
 		// if that vertex is going to carry a different UV coord, it needs to be duplicated in vertices
-		Bub.Node anode, targetNode;
+		Node anode, targetNode;
 
 		//do this with Mathf.PI/Random.value to make strongly textured aura's or bubbles sparkle a bit
 		a0 = 0.0f;
@@ -109,7 +110,7 @@ public class Grid {
 		for (int i = 0; i < Engine.nodes.Count; i++) {
 
 			anode = Engine.nodes[i];
-			uvClass = anode.testDna(CScommon.vegetableBit) ? 0:1;
+			uvClass = anode.testDna(CScommon.eaterBit) ? 1:0;
 			diameter = 2*anode.radius;
 
 			vix = makeTriangle(
@@ -235,4 +236,4 @@ public class Grid {
 		mesh.RecalculateNormals();
 	}
 
-}
+	}}

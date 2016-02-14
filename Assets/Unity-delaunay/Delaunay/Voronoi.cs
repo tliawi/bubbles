@@ -45,7 +45,7 @@ namespace Delaunay
 		//I think the coder of Voronoi made a mistake to abuse iDispose and dispose to frustrate the gc (keep pools), it's the exact opposite of their normal usage. 
 		//It would have been better to name them "recycle" or something.
 		public void Dispose ()
-		{   bubbleServer.debugDisplay("ERROR, Voronoi.Dispose!!");
+		{   Bubbles.bubbleServer.debugDisplay("ERROR, Voronoi.Dispose!!");
 			int i, n;
 			if (_sites != null) {
 				_sites.Dispose ();
@@ -71,7 +71,7 @@ namespace Delaunay
 			_sitesIndexedByLocation = null;
 		}
 		
-		public Voronoi (List<Bub.Node> nodes, Rect plotBounds) //jf
+		public Voronoi (List<Bubbles.Node> nodes, Rect plotBounds) //jf
 		{
 			if (_sites == null) _sites = new SiteList (); //thereafter maintain it in parallel with nodes
 			_sitesIndexedByLocation = new Dictionary <Vector2,Site> (); // XXX: Used to be Dictionary(true) -- weak refs. 
@@ -82,11 +82,11 @@ namespace Delaunay
 			FortunesAlgorithm ();
 		}
 		
-		private void AddSites (List<Bub.Node> nodes) //jf
+		private void AddSites (List<Bubbles.Node> nodes) //jf
 		{	Vector2 p = new Vector2();
 			
 			for (int i = 0; i < nodes.Count; ++i) {
-				Bub.Node node = nodes[i];
+				Bubbles.Node node = nodes[i];
 				p.x = node.x; p.y = node.y;
 				//move toward zero, so stay within plotBounds. Guarantee unique position of all nodes
 				while (_sitesIndexedByLocation.ContainsKey(p)) p.x += (p.x<0)? UnityEngine.Random.Range(0,0.000001f): -UnityEngine.Random.Range(0,0.000001f);

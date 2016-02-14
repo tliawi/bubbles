@@ -10,7 +10,7 @@ namespace Delaunay
 	public sealed class Site: ICoord, IComparable
 	{
 		private static Stack<Site> _pool = new Stack<Site> ();
-		public static Site Create (Vector2 p, uint index, Bub.Node node) //jf, using node where once there was 'color' throughout this class
+		public static Site Create (Vector2 p, uint index, Bubbles.Node node) //jf, using node where once there was 'color' throughout this class
 		{
 			if (_pool.Count > 0) {
 				return _pool.Pop ().Init (p, index, node ); 
@@ -71,7 +71,7 @@ namespace Delaunay
 			get { return _coord;}
 		}
 		
-		public Bub.Node node;
+		public Bubbles.Node node;
 		
 		private uint _siteIndex;
 		
@@ -85,7 +85,7 @@ namespace Delaunay
 		// ordered list of points that define the region clipped to bounds:
 		private List<Vector2> _region;
 
-		private Site (Vector2 p, uint index, Bub.Node node)
+		private Site (Vector2 p, uint index, Bubbles.Node node)
 		{
 //			if (lock != PrivateConstructorEnforcer)
 //			{
@@ -94,7 +94,7 @@ namespace Delaunay
 			Init (p, index, node);
 		}
 		
-		public Site Init (Vector2 p, uint index, Bub.Node node) //jf made public
+		public Site Init (Vector2 p, uint index, Bubbles.Node node) //jf made public
 		{	Clear(); //jf added, so I can recycle used sites
 			_coord = p;
 			_siteIndex = index;
@@ -119,7 +119,7 @@ namespace Delaunay
 		//So if I kept a reference in static _pool, that would make a memory leak, because I no longer pop them out of there, instead recycling node.site. 
 		//So I never want anything in this Site._pool. This is the only way stuff gets in there.
 		public void Dispose ()
-		{	bubbleServer.debugDisplay("ERROR: Site.Dispose!");
+		{	Bubbles.bubbleServer.debugDisplay("ERROR: Site.Dispose!");
 //			_coord = null;
 			Clear ();
 			_pool.Push (this);
@@ -158,20 +158,20 @@ namespace Delaunay
 		public int neighborsCount() {return _edges.Count;}  
 
 		//jf
-		public Bub.Node neighbors(int i){ 
+		public Bubbles.Node neighbors(int i){ 
 			return NeighborSite(_edges[i]).node;
 		}
 
 		/*jf
-		public List<Bub.Node> NeighborNodes()
+		public List<Bubbles.Node> NeighborNodes()
 		{
 			if (_edges == null || _edges.Count == 0) {
-				return new List<Bub.Node> ();
+				return new List<Bubbles.Node> ();
 			}
 //			if (_edgeOrientations == null) { 
 //				ReorderEdges ();
 //			} // I don't need edges to be in any particular order
-			List<Bub.Node> list = new List<Bub.Node> (_edges.Count);
+			List<Bubbles.Node> list = new List<Bubbles.Node> (_edges.Count);
 			Edge edge;
 			for (int i = 0; i < _edges.Count; i++) {
 				edge = _edges [i];

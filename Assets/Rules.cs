@@ -1,7 +1,10 @@
-﻿using UnityEngine;
+﻿// copyright 2015-2016 John Fairfield
+
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+namespace Bubbles{
 public class Rules {
 
 	//given an angle in radians, returns the equivalent between -PI and +PI
@@ -15,59 +18,64 @@ public class Rules {
 	// returns the angle at the middle one, b.
 	// Is positive if angle from a to b to c is ccwise(standard math positive angle direction, think of a lying on the +x axis, b at origin), 
 	// negative if cwise.
-	public static float signedAngle( Bub.Node a, Bub.Node b, Bub.Node c)
+	public static float signedAngle( Node a, Node b, Node c)
 	{	float angle1 = Mathf.Atan2(a.y-b.y, a.x-b.x);
 		float angle2 = Mathf.Atan2(c.y-b.y, c.x-b.x);
 		return stdAngle(angle2 - angle1);
 	}
 
 	//for use with b from orgCOB
-	public static float signedAngle(Bub.Node a, Vector2 b, Bub.Node c)
+	public static float signedAngle(Node a, Vector2 b, Node c)
 	{	float angle1 = Mathf.Atan2(a.y-b.y, a.x-b.x);
 		float angle2 = Mathf.Atan2(c.y-b.y, c.x-b.x);
 		return stdAngle(angle2 - angle1);
 	}
 
 	//for use with c from orgCOB
-	public static float signedAngle(Bub.Node a, Bub.Node b, Vector2 c)
+	public static float signedAngle(Node a, Node b, Vector2 c)
 	{	float angle1 = Mathf.Atan2(a.y-b.y, a.x-b.x);
 		float angle2 = Mathf.Atan2(c.y-b.y, c.x-b.x);
 		return stdAngle(angle2 - angle1);
 	}
 
 	//overloaded helper fcn
-	public static List<Bub.Node> nodeList(Bub.Node nod0){
-		List<Bub.Node> lst =  new List<Bub.Node>();
+	public static List<Node> nodeList(Node nod0){
+		List<Node> lst =  new List<Node>();
 		lst.Add (nod0);
 		return lst;
 	}
 	
-	public static List<Bub.Node> nodeList(Bub.Node nod0, Bub.Node nod1){
-		List<Bub.Node> lst =  new List<Bub.Node>();
+	public static List<Node> nodeList(Node nod0, Node nod1){
+		List<Node> lst =  new List<Node>();
 		lst.Add (nod0);
 		lst.Add (nod1);
 		return lst;
 	}
 
-	public static List<Bub.Node> nodeList(Bub.Node nod0, Bub.Node nod1, Bub.Node nod2){
-		List<Bub.Node> lst =  new List<Bub.Node>();
+	public static List<Node> nodeList(Node nod0, Node nod1, Node nod2){
+		List<Node> lst =  new List<Node>();
 		lst.Add (nod0);
 		lst.Add (nod1);
 		lst.Add (nod2);
 		return lst;
 	}
 
+	public struct SteeringStruct{
+		public Node target;
+		public float sideEffect; //positive if pull will pull you to the left, negative if pull will pull you to the right, and proportional to the steering effect
+	}
+
 	public abstract class Rule {
 
-		public Bub.Node source {get; protected set;}
-		private List<Bub.Muscle> _muscles;
+		public Node source {get; protected set;}
+		private List<Muscle> _muscles;
 
-		public Bub.Muscle muscles( int i) { return _muscles[i]; }
+		public Muscle muscles( int i) { return _muscles[i]; }
 		
 		public int musclesCount { get{return _muscles.Count;} }
 
-		protected Bub.Muscle addMuscle(Bub.Node target){ 
-			Bub.Muscle muscle = new Bub.Muscle(source,target);
+		protected Muscle addMuscle(Node target){ 
+			Muscle muscle = new Muscle(source,target);
 			_muscles.Add (muscle);
 			return muscle;
 		}
@@ -77,15 +85,15 @@ public class Rules {
 		}
 
 		public void enableInternalMuscles(int percent)
-		{	for (int i = 0; i< _muscles.Count; i++) if (!_muscles[i].external && source.trusts(_muscles[i].target)) _muscles[i].enable (percent);
+			{	for (int i = 0; i< _muscles.Count; i++) if (source.org == _muscles[i].target.org) _muscles[i].enable (percent); //enable does nothing to a cut muscle
 		}
 
 		public void enableMuscles(int percent){
-			for (int i = 0; i< _muscles.Count; i++) _muscles[i].enable (percent);
+				for (int i = 0; i< _muscles.Count; i++) _muscles[i].enable (percent);//enable does nothing to a cut muscle
 		}
 
 		public void reEnableMuscles(){
-			for (int i = 0; i< _muscles.Count; i++) _muscles[i].reEnable ();
+				for (int i = 0; i< _muscles.Count; i++) _muscles[i].reEnable ();//reEnable does nothing to a cut muscle
 		}
 
 		public int cutExternalMuscles(){
@@ -98,8 +106,8 @@ public class Rules {
 			return sum;
 		}
 
-		public void cutMusclesTargetingOrg(Bub.Node orgMember){
-			for (int i=0; i< _muscles.Count; i++) if (_muscles[i].target.trustHead == orgMember.trustHead) _muscles[i].cut();
+		public void cutMusclesTargetingOrg(Org org){
+			for (int i=0; i< _muscles.Count; i++) if (_muscles[i].target.org == org) _muscles[i].cut();
 		}
 		
 		abstract public void accion(); //rule condition, state changes, muscle property changes
@@ -114,9 +122,9 @@ public class Rules {
 			for (int i = 0; i<_muscles.Count; i++)_muscles[i].action(fraction);
 		}
 
-		protected Rule(Bub.Node source0) {
+		protected Rule(Node source0) {
 			source = source0;
-			_muscles = new List<Bub.Muscle>();
+			_muscles = new List<Muscle>();
 		}
 	}
 	
@@ -125,17 +133,17 @@ public class Rules {
 	//disabled by source.setState("turn",0)
 	public class TurnServo: Rule{
 
-		public static void install(Bub.Node source, Bub.Node firstTarget, Bub.Node lastTarget){
+		public static void install(Node source, Node firstTarget, Node lastTarget){
 			if (source == null || firstTarget == null || lastTarget == null) return;
 			
 			source.rules.Add (new TurnServo(source, firstTarget, lastTarget));
 		}
 
 		int countDown;
-		List<Bub.Node> sourceList;
-		List<Bub.Node> targetList;
+		List<Node> sourceList;
+		List<Node> targetList;
 
-		private TurnServo(Bub.Node source0, Bub.Node firstTarget, Bub.Node lastTarget):base(source0){
+		private TurnServo(Node source0, Node firstTarget, Node lastTarget):base(source0){
 
 			//ASSUMPTION: order of muscles sweeps from L to R,
 			addMuscle(firstTarget);
@@ -151,7 +159,7 @@ public class Rules {
 
 		//only call on internal muscles, which are never cut (have identical source and target)
 		private void flipHandedness(){
-			Bub.Node x = muscles(0).target;
+			Node x = muscles(0).target;
 			muscles(0).reTarget(muscles(1).target);
 			muscles(1).reTarget(x);
 		}
@@ -167,7 +175,7 @@ public class Rules {
 			if (turn == 1 || turn == -1) { //starting a turn
 				source.setState ("turn", 12345); //signal that I am doing a turn
 
-				Bub.shiftBurden (0,sourceList,targetList);
+				Org.shiftBurden (0,sourceList,targetList);
 				
 				//make muscles work at cross purposes, for elliptical movement (movement of head in an elliptical orbit about tails)
 				if (turn < 0) { muscles(0).makePuller(); muscles(1).makePusher();} //L 
@@ -193,16 +201,16 @@ public class Rules {
 
 	public class Push1Pull2Servo: Rule {
 		
-		public static void install(Bub.Node source, List<Bub.Node> targetList){
+		public static void install(Node source, List<Node> targetList){
 			if (source == null || targetList.Contains (null)) return;
 			
 			source.rules.Add (new Push1Pull2Servo(source, targetList));
 		}
 	
 		int priorPushPull;
-		List<Bub.Node> sourceList, targetList;
+		List<Node> sourceList, targetList;
 
-		private Push1Pull2Servo( Bub.Node source0, List<Bub.Node> targetList0):base(source0){
+		private Push1Pull2Servo( Node source0, List<Node> targetList0):base(source0){
 
 			targetList = targetList0;
 
@@ -239,11 +247,11 @@ public class Rules {
 					forwardReverse = source.getState ("forward0Reverse1");
 
 					if (push1Pull2 == 1 ){
-						Bub.shiftBurden(forwardReverse,sourceList,targetList);
+						Org.shiftBurden(forwardReverse,sourceList,targetList);
 						for (int i=0; i< musclesCount; i++) muscles(i).makePusher();
 						
 					}else if (push1Pull2 == 2){
-						Bub.shiftBurden(1-forwardReverse,sourceList,targetList);
+						Org.shiftBurden(1-forwardReverse,sourceList,targetList);
 						for (int i=0; i< musclesCount; i++) muscles(i).makePuller();
 					}
 				}
@@ -272,15 +280,15 @@ public class Rules {
 		//A Servo is a rule with muscles.
 		//A Cmdr is a rule with musclesCount == 0 that takes the place of a user via manipulating state only, thereby controlling servo rules
 		//near and far are in terms of link gap, i.e. distance - sum of radii of source and target
-		public static void install(Bub.Node source0, List<Bub.Node> targets0, float near0, float far0){
+		public static void install(Node source0, List<Node> targets0, float near0, float far0){
 			if (source0 == null || targets0.Contains (null)) return;
 			source0.rules.Add (new NearFarPush1Pull2Cmdr(source0, targets0, near0, far0));
 		}
 
 		float near, far;
-		List<Bub.Node> targets;
+		List<Node> targets;
 
-		private NearFarPush1Pull2Cmdr(Bub.Node source0, List<Bub.Node> targets0, float near0, float far0):base(source0) {
+		private NearFarPush1Pull2Cmdr(Node source0, List<Node> targets0, float near0, float far0):base(source0) {
 		
 			targets = targets0;
 			near = near0;
@@ -307,13 +315,89 @@ public class Rules {
 	}
 	
 
+
+		public class BonePullServo: Rule {
+
+			public static void install(Node source, List<Node> targetList){
+				if (source == null || targetList.Contains (null)) return;
+
+				source.rules.Add (new BonePullServo(source, targetList));
+			}
+
+			int priorPushPull;
+			List<Node> sourceList, targetList;
+
+			private BonePullServo( Node source0, List<Node> targetList0):base(source0){
+
+				targetList = targetList0;
+
+				priorPushPull = 0;
+
+				for (int i=0; i< targetList.Count; i++) addMuscle(targetList[i]);
+
+				for (int i=0; i< musclesCount; i++) muscles(i).makePuller().enable(300);
+
+				sourceList = nodeList(source);
+
+				source.setState ("push1Pull2",2);
+				source.setState ("forward0Reverse1",0);
+				source.setState ("turn", 0); //so that getState("turn") is never undefined
+			}
+
+			public override void accion() {
+
+				//suppress during turns, but ignore turn if an inchworm
+				if (musclesCount < 2 || source.getState("turn") == 0) { 
+
+					int push1Pull2;
+					int forwardReverse;
+
+					push1Pull2 = source.getState("push1Pull2"); //used by manual onPush1Pull2 or automatic nearFarPush1Pull2Cmdr to control this rule
+
+					if (push1Pull2 == 0) { 
+						priorPushPull = 0;
+						disableMuscles();
+						return; 
+					}
+
+					if (push1Pull2 != priorPushPull) {
+						
+						priorPushPull = push1Pull2;
+						forwardReverse = source.getState ("forward0Reverse1");
+
+						if (push1Pull2 == 1 ){
+							disableMuscles (); //let bone push back to starting length
+							Org.shiftBurden(forwardReverse,sourceList,targetList);
+
+						}else if (push1Pull2 == 2){
+							reEnableMuscles(); //pull compress bone
+							Org.shiftBurden(1-forwardReverse,sourceList,targetList);
+						}
+					}
+
+					//Pushing naturally tends to equalize isoceles triangle--shorter link is more efficient, so pushes more.
+					//Pulling has the opposite effect, so need to counteract
+//					if (musclesCount >= 2 && push1Pull2 == 2 ) {
+//						if (muscles(0).efficiency() > muscles(musclesCount-1).efficiency()){ 
+//							muscles(0).disable(); muscles(musclesCount-1).reEnable ();
+//						} else {
+//							muscles(0).reEnable(); muscles(musclesCount-1).disable ();
+//						}
+//					}ß
+				} else { disableMuscles(); priorPushPull = 0; } //so will reinitialize pushPull after turn is finished
+			}
+
+		}
+
+
+
 	public abstract class HunterBase: Rule {
 		
 		public enum State {notFighting, fleeing, attacking};
 
-		protected Bub.Muscle fightingMuscle;
+		protected Muscle fightingMuscle;
 		
-		protected bool amTargeting(Bub.Node target) {
+		protected bool amTargeting(Node target) {
 			return fightingMuscle.enabled && fightingMuscle.target == target  ;
 		}
 		
@@ -323,7 +407,7 @@ public class Rules {
 			return State.fleeing;
 		}
 		
-		protected void startFighting(Bub.Node target, State newState){ //newState must be either attacking or fleeing
+		protected void startFighting(Node target, State newState){ //newState must be either attacking or fleeing
 			fightingMuscle.reTarget(target); //whether or not it already was
 			fightingMuscle.enable(100);
 			
@@ -337,7 +421,7 @@ public class Rules {
 
 		abstract override public void accion();
 
-		public HunterBase(Bub.Node source0):base(source0){
+		public HunterBase(Node source0):base(source0){
 		}
 	}
 
@@ -346,12 +430,12 @@ public class Rules {
 
 	public class HunterNPCRule: HunterBase{
 
-		public static void install(Bub.Node source0){
+		public static void install(Node source0){
 			if (source0 == null) return;
 			source0.rules.Add (new HunterNPCRule(source0));
 		}
 
-		private HunterNPCRule(Bub.Node source0):base(source0){
+		private HunterNPCRule(Node source0):base(source0){
 
 			fightingMuscle = addMuscle(source0); // a cut muscle, disabled
 			
@@ -362,7 +446,7 @@ public class Rules {
 
 			if (source.testDna(CScommon.playerPlayingBit)){ fightingMuscle.cut(); return;} //disabled if org is mounted by human
 
-			Bub.Node bully, munchies;
+			Node bully, munchies;
 
 			munchies = source.mostTastyNeighbor(); //may be null
 			
@@ -388,7 +472,7 @@ public class Rules {
 
 	public class HunterPCRule: HunterBase{
 
-		public static void install(Bub.Node source, byte hand){
+		public static void install(Node source, byte hand){
 			if (source == null) return;
 			source.rules.Add (new HunterPCRule(source, hand));
 		}
@@ -397,7 +481,7 @@ public class Rules {
 		string handTargetIdp1;
 
 		//side effect: adds a rule, to source0, such that it is responsive to targetIdp1 state
-		private HunterPCRule(Bub.Node source0, byte hand):base(source0){
+		private HunterPCRule(Node source0, byte hand):base(source0){
 
 			handTargetIdp1 = hand + "targetIdp1";
 
@@ -420,9 +504,9 @@ public class Rules {
 				return; 
 			}
 			
-			Bub.Node target = Engine.nodes[ targetIdp1<0? -1 - targetIdp1:targetIdp1-1 ];
+			Node target = Engine.nodes[ targetIdp1<0? -1 - targetIdp1:targetIdp1-1 ];
 
-			if (source.trusts(target) ) {
+			if (source.org == target.org ) {
 				stopFighting(); // removed || source.clan == target.clan so clan members can pull or push each other out of danger etc.
 				return;
 			}
@@ -454,7 +538,7 @@ public class Rules {
 				}
 			}
 			
-			if (source.trusts (target) ) stopFighting(); // removed || source.clan == target.clan so clan members can pull or push each other out of danger etc.
+			if (source.org == target.org) stopFighting(); // removed || source.clan == target.clan so clan members can pull or push each other out of danger etc.
 			
 			else startFighting(target, targetIdp1>=0?State.fleeing:State.attacking);
 			
@@ -467,15 +551,15 @@ public class Rules {
 	public class SegmentPushPullServo: Rule {
 
 		//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
-		public static void install(Bub.Node source0, Bub.Node target0, int n){
+		public static void install(Node source0, Node target0, int n){
 			if (source0 == null || target0 == null ) return;
 			source0.rules.Add (new SegmentPushPullServo(source0, target0, n));
 		}
 
-		Bub.Node target;
+		Node target;
 		int priorPushPull = 0;
 		
-		private SegmentPushPullServo( Bub.Node source0, Bub.Node target0, int n):base(source0){
+		private SegmentPushPullServo( Node source0, Node target0, int n):base(source0){
 			target = target0; //next in line
 			addMuscle(target);
 			source.setState ("push1Pull2", n%2==0?2:1); //set initial state alternately
@@ -517,17 +601,17 @@ public class Rules {
 	public class SegmentPulltokenServo: Rule {
 
 		//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
-		public static void install(Bub.Node source0, Bub.Node target0){
+		public static void install(Node source0, Node target0){
 			if (source0 == null || target0 == null) return;
 			source0.rules.Add (new SegmentPulltokenServo(source0, target0));
 		}
 
-		Bub.Node target;
+		Node target;
 		
-		private SegmentPulltokenServo( Bub.Node source0, Bub.Node target0):base(source0){
+		private SegmentPulltokenServo( Node source0, Node target0):base(source0){
 			target = target0; //next in line
 			addMuscle(target);
-			if (source.trustHead == source){ //pulling starts with trustHead
+			if (source.org.head == source){ //pulling starts with org head
 					source.setState("push1Pull2",2);
 			}
 			else source.setState("push1Pull2",0);
@@ -549,7 +633,7 @@ public class Rules {
 					if (target.getState("push1Pull2")==0){
 						target.setState("push1Pull2",2);
 					} else {
-						source.trustHead.setState("push1Pull2",1); //set head to pushing!
+						source.org.head.setState("push1Pull2",1); //set head to pushing!
 					}
 				}
 				else { //normal pulling
@@ -579,15 +663,15 @@ public class Rules {
 	public class TurmDefender: Rule {
 
 
-		public static void install(Bub.Node source0, float perimeter){
+		public static void install(Node source0, float perimeter){
 			if (source0 == null) return;
 			source0.rules.Add (new TurmDefender(source0, perimeter));
 		}
 
-		private Bub.Muscle pusher;
+		private Muscle pusher;
 		private float perimeter;
 
-		private TurmDefender(Bub.Node source0, float perimeter0):base(source0){
+		private TurmDefender(Node source0, float perimeter0):base(source0){
 			perimeter = perimeter0;
 			pusher = addMuscle(source0).makePusher(); //a cut muscle, disabled
 			//pusher just convenience for muscles(0)
@@ -597,7 +681,7 @@ public class Rules {
 
 			if (source.testDna(CScommon.playerPlayingBit)){ pusher.cut(); return;} //disabled if org is mounted by human
 
-			Bub.Node targt = source.closestStranger ();
+			Node targt = source.closestStranger ();
 			if (targt == null || source.distance (targt) > perimeter ) pusher.cut();
 			else {
 				pusher.reTarget(targt); 
@@ -611,17 +695,17 @@ public class Rules {
 	public class Crank: Rule {
 
 		//install on two nodes held at 60-120 degrees from each other about the center, cranking the given crank node
-		public static void install(Bub.Node source,  Bub.Node center, Bub.Node crank, bool cwise){
+		public static void install(Node source,  Node center, Node crank, bool cwise){
 			if (source == null || center == null || crank == null) return;
 			source.rules.Add (new Crank(source, center, crank, cwise));
 		}
 		
-		private Bub.Muscle muscl;
-		private Bub.Node crank;
-		private Bub.Node center;
+		private Muscle muscl;
+		private Node crank;
+		private Node center;
 		private bool cwise;
 		
-		private Crank(Bub.Node source0, Bub.Node center0, Bub.Node crank0, bool cwise0):base(source0){
+		private Crank(Node source0, Node center0, Node crank0, bool cwise0):base(source0){
 			center = center0;
 			crank = crank0;
 			cwise = cwise0;
@@ -651,15 +735,15 @@ public class Rules {
 	//only works in forward! Don't know what effects will be in reverse...
 	public class Autopilot: Rule {
 
-		public static void install(Bub.Node source0, Bub.Node goal0){
-			if (source0 == null || source0.trustHead != source0 || goal0 == null) return;
+		public static void install(Node source0, Node goal0){
+			if (source0 == null || source0.org.head != source0 || goal0 == null) return;
 			source0.rules.Add (new Autopilot(source0, goal0));
 		}
 
-		private Bub.Muscle muscl;
-		private Bub.Node goal;
+		private Muscle muscl;
+		private Node goal;
 
-		private Autopilot(Bub.Node source0, Bub.Node goal0):base(source0){
+		private Autopilot(Node source0, Node goal0):base(source0){
 			goal = goal0;
 			muscl = addMuscle(source0); //a cut muscle, disabled
 			//muscle just convenience for muscles(0)
@@ -669,10 +753,10 @@ public class Rules {
 			
 			if (source.testDna(CScommon.playerPlayingBit)){ muscl.cut(); return;} //disabled if org is mounted by human
 
-			float angleToGoal = signedAngle(goal, source, source.orgCOB());
+			float angleToGoal = signedAngle(goal, source, source.org.COB());
 			angleToGoal = angleToGoal>0?Mathf.PI-angleToGoal:-(Mathf.PI+angleToGoal); //does not change sign of angleToGoal
 			
-			Bub.SteeringStruct ss = source.bestSteeringNeighbor();
+			SteeringStruct ss = source.bestSteeringNeighbor();
 			ss.sideEffect *= source.naiveBurden()/source.burden; //muscle power (demand) will have more effect if burden's been shifted off me
 	
 			if (ss.target == null || ss.sideEffect < 0.01) muscl.disable();
@@ -684,4 +768,19 @@ public class Rules {
 		}
 	}
 
-}
+//		public class GoalScore: Rule {
+//
+//			public static void install(Node source0){
+//				if (source0 == null || source0.org.head != source0 ) return;
+//				source0.rules.Add (new GoalScore(source0));
+//			}
+//
+//			int team;
+//
+//			private GoalScore(Node source0):base(source0){
+//				team = source.getTeam();
+//
+//			}
+//		}
+
+	}}

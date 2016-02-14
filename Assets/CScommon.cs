@@ -1,3 +1,5 @@
+// copyright 2015-2016 John Fairfield
+
 using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
@@ -222,7 +224,7 @@ public static class CScommon {
 
 	//dna bits from rightmost (0) to leftmost (63)
 
-	public const int vegetableBit = 0; // if false isEater, if true !isEater. We should rename this "predatorBit" and flip all our uses of it.
+	public const int eaterBit = 0; // oppposite of old "vegetetableBit"
 	public const int noPhotoBit = 1;  // higher link rate, with accompanying power demand and inefficiency
 	public const int playerBit = 3;   //indicates that this node has been allocated to a player (even though the player may be offline).
 	public const int playerPlayingBit = 4;  //indicates that this node has been allocated to a player, and that this player is currently online and playing.
@@ -230,6 +232,9 @@ public static class CScommon {
 	public const int strengthBit = 6;
 	public const int rightTeamBit = 7; 
 	public const int leftTeamBit = 8; //teams 0,1,2 and 3
+	//skipping 9
+	public const int goalBit = 10;
+	public const int jeepBit = 11;
 
 	//thanks to http://www.dotnetperls.com/and
 	public static string longToString(long dna)
