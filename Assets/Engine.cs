@@ -13,7 +13,7 @@ public class Engine {
 	//list of all nodes in universe
 	public static readonly List<Node> nodes = new List<Node>();
 
-	public static readonly List<Node> scheduledOrgRelocations = new List<Node>();
+	public static readonly List<Org> scheduledOrgRelocations = new List<Org>();
 	
 	public static int closestNodeId(float x, float y){
 		float closestD2 = 40000000;
@@ -131,7 +131,7 @@ public class Engine {
 	}
 
 	private static void doScheduledRelocations(){
-		foreach (var node in scheduledOrgRelocations) node.randomRelocateOrganism();
+		foreach (var org in scheduledOrgRelocations) org.randomRelocate();
 		scheduledOrgRelocations.Clear ();
 	}
 

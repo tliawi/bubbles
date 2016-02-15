@@ -547,7 +547,7 @@ public class Rules {
 	}
 
 
-
+	//unused
 	public class SegmentPushPullServo: Rule {
 
 		//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
@@ -580,11 +580,11 @@ public class Rules {
 				forward0Reverse1 = source.getState ("forward0Reverse1");
 
 				if (push1Pull2 == 1) {
-					if (forward0Reverse1 == 0) source.giveBurden(target); else source.retakeBurden();
+					if (forward0Reverse1 == 0) source.offloadBurden(); else source.restoreNaiveBurden();
 					muscles(0).makePusher();
 
 				} else if (push1Pull2 == 2) {
-					if (forward0Reverse1 == 0) source.retakeBurden(); else source.giveBurden(target);
+						if (forward0Reverse1 == 0) source.restoreNaiveBurden(); else source.offloadBurden();
 					muscles(0).makePuller();
 				}
 			}
@@ -627,7 +627,7 @@ public class Rules {
 
 				//I am the puller. Check for transition
 				if (muscles(0).relativeLength() < 1) {
-					target.retakeBurden();
+					target.restoreNaiveBurden();
 					source.setState("push1Pull2",0);
 					//pass the token to next, but not to the tail which has no rule at all
 					if (target.getState("push1Pull2")==0){
@@ -637,7 +637,7 @@ public class Rules {
 					}
 				}
 				else { //normal pulling
-					target.giveBurden(source);
+					target.offloadBurden(); //make target light
 					muscles(0).makePuller().reEnable();
 				}
 				return;
@@ -647,12 +647,12 @@ public class Rules {
 
 				//check for transition to pull
 				if (muscles(0).relativeLength () > 10){
-					source.retakeBurden();
+					source.restoreNaiveBurden();
 					source.setState("push1Pull2",2);
 
 				}
 				else { //normal pushing
-					source.giveBurden (target);
+					source.offloadBurden ();
 					muscles(0).makePusher().reEnable();
 				}
 			}
@@ -757,7 +757,7 @@ public class Rules {
 			angleToGoal = angleToGoal>0?Mathf.PI-angleToGoal:-(Mathf.PI+angleToGoal); //does not change sign of angleToGoal
 			
 			SteeringStruct ss = source.bestSteeringNeighbor();
-			ss.sideEffect *= source.naiveBurden()/source.burden; //muscle power (demand) will have more effect if burden's been shifted off me
+//			ss.sideEffect *= source.naiveBurden/source.burden; //muscle power (demand) will have more effect if burden's been shifted off me
 	
 			if (ss.target == null || ss.sideEffect < 0.01) muscl.disable();
 			else {

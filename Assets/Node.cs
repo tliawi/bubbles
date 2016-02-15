@@ -18,6 +18,7 @@ namespace Bubbles{
 
 		public static readonly float minPosValue = 0.0000001f;
 		//bitNumber 0 is least significant bit. MUST BE IDENTICAL TO CScommon.testBit
+
 		public static bool testBit(long dna, int bit)
 		{ return ((dna & (1L << bit)) != 0L);}
 
@@ -93,8 +94,6 @@ namespace Bubbles{
 
 		public Delaunay.Site site; //assigned during voronoi calc to return voronoi neighbors via site.neighbors(i), site.neighborsCount()
 
-		public Node givenTarget {get; private set;}
-
 		public Node(int id0, float x0, float y0, float radius0 , Org org0 = null){
 			id = id0;
 			nx = x = x0; 
@@ -113,7 +112,7 @@ namespace Bubbles{
 
 		//Restores burden. Does not change position, radius, oomph, dna, pcOfset. Makes the node have individual org of team 0 and independent clan
 		public void isolate(){
-			retakeBurden();
+			restoreNaiveBurden();
 			clearBones();
 			rules.Clear();
 			states.Clear();
@@ -150,35 +149,21 @@ namespace Bubbles{
 
 		//a symmetric operation on this (as source) and target
 		public void addBone(Node target){
-
-			this.bones.Add (new Bone (this, target));
-			target.bones.Add (new Bone (target, this)); 
+			Bone.TwoBones ab = Bone.dualBones (this, target);
+			this.bones.Add(ab.a);
+			target.bones.Add(ab.b);
 			
 		}
 
-		// A bone exists in both source and target nodes. This is done so that both of them "know" about the bone, and either can remove it.
-		// When added or removed, it is added or removed on both sides.
-		// Also, if for some reason there are multiple bones between source and target, this removes all of them.
-		public void removeBone(Node target){
-			target.removeHalfBone (this);
-			this.removeHalfBone(target);
-		}
-
-		private void removeHalfBone(Node target){
-			int indx;
-			while ((indx = this.bones.FindIndex (lnk => lnk.target == target)) >= 0) this.bones.RemoveAt(indx); 
+		// A bone exists in dual form on both source and target nodes. This is done so that both of them "know" about the bone, and either can remove it.
+		// When added or removed, it is added or removed on both source and target nodes, i.e. both the bone and its dual disappear.
+		public void removeBone(int boneIndex){
+			bones[boneIndex].target.bones.Remove(bones[boneIndex].dual);
+			bones.RemoveAt (boneIndex);
 		}
 
 		public void clearBones(){
-
-			List<Node> targets = new List<Node>();
-			for (int i=0; i<bones.Count; i++) targets.Add (bones[i].target);
-
-			for (int i=0; i<targets.Count; i++) removeBone(targets[i]);
-			if (bones.Count > 0) {
-				if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay("clearBones error on node "+id);
-				bones.Clear (); 
-			}
+			for (int i=bones.Count-1; i>=0; i--) removeBone(i);
 		}
 
 		//IF there is a simple bone chain of nodes, and this is an interior (non extremal) element of chain, and priorN is a neighbor of this in the chain,
@@ -201,25 +186,37 @@ namespace Bubbles{
 			return sum;
 		}
 
+		public int breakExternalBones(){
+			int sum = 0;
+
+			for (int i = bones.Count-1; i>=0; i--) {
+				if (bones [i].target.org != org) {
+					removeBone (i);
+					sum += 1;
+				}
+			}
+
+			return sum; //number of bones broken
+		}
+
 		//	public void cutMusclesTargetingOrg(Node orgMember){
 		//		for (int i=0; i<rules.Count; i++) rules[i].cutMusclesTargetingOrg(orgMember);
 		//	}
 
 
-
-		public float naiveBurden() {return radius2; }
+		public float naiveBurden {get { return radius2; } }
 
 		public void setRadius(float r) { 
 			if (r > minRadius) radius = r; 
 			else radius = minRadius; 
 			radius2 = radius*radius;
 			//oomph has a max, burden has a min, both dependent on radius^2
-			burden = naiveBurden();
+			burden = naiveBurden;
 			maxOomph = CScommon.maxOomph(radius);
-			minBurden = naiveBurden()*minBurdenMultiplier;
+			minBurden = naiveBurden*minBurdenMultiplier;
 		}
 
-		private float naiveAvailableBurden(){ return naiveBurden() - minBurden; }
+		private float naiveAvailableBurden(){ return naiveBurden - minBurden; }
 
 		//these functions return this to support function chaining
 		public Node setOomph(float mph){
@@ -271,59 +268,97 @@ namespace Bubbles{
 		public void photosynthesis() {
 			if (testDna(CScommon.noPhotoBit)) return;
 			oomph +=  photoYield*radius2 * (maxOomph - oomph )/maxOomph; //oomph will never quite attain maxOomph, photosyn gets more inefficient as it approaches maxOomph
+			if (isPrisoner ()) { //give all your oomph to master org
+				float headHunger = org.head.maxOomph - org.head.oomph;
+				float canTransfer = Mathf.Min (headHunger, oomph);
+				org.head.oomph += canTransfer;
+				oomph -= canTransfer;
+			}
+		}
+
+		//second class citizen, not a member of its org
+		public bool isPrisoner(){
+			return !org.members.Contains (this);
 		}
 
 		public void bless(Node target){
 
-			float targetOrgCanEat = target.orgHunger ();
-			float thisOrgCanGive = this.orgOomph()/2;
-			float thisSends = Mathf.Min(targetOrgCanEat, thisOrgCanGive);
+			float targetOrgCanEat = target.org.hunger ();
+			float thisOrgOomph = this.org.oomph();
+
+			float thisSends = Mathf.Min(targetOrgCanEat, thisOrgOomph/2); //donate half of what you've got
 			float targetReceives = thisSends * linkEfficiency(this,target);
 
-			if (thisSends > 0) {//guard against zeroDivide
-				foreach (var node in this.org.members) { 
-					node.oomph -= thisSends*(node.oomph/thisOrgCanGive);
-					if (node.oomph < Node.minPosValue) node.oomph = 0; //mostly to make sure it never goes a smidgeon negative
-				}
-			}
+			org.decreaseOomph (thisSends / thisOrgOomph);//factor of 0 means no change, factor of 1 means oomph is zeroed.
 
-			if (targetReceives>0) {
-				foreach (var node in target.org.members) node.oomph += targetReceives*(node.maxOomph-node.oomph)/targetOrgCanEat;
-			}
+			target.org.decreaseHunger (targetReceives / targetOrgCanEat);//factor of zero means no change, factor of 1 means hunger is sated, i.e. becomes zero, every member at their maxOomph
+
 		}
 
 		public float supply { get {return oomph/maxOomph;} }
 
-
-		public bool given(){ return givenTarget != null; }
-
 		public float availableBurden() { return burden - minBurden; }
 
-		public void giveBurden(Node target){
-			if (givenTarget != target){
-				retakeBurden(); 
-				givenTarget = target;
-				float givenBurden = naiveAvailableBurden();
-				if (givenBurden > availableBurden()+0.00001){
-					if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("giveBurden loss" + givenBurden + " " + availableBurden ());
-					givenBurden = availableBurden ();
-				}
-				target.burden += givenBurden;
-				burden -= givenBurden;
-			}
+		//Become as light as possible by giving my burden to everyone in my org but me. 
+		public void offloadBurden(){
+
+			if (org.members.Count < 2) return; //nobody to give it to
+			if (burden == minBurden) return; //nothin to give
+
+			//distribute burden evenly to all org members but me
+			distributeBurden (availableBurden());
+			
+			burden = minBurden;
 		}
 
-		public void retakeBurden() { 
-			if (givenTarget != null){
-				float givenBurden = naiveAvailableBurden();
-				if (givenBurden > givenTarget.availableBurden()){
-					if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("retakeBurden loss" + givenBurden + " " + givenTarget.availableBurden ());
-					givenBurden = givenTarget.availableBurden ();
+		//distributes given amount of burden to all members of org but this. 
+		private void distributeBurden (float amount){
+			if (amount <= 0) return;
+			
+			float portion;
+
+			if (isPrisoner()) portion = amount/org.members.Count; //I'm not a member
+			else portion = amount / (org.members.Count - 1);
+
+			for (int i = 0; i < org.members.Count; i++)
+				if (org.members [i] != this)
+					org.members [i].burden += portion;
+		}
+
+		//only takes from those that are beyond naive burden.
+		private void scroungeBurden(float amount){
+			if (amount <= 0) return;
+
+			for (int i = 0; i < org.members.Count; i++)
+				if (org.members [i] != this) {
+					float surplus = org.members [i].burden - org.members [i].naiveBurden ;
+					if (surplus > 0) { 
+						if (surplus > amount) {
+							org.members [i].burden -= amount;
+							amount = 0;
+							break;
+						} else {
+							org.members [i].burden -= surplus;
+							amount -= surplus;
+						}
+					}
 				}
-				givenTarget.burden -= givenBurden;
-				burden += givenBurden;
-				givenTarget = null;
-			}
+
+			Debug.Assert (amount < minPosValue);
+		}
+			
+		public void restoreNaiveBurden() { 
+			if (org.members.Count < 2) return;
+			if (burden == naiveBurden ) return;
+
+			float delta = burden - naiveBurden ; //if positive I have too much, if negative not enough
+
+			if (delta > 0)
+				distributeBurden (delta);
+			else
+				scroungeBurden (-delta);
+			
+			burden = naiveBurden;
 		}
 			
 		public void shareOomph() {
@@ -436,81 +471,19 @@ namespace Bubbles{
 			return registeredIds;
 		}
 
-		private void thisOrgBeats(Node loser){
-			if (bubbleServer.registered(org.head.id) && bubbleServer.registered(loser.org.head.id)){
-				Engine.scheduledOrgRelocations.Add(loser.org.head);
-				bubbleServer.scoreWinner(org.head.id);
-				bubbleServer.scoreLoser(loser.org.head.id);
-			}
-		}
+
 
 		//cuts links from this organism to loser organism
 		//	private void cutOrgsMusclesToOrg(Org org){
 		//		foreach (var memb in org.members) memb.cutMusclesTargetingOrg(org);
 		//	}
 
-		//cuts all external links to this organism, and all external links from this organism
-		private void cutOutOrganism(){
-			
-			//take out all muscles attacking me
-			List<Muscle> attackers = new List<Muscle>(org.enemyMuscles);
-			//Debug.Log (attackers.Count + " attackers cut.");
-			foreach (var muscl in attackers) muscl.cut ();
 
-			//take out all of my attack muscles
-			int sum = 0;
-			foreach (var memb in org.members) sum += memb.cutExternalMuscles();
-			//Debug.Log ("org " + org.members.Count + " externals cut:" + sum);
-		}
 
-		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that.
-		public void randomRelocateOrganism(){
-			Vector2 here = new Vector2(org.head.x, org.head.y);
-			Vector2 delta = (Bots.worldRadius * Random.insideUnitCircle)-here;
 
-			foreach (var memb in org.members) { 
-				memb.nx = memb.x += delta.x; 
-				memb.ny = memb.y += delta.y;
-			}
-		}
-
-		private float orgOomph(){
-			float sum = 0;
-			foreach (var memb in org.members) sum += memb.oomph;
-			return sum;
-		}
-
-		//reserve capacity, the amount of oomph the org could absorb in becoming completely maxd out.
-		private float orgHunger(){
-			float sum = 0;
-			foreach (var memb in org.members) sum += memb.maxOomph - memb.oomph;
-			return sum;
-		}
 
 		public bool isEater(){return (CScommon.testBit(dna, CScommon.eaterBit));} 
 
-		private void orgEatOrg(Node eaten){
-
-			//take all the oomph you can
-			float thisOrgCanEat = this.orgHunger ();
-			float eatenOrgCanGive = eaten.orgOomph ();
-			float canTransfer = Mathf.Min(thisOrgCanEat, eatenOrgCanGive);
-
-			//			if (UnityEngine.Debug.isDebugBuild && eaten.id == 0){
-			//				bubbleServer.debugDisplay ("eat "+thisOrgCanEat+" "+eatenOrgCanGive+" " + canTransfer);
-			//				bubbleServer.debugDisplay (this.trustGroup ().Count+":"+eaten.trustGroup().Count);
-			//				bubbleServer.debugDisplay ("this(0) " + this.trustGroup()[0].maxOomph + "-" + this.trustGroup()[0].oomph);
-			//				bubbleServer.debugDisplay ("that(0) " + eaten.trustGroup()[0].maxOomph + "-" + eaten.trustGroup()[0].oomph);
-			//			}
-
-			if (canTransfer > 0){ //guard against zeroDivide by zero thisOrgCanEat or eatenOrgCanGive
-				foreach (var memb in this.org.members) memb.oomph += canTransfer*(memb.maxOomph-memb.oomph)/thisOrgCanEat;
-				foreach (var memb in eaten.org.members) { 
-					memb.oomph -= canTransfer*(memb.oomph/eatenOrgCanGive);
-					if (memb.oomph < Node.minPosValue) memb.oomph = 0; //mostly to make sure it never goes a numeric smidgeon negative
-				}
-			}
-		}
 
 		public void tryEat(Node node)
 		{   // If both eaters, the one having access to greater stomach.oomph eats lesser, must be different clans, must overlap
@@ -520,31 +493,29 @@ namespace Bubbles{
 				{
 					if (this.clan != node.clan && this.overlaps(node))
 					{
-						orgEatOrg(node); //transfer of oomph
-						//could take all their burden too
+						//liberate the captive, and if they're in a chain gang all his trailing prisoners, before eating him. 
+						//Changes prisoner orgs to independent orgs.
+						if (node.isPrisoner ()) node.org.liberatePrisoners(node); 
+							
+						org.eatOomph(node.org); //transfer of oomph from node org to this org
+						//could take their burden too
 
-						node.cutOutOrganism(); //cut all muscles, from/to anywhere to/from the loser org
+						node.org.cutOut(); //cut all external muscles, break all external bones, liberate all nodes orgs prisoners, from/to anywhere to/from the loser org
 
-						org.disassembleAndTow(node.org); //only jeeps do anything
+						//either disassembleAndChain or relocate, but not both.
+						if (org.hasHitch ()) {
+							org.disassembleAndChain (node.org); // If this.org is a jeep, disassembles node.org and takes nodes prisoners
+						} else {
+							if (org.bothRegistered (node.org))
+								Engine.scheduledOrgRelocations.Add (node.org);
+						}
 
-						thisOrgBeats(node); //keep score
+						if (org.bothRegistered(node.org)) org.scoresAgainst(node.org); //keep score
 
-						/*
-							could also consider destroying eaten organism (all bones and muscles),
-							moving them into an inventory (to be used later to assemble stuff. Don't want to make transport so easy), 
-							eating burden converting it to oomph, etc
-							*/
 					}
 				}
 			}
 		}
-		//Other kill policies could be envisioned, by request to my smarts function, so that intelligence can perform various kinds of eats:
-		//eating of things other than the stomach (removing all links in and out of the eaten links AND 
-		//removing any references (like tail1)in any smarts fcn (the former bot may have had several nodes with smarts fcns, not just stomach))
-		//consider implementing node.backLinks[] an array of nodes that have links to node, maintaining that in deleteLink, etc.
-		//In particular: if a different bot targets you (attaches a tractor link to you) do you become aware of that? Does knowing involve
-		//knowing which node is at the other end of that link? Opens the possibility of code to edit, vandalize, that bot. Of course
-		//the neighbors list already does that.
 
 		public Node closestStranger(){
 			Node closest = null; Node nbor;

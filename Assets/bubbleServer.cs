@@ -105,6 +105,16 @@ namespace Bubbles{
 				nonvegStartFuel = 0.5f;
 				Bots.popcorn = 10;
 				break;
+			case 7:
+				normScaleI = 6;
+				abnormScaleI = 1;
+				photoYieldI = 0;
+				baseMetabolicRateI = 0;
+				worldRadiusI = -6;
+				vegStartFuel = 1.0f;
+				nonvegStartFuel = 0f;
+				Bots.popcorn = 100;
+				break;
 			default:
 				normScaleI = 6;
 				abnormScaleI = 1;
@@ -337,7 +347,7 @@ namespace Bubbles{
 			
 			referenceInitMsg = fillInInitMsg(allocateInitMsg(Engine.nodes.Count),0);
 
-			inflatedLinkCount = (countLinks ()*21)/20; //extra 5 percent in case of extra links caused by restructuring orgs
+			inflatedLinkCount = (countLinks ()*3)/2; //in case of extra links caused by restructuring orgs
 
 			referenceLinkMsg = new CScommon.LinksMsg();
 			referenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];

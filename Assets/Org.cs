@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace Bubbles{
 	public class Org {
 		
-		// aNodes and bNodes are lists of nodes, all of whom must belong to the same trustGroup else the whole operation fails.
+		// aNodes and bNodes are lists of nodes, all of whom must belong to the same org else the whole operation fails.
 		// Some nodes may be in both aNodes and bNodes.
 		// 0 <= fraction <=1
 		// Attempts to put fraction of the total burden in aNodes, and (1-fraction) thereof in bNodes.
@@ -20,7 +20,7 @@ namespace Bubbles{
 			if (fraction < 0 || fraction > 1) return;
 
 			Node firstNode = aNodes[0];
-			//all must belong to the same trustGroup
+			//all must belong to the same org
 			foreach (Node n in aNodes) if (firstNode.org != n.org) return; 
 			foreach (Node n in bNodes) if (firstNode.org != n.org) return;
 
@@ -40,7 +40,7 @@ namespace Bubbles{
 
 
 		public List<Node> members; //this has Count of at least 1, and its first member is considered the head of the org for directional purposes
-		public Node head { get; private set; }
+		public Node head { get; private set; } //convenience for members[0]
 		public List<Muscle> enemyMuscles;
 		
 		public string clan;
@@ -52,7 +52,7 @@ namespace Bubbles{
 		public Org (Node firstMember){
 			members = new List<Node>();
 			members.Add (firstMember);
-			head = firstMember; //convenience for muscles[0]
+			head = firstMember;
 			enemyMuscles = new List<Muscle>();
 			states = new Dictionary<string,int> ();
 			setRandomClan(); // not likely to be the clan of anything else in the world, nearly inevitably unique
@@ -61,6 +61,89 @@ namespace Bubbles{
 		public Org setRandomClan() {
 			clan = Random.Range(0,int.MaxValue).ToString();
 			return this;
+		}
+
+		public bool bothRegistered(Org loser){
+			return bubbleServer.registered (head.id) && bubbleServer.registered (loser.head.id);
+		}
+
+		public void scheduleRelocation(Org loser) {
+			if (bubbleServer.registered(head.id) && bubbleServer.registered(loser.head.id))
+				Engine.scheduledOrgRelocations.Add(loser);
+		}
+			
+		public void scoresAgainst(Org loser){
+			bubbleServer.scoreWinner(head.id);
+			bubbleServer.scoreLoser(loser.head.id);
+		}
+
+		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that.
+		public void randomRelocate(){
+			Vector2 here = new Vector2(head.x, head.y);
+			Vector2 delta = (Bots.worldRadius * Random.insideUnitCircle)-here;
+
+			foreach (var memb in members) { 
+				memb.nx = memb.x += delta.x; 
+				memb.ny = memb.y += delta.y;
+			}
+		}
+			
+		public float oomph(){
+			float sum = 0;
+			foreach (var memb in members) sum += memb.oomph;
+			return sum;
+		}
+
+		//reserve capacity, the amount of oomph the org could absorb in becoming completely maxd out.
+		public float hunger(){
+			float sum = 0;
+			foreach (var memb in members) sum += memb.maxOomph - memb.oomph;
+			return sum;
+		}
+
+		//factor of 0 means no change, factor of 1 means oomph is zeroed.
+		public void decreaseOomph( float factor){
+			if (factor > 1) factor = 1;
+			if (factor < 0) factor = 0;
+
+			foreach (var node in members) node.oomph *= (1-factor);
+		}
+
+		//factor of zero means no change, factor of 1 means hunger is sated, i.e. hunger becomes zero, every member at their maxOomph
+		public void decreaseHunger( float factor){
+			if (factor > 1) factor = 1;
+			if (factor < 0) factor = 0;
+
+			if (factor == 1) { foreach (var node in members) node.oomph = node.maxOomph; }//just to avoid any possible numerical overshoot below
+			else foreach (var node in members) node.oomph += (node.maxOomph-node.oomph)*factor;
+		}
+
+		public void eatOomph(Org eaten){
+
+			//take all the oomph you can
+			float thisOrgCanEat = this.hunger ();
+			float eatenOrgCanGive = eaten.oomph ();
+			float canTransfer = Mathf.Min(thisOrgCanEat, eatenOrgCanGive);
+
+			if (canTransfer > 0){ //guard against zeroDivide by zero thisOrgCanEat or eatenOrgCanGive
+				eaten.decreaseOomph(canTransfer/eatenOrgCanGive);
+				this.decreaseHunger(canTransfer/thisOrgCanEat);
+			}
+		}
+
+		//liberates all prisoners, cuts all external links to this organism, and all external links from this organism
+		public void cutOut(){
+			
+			liberatePrisoners (firstPrisoner());
+
+			//take out all muscles attacking me
+			List<Muscle> attackers = new List<Muscle>(enemyMuscles);
+			foreach (var muscl in attackers) muscl.cut ();
+			Debug.Assert (enemyMuscles.Count == 0);
+
+			//take out all of my external muscles and bones
+			foreach (var memb in members) { memb.cutExternalMuscles(); memb.breakExternalBones();}
+
 		}
 
 		public Org makeHitched(Node hitch0 = null){
@@ -73,33 +156,61 @@ namespace Bubbles{
 		}
 
 		//returns null if no external org hitched to hitch. Assumes tail composed of nodes of different orgs than hitch's.
-		public Node firstTail(){
+		public Node firstPrisoner(){
 			//no bones, or no external bone added on top of internal bones
-			return (hitch == null || hitch.bones.Count == 0 || hitch.bones [hitch.bones.Count - 1].target.org == hitch.org)?
+			return (hitch == null || hitch.bones.Count == 0 || !(hitch.bones [hitch.bones.Count - 1].target.isPrisoner()))?
 				null: hitch.bones [hitch.bones.Count - 1].target;
 		}
 
-		//only use if hasHitch()
-		public Node hitchTip(){ //tip of tail of bones beginning at hitch. Is actual hitching point
+		public List<Node> prisoners(){
+			List<Node> prsnrs = new List<Node> ();
 			Node nextT;
 			Node priorT = hitch;
-			Node t = firstTail ();
-			if (t == null) return hitch; //if !hasHitch() will be null
-			while ((nextT = t.otherBoneChainNeighbor(priorT)) != null){ priorT = t; t = nextT; }
-			return t;
+			Node t = firstPrisoner ();
+			if (t == null) return prsnrs; //if !hasHitch() t will be null
+			prsnrs.Add(t);
+			while ((nextT = t.otherBoneChainNeighbor(priorT)) != null){ 
+				prsnrs.Add (nextT);
+				priorT = t; 
+				t = nextT; 
+			}
+			return prsnrs;
 		}
 
-		public void disassembleAndTow(Org targetOrg){
+		//only use if hasHitch().
+		public Node hitchTip(){ //tip of chaingang of prisoners beginning at hitch. Is actual hitching point
+			List<Node> prsnrs = prisoners();
+			if (prsnrs.Count == 0) return hitch;
+			return prsnrs [prsnrs.Count - 1];
+		}
+
+		public void liberatePrisoners(Node startPrisoner){
+			if (startPrisoner == null) return;
+			List<Node> prsnrs = prisoners ();
+			int i = prsnrs.IndexOf (startPrisoner);
+			if (i < 0) { startPrisoner.isolate (); return; } //may not be a prisoner of a jeep
+				
+			for (; i < prsnrs.Count; i++) prsnrs [i].isolate ();
+		}
+
+		public void disassembleAndChain(Org targetOrg){
 			
 			if (!hasHitch()) return;
 
-			List<Node> bits = targetOrg.disassemble ();
+			List<Node> isolates = targetOrg.disassemble ();
 
-			hitchTip().addBone (bits [0]); //add first one to tip of tail
-			for (int i= 1; i<bits.Count; i++) {
-				bits [i - 1].addBone (bits [i]);
+			isolates [0].org = this; //but do NOT make them members, which makes them prisoners
+
+			hitchTip().addBone (isolates [0]); //add first one to tip of tail
+			for (int i= 1; i<isolates.Count; i++) {
+				isolates [i].org = this;
+				isolates [i - 1].addBone (isolates [i]);
 			}
+
+			for (int i = 0; i < isolates.Count; i++) isolates [i].offloadBurden ();
 		}
+
+
 
 		//can recycle the org in first parm. If first parm null, will return a new org.
 		// // // recycling is too dangerous. What happens to all the members.org? 
@@ -151,16 +262,14 @@ namespace Bubbles{
 
 
 		public List<Node> disassemble(){
+			
+			liberatePrisoners (firstPrisoner ()); //should have already been liberated, but is cheap insurance
+
 			List<Node> bits = new List<Node> (members);
 			foreach (var node in bits) {
 				node.isolate(); //makes each into its own separate org of team 0 and independent clan
 			}
 			return bits;
-		}
-
-		//set of nodes that trust each other to shift burden and share oomph and make bones.
-		public List<Node> trustGroup()
-		{	return new List<Node>(members);
 		}
 
 

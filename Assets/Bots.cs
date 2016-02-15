@@ -59,11 +59,14 @@ namespace Bubbles{
 			return head;
 		}
 
-
+		//tailDelta.magnitude*magFactor must be > headRadius+tailRadius
 		public static Node spawnPinchworm(Vector2 headPosition, float headRadius, bool headEat, 
 			Vector2 tailDelta, float tailRadius, bool tailEat, string clan=""){
+			float magFactor = 0.9f;
 
 			Node head = pushVegNode( headPosition, headRadius).setDna(CScommon.eaterBit, headEat);
+			if (tailDelta.magnitude*magFactor < headRadius + tailRadius) return head; //abort
+
 			Node tail = pushVegNode( headPosition+tailDelta, tailRadius).setDna(CScommon.eaterBit, tailEat);
 			head.org.makeMember (tail);
 			head.addBone (tail);
@@ -72,7 +75,7 @@ namespace Bubbles{
 
 			List<Node> tailList = Rules.nodeList(tail);
 			Rules.BonePullServo.install(head,tailList);
-			Rules.NearFarPush1Pull2Cmdr.install(head, tailList, tailDelta.magnitude*0.2f,tailDelta.magnitude*0.9f);
+			Rules.NearFarPush1Pull2Cmdr.install(head, tailList,headRadius+tailRadius,tailDelta.magnitude*magFactor);
 			return head;
 		}
 
@@ -662,15 +665,17 @@ namespace Bubbles{
 
 			goal.org.clan = "turm";
 			goal.org.makeMember (one); goal.org.makeMember (two); goal.org.makeMember (three);
-			goal.org.makeMember (feeder1); goal.org.makeMember (feeder2); goal.org.makeMember (feeder3);
 
 			one.addBone(two); two.addBone(three); three.addBone(one); 
 			goal.addBone(one); goal.addBone(two); goal.addBone(three);
 
 			//Weakness: Makes turm points heavier, but makes feeders easy to steal. Take them far far away and turm might starve.
-			feeder1.giveBurden (one);
-			feeder2.giveBurden (two);
-			feeder3.giveBurden (three);
+			//feeders are prisoners
+			feeder1.org = goal.org; feeder2.org = goal.org; feeder3.org = goal.org;
+
+			feeder1.offloadBurden();
+			feeder2.offloadBurden();
+			feeder3.offloadBurden();
 
 			return goal;
 		}
@@ -729,7 +734,6 @@ namespace Bubbles{
 			feeder3 = pushVegNode(new Vector2(goal.x+(0.83f*rad),goal.y+(-0.38f*rad)),4.3f*norm).setDna (CScommon.eaterBit, true);
 
 			goal.org.makeMember (one); goal.org.makeMember (two); goal.org.makeMember (three);
-			goal.org.makeMember (feeder1); goal.org.makeMember (feeder2); goal.org.makeMember (feeder3);
 
 			one.addBone(two); two.addBone(three); three.addBone(one); 
 			goal.addBone(one); goal.addBone(two); goal.addBone(three);
@@ -737,9 +741,10 @@ namespace Bubbles{
 			goal.org.clan = "turm";
 			
 			//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm.
-			feeder1.giveBurden (one);
-			feeder2.giveBurden (two);
-			feeder3.giveBurden (three);
+			feeder1.org = goal.org; feeder2.org = goal.org; feeder3.org = goal.org; //make feeders prisoners
+			feeder1.offloadBurden ();
+			feeder2.offloadBurden ();
+			feeder3.offloadBurden ();
 
 
 			goal1 = pushVegNode(new Vector2(-worldRadius/2f, -worldRadius/4f),norm/4);
@@ -770,9 +775,10 @@ namespace Bubbles{
 
 			//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm--though they're fairly large.
 			//Pull them far away 
-			feeder11.giveBurden (one1);
-			feeder21.giveBurden (two1);
-			feeder31.giveBurden (three1);
+			feeder11.org = goal1.org; feeder21.org = goal1.org; feeder31.org = goal1.org; //make feeders prisoner
+			feeder11.offloadBurden ();
+			feeder21.offloadBurden ();
+			feeder31.offloadBurden ();
 
 
 
@@ -909,7 +915,7 @@ namespace Bubbles{
 			//			spawnRandomTeam (abnorm, 0, 0, 0, true, 2, "minus");
 
 			head = spawnPinchworm(new Vector2(3,3), abnorm, true, 
-				new Vector2(3-1, 3+abnorm*4), abnorm, true);
+				new Vector2(-abnorm, abnorm*5), abnorm, true);
 
 			//			for (int i = 0; i < popcorn; i++)
 			//				plantRandomVeg (norm);
