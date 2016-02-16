@@ -299,7 +299,7 @@ namespace Bubbles{
 			if (node != node.org.head) return false; //can only mount org heads
 
 			node.setDna(CScommon.playerPlayingBit, false);
-			pushTeamOrgBack (nodeId);
+			pushTeamIdBack (nodeId);
 
 			return true;
 		}
@@ -311,8 +311,8 @@ namespace Bubbles{
 			if (!node.testDna(CScommon.playerBit)) return false;
 			if (node.testDna(CScommon.playerPlayingBit)) return false; //already mounted
 			if (node != node.org.head) return false; //has to be org head
-			if (!teams[node.org.team].Contains(node.org)) return false; // team 0 orgs can't be mounted
-			if (node.testDna(CScommon.goalBit)) return false; //goal's can't be mounted
+			if (bubbleServer.teamNumber(node.id) == 0) return false; // team 0 orgs can't be mounted
+			if (node.testDna(CScommon.goalBit)) return false; //goals can't be mounted
 			return true;
 		}
 
@@ -322,56 +322,49 @@ namespace Bubbles{
 			if (mountable(nodeId))  {
 				
 				Engine.nodes[nodeId].setDna(CScommon.playerPlayingBit, true);
-				pullOrgFromTeam (nodeId);
+				pullFromTeam (nodeId);
 
 				return true;
 			}
 			return false;
 		}
 
-		public static int mountOrgFromLargestTeam(){
-			Org org = orgFromLargestTeam();
-			if (org != null && mount (org.head.id)) return org.head.id;
-			bubbleServer.debugDisplay ("no NPCs available");
-			return -1;
+		public static int mountOrgHeadFromLargestTeam(){
+			int headId = idFromLargestTeam();
+			mount(headId); //if headId == -1 does nothing
+			return headId;
 		}
 
-		static void encodeTeamsInDna(){ // just for communication to client
-			for (int i = 0; i < Engine.nodes.Count; i++) Engine.nodes[i].setTeam(Engine.nodes[i].org.team);
-		}
+		static List<int>[] teams = new List<int>[4]; //lists of team org head ids
 
-		static List<Org>[] teams = new List<Org>[4]; //lists of team member orgs
-
-		static void makeTeams(){
+		static void makeTeamLists(){
 				
-			for (int i = 0; i<teams.Length; i++) teams[i] = new List<Org>();
+			for (int i = 0; i<teams.Length; i++) teams[i] = new List<int>();
 
-			for (int i = 0; i < Engine.nodes.Count; i++) {
-				Node n = Engine.nodes [i];
-				if (mountable(n.id)) {
-					teams [n.org.team].Add (n.org); 
+			for (int id=0; id < Engine.nodes.Count; id++) {
+				//i == Engine.nodes [i].id;
+				if (mountable(id)) { // mountables don't have teamNumber 0, so teams[0].Count is always 0
+					teams [bubbleServer.teamNumber(id)].Add (id); 
 				}
 			}
 		}
 			
 
-		public static Org orgFromLargestTeam(){
+		public static int idFromLargestTeam(){
 			int longest = 0;
 			for (int i=0;i<teams.Length;i++) if (teams[i].Count > teams[longest].Count) longest = i;
 
-			if (teams [longest].Count == 0) return null;
+			if (teams [longest].Count == 0) return -1;
 			return teams[longest][0];
 		}
 
-		static void pullOrgFromTeam (int id){
-			Org org = Engine.nodes [id].org;
-			teams [org.team].Remove (org);
+		static void pullFromTeam (int id){
+			teams [bubbleServer.teamNumber(id)].Remove (id);
 		}
 
 		//for putting back ones that have been popped off
-		static void pushTeamOrgBack( int id){
-			Org org = Engine.nodes [id].org;
-			teams [org.team].Add(org);
+		static void pushTeamIdBack( int id){
+			teams [bubbleServer.teamNumber(id)].Add(id);
 		}
 
 
@@ -414,8 +407,8 @@ namespace Bubbles{
 				break;
 			}
 
-			encodeTeamsInDna ();
-			makeTeams ();
+			bubbleServer.encodeTeamsInDna ();
+			makeTeamLists();
 		}
 
 
@@ -429,7 +422,7 @@ namespace Bubbles{
 	//				Rules.HunterPCRule.install(mountable,0);
 	//				Rules.HunterPCRule.install(mountable,1);
 	//				if (!bubbleServer.registered (mountable.id))
-	//					bubbleServer.registerNPC (mountable.id, "B" + mountable.id + "T");
+	//					bubbleServer.registerNPC (mountable.id, "B" + mountable.id + "T",team?);
 	//			}
 	//	}
 
@@ -438,7 +431,6 @@ namespace Bubbles{
 			onSpeed(head,internalSpeed);
 
 			//note that team number 0 is unscored, i.e. indicates no team at all, singleton
-			head.org.team = teamNumber;
 			head.setDna(CScommon.playerBit,true); //ie is mountable
 
 			Rules.Autopilot.install(head,goal); //does nothing if goal is null
@@ -447,7 +439,7 @@ namespace Bubbles{
 			Rules.HunterPCRule.install(head,1);
 
 			if (name == "") name = "B"+head.id+"T";
-			bubbleServer.registerNPC(head.id, name);
+			bubbleServer.registerNPC(head.id, name, teamNumber);
 
 			return head;
 		}
@@ -901,13 +893,11 @@ namespace Bubbles{
 
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
 			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true);
-			goal1.org.team = 1;
 			goal1.org.clan = "shirts";
 			//Rules.installTeamGoal(goal1);
 
 			goal2 = pushVegNode(new Vector2(0.66f*worldRadius,-0.33f*worldRadius),norm*5);
 			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true);
-			goal2.org.team = 2;
 			goal2.org.clan = "skins";
 			//Rules.installTeamGoal(goal2);
 

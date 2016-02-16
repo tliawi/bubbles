@@ -106,6 +106,11 @@ public class Rules {
 			return sum;
 		}
 
+		public void cutAllMuscles(){
+			for (int i = 0; i < _muscles.Count; i++)
+				_muscles [i].cut ();
+		}
+
 		public void cutMusclesTargetingOrg(Org org){
 			for (int i=0; i< _muscles.Count; i++) if (_muscles[i].target.org == org) _muscles[i].cut();
 		}

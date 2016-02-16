@@ -44,7 +44,6 @@ namespace Bubbles{
 		public List<Muscle> enemyMuscles;
 		
 		public string clan;
-		public int team;
 		public Dictionary<string,int> states; //Keys are independent state dimensions.
 
 		private Node hitch; //org doesn't exist with no members
@@ -266,8 +265,9 @@ namespace Bubbles{
 			liberatePrisoners (firstPrisoner ()); //should have already been liberated, but is cheap insurance
 
 			List<Node> bits = new List<Node> (members);
+			bits.Reverse (); //so head node is last to be isolated
 			foreach (var node in bits) {
-				node.isolate(); //makes each into its own separate org of team 0 and independent clan
+				node.isolate(); //makes each into its own separate org
 			}
 			return bits;
 		}

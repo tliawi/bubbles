@@ -173,12 +173,14 @@ namespace Bubbles{
 		public class PlayerInfo {
 			public int connectionId;
 			public string name;
+			public int team; //0 meaning no team
 			public CScommon.ScoreStruct data;
 
 			public PlayerInfo(){
 				connectionId = -1;
 				name = "";
 				data.nodeId = -1;
+				team = 0;
 			}
 
 			public void clearScore(){ data.plus = 0; data.minus=0; data.performance = 0; data.neither0Winner1Loser2 = 0;
@@ -196,6 +198,10 @@ namespace Bubbles{
 
 		public static bool registered(int nodeId) {return nodeIdPlayerInfo.ContainsKey (nodeId);}
 
+		public static void encodeTeamsInDna(){ // just for communication to client
+			foreach (var nodeId in nodeIdPlayerInfo.Keys) foreach (var memb in Engine.nodes[nodeId].org.members) 
+				Engine.nodes[memb.id].setTeam(nodeIdPlayerInfo[nodeId].team);
+		}
 
 	//	public void playerWinLose(int winnerId, int loserId){
 	//
@@ -216,6 +222,13 @@ namespace Bubbles{
 	//		long delta = stopwatches[ss.nodeId].ElapsedMilliseconds; //the amount of time, in milliseconds, since you last received a scoreMsg for this player
 	//		return ss.performance*Mathf.Pow(2,-delta/CScommon.performanceHalfLifeMilliseconds);
 	//	}
+
+		public static int teamNumber(int nodeId){
+			if (nodeIdPlayerInfo.ContainsKey (nodeId))
+				return nodeIdPlayerInfo [nodeId].team; //may be 0 indicating no team
+			else
+				return 0; //no team
+		}
 
 		public static void score(int nodeId, byte neither0Winner1Loser2){
 			if (nodeIdPlayerInfo.ContainsKey(nodeId)){
@@ -239,10 +252,11 @@ namespace Bubbles{
 		public static void scoreWinner(int nodeId){ score(nodeId,1);}
 		public static void scoreLoser(int nodeId){ score(nodeId,2);}
 			
-		public static void registerNPC(int nodeId,string name){
+		public static void registerNPC(int nodeId, string name, int team=0){
 			nodeIdPlayerInfo[nodeId] = new PlayerInfo();
 			nodeIdPlayerInfo[nodeId].data.nodeId = nodeId;
 			nodeIdPlayerInfo[nodeId].name = name;
+			nodeIdPlayerInfo[nodeId].team = team;
 		}
 			
 		
@@ -730,7 +744,7 @@ namespace Bubbles{
 
 		public void giveMount(int conId){
 			CScommon.intMsg nixMsg = new CScommon.intMsg ();
-			nixMsg.value = Bots.mountOrgFromLargestTeam ();//only popOrg after the timer fires, otherwise someone else could mount during the wait
+			nixMsg.value = Bots.idFromLargestTeam ();//only popOrg after the timer fires, otherwise someone else could mount during the wait
 
 			checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
 			changeMounts(-1,nixMsg.value,conId); 

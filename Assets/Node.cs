@@ -110,13 +110,25 @@ namespace Bubbles{
 
 		public string clan { get { return org.clan;}}
 
-		//Restores burden. Does not change position, radius, oomph, dna, pcOfset. Makes the node have individual org of team 0 and independent clan
+		//Restores burden. Does not change position, radius, oomph, dna, pcOfset. 
+		//Makes the node have individual org of which it is the head
 		public void isolate(){
 			restoreNaiveBurden();
 			clearBones();
+
+			//cut all enemy muscles attacking me
+			List<Muscle> attackers = new List<Muscle>(org.enemyMuscles);
+			foreach (var muscl in attackers) if (muscl.target == this) muscl.cut ();
+
+			cutAllMuscles ();
+
 			rules.Clear();
 			states.Clear();
-			org = new Org (this);
+
+			if (this != this.org.head) { 
+				org.members.Remove (this);
+				org = new Org (this);
+			}
 		}
 				
 		public Vector2 vector2(){
@@ -184,6 +196,11 @@ namespace Bubbles{
 			int sum = 0;
 			for (int i=0; i<rules.Count; i++) sum += rules[i].cutExternalMuscles();
 			return sum;
+		}
+
+		public void cutAllMuscles(){
+			for (int i = 0; i < rules.Count; i++)
+				rules [i].cutAllMuscles ();
 		}
 
 		public int breakExternalBones(){
