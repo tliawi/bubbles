@@ -527,7 +527,7 @@ namespace Bubbles{
 								Engine.scheduledOrgRelocations.Add (node.org);
 						}
 
-						if (org.bothRegistered(node.org)) org.scoresAgainst(node.org); //keep score
+						if (org.bothRegistered(node.org)) org.scoresCoupAgainst(node.org); //keep score
 
 					}
 				}

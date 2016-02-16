@@ -12,6 +12,8 @@ using UnityEngine.UI;
 namespace Bubbles{
 	public class bubbleServer : MonoBehaviour {
 
+		public static bubbleServer obj;
+
 		private static GameObject dbgdsply;
 		private static Text dbgdsplyText;
 		private static List<string> debugDisplayList = new List<string>();
@@ -249,8 +251,21 @@ namespace Bubbles{
 
 
 
-		public static void scoreWinner(int nodeId){ score(nodeId,1);}
-		public static void scoreLoser(int nodeId){ score(nodeId,2);}
+		public static void scoreWinnerCoup(int nodeId){ if (Bots.countCoup) score(nodeId,1);}
+		public static void scoreLoserCoup(int nodeId){ if (Bots.countCoup) score(nodeId,2);}
+
+		public static void scoreTeamWin(int winnerId){
+			
+			int winningTeam = teamNumber (winnerId);
+			foreach (var nodeId in nodeIdPlayerInfo.Keys) {
+				if (teamNumber (nodeId) == winningTeam)
+					score (nodeId, 1);
+				else if (teamNumber (nodeId) != 0)
+					score (nodeId, 2);
+			}
+
+			obj.restartGame (-1); //not quite the right thing to do, but gets me evidence...
+		}
 			
 		public static void registerNPC(int nodeId, string name, int team=0){
 			nodeIdPlayerInfo[nodeId] = new PlayerInfo();
@@ -284,6 +299,8 @@ namespace Bubbles{
 	//	NetworkMatch networkMatch;
 
 		void Awake () { 
+
+			obj = this;
 
 			QualitySettings.vSyncCount = 0;  // VSync must be disabled
 			Application.targetFrameRate = 30;

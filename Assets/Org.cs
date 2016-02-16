@@ -71,9 +71,9 @@ namespace Bubbles{
 				Engine.scheduledOrgRelocations.Add(loser);
 		}
 			
-		public void scoresAgainst(Org loser){
-			bubbleServer.scoreWinner(head.id);
-			bubbleServer.scoreLoser(loser.head.id);
+		public void scoresCoupAgainst(Org loser){
+			bubbleServer.scoreWinnerCoup(head.id);
+			bubbleServer.scoreLoserCoup(loser.head.id);
 		}
 
 		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that.

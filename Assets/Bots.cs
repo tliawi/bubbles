@@ -7,7 +7,7 @@ using System.Collections.Generic;
 namespace Bubbles{
 	public class Bots
 	{
-
+		public static bool countCoup;
 		public static float worldRadius = 400f;
 
 		public static float norm, abnormScale;
@@ -376,34 +376,42 @@ namespace Bubbles{
 			case 1:
 				gameName = "snark";
 				snarkInit ();
+				countCoup = true; //count coups
 				break;
 			case 2:
 				gameName = "race";
 				inchwormRaceInit ();
+				countCoup = false; //count goals only
 				break;
 			case 3:
 				gameName = "fussball";
 				fussballInit ();
+				countCoup = false;
 				break;
 			case 4:
 				gameName = "turm";
 				turmInit ();
+				countCoup = false;
 				break;
 			case 5:
 				gameName = "turm2";
 				turmInit2 ();
+				countCoup = false;
 				break;
 			case 6:
 				gameName = "giveaway";
 				giveawayInit ();
+				countCoup = false;
 				break;
 			case 7:
 				gameName = "tryEat";
 				tryEat ();
+				countCoup = true;
 				break;
 			default: 
 				gameName = "sizeTest";
 				testbedInit ();
+				countCoup = true;
 				break;
 			}
 
@@ -445,26 +453,25 @@ namespace Bubbles{
 		}
 
 
-		public static List<Node> spawnRandomTeam(float siz, int inchworms, int tricycles, int tapeworms, int teamNumber, string clan = "", Node goal = null, int internalSpeed = 100){
+		public static List<Node> spawnRandomTeam(bool hitched, float siz, int inchworms, int tricycles, int tapeworms, int teamNumber, string clan = "", Node goal = null, int internalSpeed = 100){
 			List<Node> players = new List<Node>();
 			Node head;
 
 			for (int i = 0; i< inchworms; i++){
 				head = spawnRandomInchworm (siz, true, true, clan);
-				head.org.makeHitched ();
+				if (hitched) head.org.makeHitched ();
 				players.Add(setUpPlayer(head,  teamNumber, "", goal, internalSpeed));
 			}
 
 			for (int i=0; i<tricycles; i++){
 				head = spawnRandomTricycle (siz, true, true, clan);
-				//this is going to be hard on tricycles, we'll see if I need to add a fourth node to be the hitch
-				head.org.makeHitched();
+				if (hitched) head.org.makeHitched();
 				players.Add(setUpPlayer(head,  teamNumber, "", goal, internalSpeed));
 			}
 
 			for (int i=0; i<tapeworms; i++){
 				head = spawnRandomTapeworm (siz, true, true, 5, clan);
-				head.org.makeHitched ();
+				if (hitched) head.org.makeHitched ();
 				players.Add(setUpPlayer(head,teamNumber, "", goal, internalSpeed));
 			}
 
@@ -498,10 +505,10 @@ namespace Bubbles{
 				Rules.Autopilot.install(head,ls);
 			}
 
-	//		spawnRandomTeam(abnorm,2,2,1,2,"people",bs);
-	//		spawnRandomTeam(abnorm,2,2,1,2,"people",ls);
+	//		spawnRandomTeam (false,abnorm,2,2,1,2,"people",bs);
+	//		spawnRandomTeam (false,abnorm,2,2,1,2,"people",ls);
 
-			spawnRandomTeam (abnorm, 8, 0, 0, 1, "", null, 50); //null clan means each org will have unique clan
+			spawnRandomTeam (false,abnorm, 8, 0, 0, 1, "", null, 50); //null clan means each org will have unique clan
 
 		}
 
@@ -514,6 +521,7 @@ namespace Bubbles{
 
 			goal = pushVegNode(new Vector2(-worldRadius,0),norm*5); //goal left, won't eat anybody
 			goal.org.clan = "goal";
+			Rules.TouchGoalScore.install (goal);
 			
 
 			head = spawnTricycle(new Vector2( worldRadius,offset(5))    , abnorm*1, true,
@@ -571,6 +579,8 @@ namespace Bubbles{
 			//make triangle to swing the crank. 
 			center = pushVegNode(new Vector2(0,0),0.7f*norm);
 			center.setDna (CScommon.snarkBit, true);
+			Rules.TouchGoalScore.install (center);
+
 			bubbleServer.registerNPC(center.id,"fussball");
 
 			one = pushVegNode(new Vector2(-rad,-centerHeight),norm);
@@ -620,8 +630,8 @@ namespace Bubbles{
 				Rules.Autopilot.install(spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn"),center);
 			}
 
-			spawnRandomTeam (abnorm, 2, 2, 0, 1, "shirts", center);
-			spawnRandomTeam (abnorm, 2, 2, 0, 2, "skins", center);
+			spawnRandomTeam (true, abnorm, 2, 2, 0, 1, "shirts", center);
+			spawnRandomTeam (true, abnorm, 2, 2, 0, 2, "skins", center);
 
 
 		}
@@ -639,6 +649,7 @@ namespace Bubbles{
 			goal = pushVegNode(z+new Vector2(0.01f,-0.0223f),norm/4).setDna(CScommon.noPhotoBit, true);
 			goal.org.clan = "turm";
 			bubbleServer.registerNPC(goal.id,"goal");
+			Rules.TouchGoalScore.install (goal);
 
 			one = pushVegNode(z+new Vector2(rad,-centerHeight),3*norm).setDna(CScommon.noPhotoBit, true).setDna(CScommon.eaterBit, true);
 			two = pushVegNode(z+new Vector2(-rad,-centerHeight),3*norm).setDna(CScommon.noPhotoBit, true);
@@ -695,8 +706,8 @@ namespace Bubbles{
 				Rules.Autopilot.install(head,goal2);
 			}
 
-			spawnRandomTeam(abnorm, 3, 3, 1, 1, "shirts", goal2);
-			spawnRandomTeam(abnorm, 3, 3, 1, 2, "skins" , goal1);
+			spawnRandomTeam (false, abnorm, 3, 3, 1, 1, "shirts", goal2);
+			spawnRandomTeam (false, abnorm, 3, 3, 1, 2, "skins" , goal1);
 
 		}
 
@@ -711,6 +722,7 @@ namespace Bubbles{
 			goal = pushVegNode(new Vector2(worldRadius/2f, worldRadius/4f),norm/4);
 			goal.org.clan = "turm";
 			bubbleServer.registerNPC(goal.id,"goal");
+			Rules.TouchGoalScore.install (goal);
 			
 			one = pushVegNode(new Vector2(goal.x+rad,goal.y+-centerHeight), 3*norm).setDna(CScommon.noPhotoBit, true).setDna(CScommon.eaterBit, true);
 			two = pushVegNode(new Vector2(goal.x+-rad,goal.y+-centerHeight),3*norm).setDna(CScommon.noPhotoBit, true);
@@ -742,6 +754,7 @@ namespace Bubbles{
 			goal1 = pushVegNode(new Vector2(-worldRadius/2f, -worldRadius/4f),norm/4);
 			goal1.org.clan = "turm1";
 			bubbleServer.registerNPC(goal.id,"goal1");
+			Rules.TouchGoalScore.install (goal1);
 			
 			one1 = pushVegNode(new Vector2(goal1.x+rad,goal1.y+-centerHeight), 3*norm).setDna(CScommon.noPhotoBit, true).setDna(CScommon.eaterBit, true);
 			two1 = pushVegNode(new Vector2(goal1.x+-rad,goal1.y+-centerHeight),3*norm).setDna(CScommon.noPhotoBit, true);
@@ -786,9 +799,9 @@ namespace Bubbles{
 				if (Engine.nodes[Engine.nodes.Count - 1].distance(goal1) < turmRad1) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
 			}
 			
-			spawnRandomTeam (abnorm, 2, 2, 1, 1, "shirts", goal1);
+			spawnRandomTeam (false,abnorm, 2, 2, 1, 1, "shirts", goal1);
 
-			spawnRandomTeam (abnorm, 2, 2, 1, 2, "skins",  goal );
+			spawnRandomTeam (false,abnorm, 2, 2, 1, 2, "skins",  goal );
 
 		}
 
@@ -882,7 +895,7 @@ namespace Bubbles{
 
 		private static void tryEat(){
 
-			spawnRandomTeam(abnorm, 1, 1, 0, 1);
+			spawnRandomTeam (true, abnorm, 1, 1, 0, 1);
 
 		}
 
@@ -894,18 +907,18 @@ namespace Bubbles{
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
 			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true);
 			goal1.org.clan = "shirts";
-			//Rules.installTeamGoal(goal1);
+			Rules.FullGoalScore.install(goal1);
 
 			goal2 = pushVegNode(new Vector2(0.66f*worldRadius,-0.33f*worldRadius),norm*5);
 			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true);
 			goal2.org.clan = "skins";
-			//Rules.installTeamGoal(goal2);
+			Rules.FullGoalScore.install(goal2);
 
-			//			spawnRandomTeam (abnorm, 0, 0, 0, true, 1, "plus"); //all jeeps
-			//			spawnRandomTeam (abnorm, 0, 0, 0, true, 2, "minus");
+			spawnRandomTeam (true, abnorm, 4, 3, 0, 1, "plus"); //all jeeps
+			spawnRandomTeam (true, abnorm, 4, 3, 0, 2, "minus");
 
-			head = spawnPinchworm(new Vector2(3,3), abnorm, true, 
-				new Vector2(-abnorm, abnorm*5), abnorm, true);
+//			head = spawnPinchworm(new Vector2(3,3), abnorm, true, 
+//				new Vector2(-abnorm, abnorm*5), abnorm, true);
 
 			//			for (int i = 0; i < popcorn; i++)
 			//				plantRandomVeg (norm);
