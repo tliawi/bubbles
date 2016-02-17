@@ -13,6 +13,7 @@ namespace Bubbles{
 	public class bubbleServer : MonoBehaviour {
 
 		public static bubbleServer obj;
+		public static bool startRound = false;
 
 		private static GameObject dbgdsply;
 		private static Text dbgdsplyText;
@@ -56,7 +57,7 @@ namespace Bubbles{
 		private static Dictionary<int,bool> scheduledScores = new Dictionary<int,bool>();
 
 		private  void resetDefaultScales(int newGame){
-			switch (newGame) {
+			switch (newGame) { 
 			case 1: //snark
 				normScaleI = 9;
 				abnormScaleI = 0;
@@ -97,17 +98,17 @@ namespace Bubbles{
 				nonvegStartFuel = 0f;
 				Bots.popcorn = 250;
 				break;
-			case 6: //tryEat
+			case 6: //giveAway
 				normScaleI = 6;
 				abnormScaleI = 1;
 				photoYieldI = 0;
 				baseMetabolicRateI = 0;
 				worldRadiusI = -6;
 				vegStartFuel = 1.0f;
-				nonvegStartFuel = 0.5f;
-				Bots.popcorn = 10;
+				nonvegStartFuel = 0.33f;
+				Bots.popcorn = 30;
 				break;
-			case 7:
+			case 7: //tryEat
 				normScaleI = 6;
 				abnormScaleI = 1;
 				photoYieldI = 0;
@@ -205,6 +206,17 @@ namespace Bubbles{
 				Engine.nodes[memb.id].setTeam(nodeIdPlayerInfo[nodeId].team);
 		}
 
+		public static List<int> teamMemberIds(int anyTeamMemberId){
+			List<int> tmIds = new List<int> ();
+
+			if (nodeIdPlayerInfo.ContainsKey(anyTeamMemberId)){
+				int tn = nodeIdPlayerInfo[anyTeamMemberId].team; //zero means no team
+				if (tn != 0) foreach (var idInfo in nodeIdPlayerInfo) if (idInfo.Value.team == tn) tmIds.Add(idInfo.Key);
+			}
+				
+			return tmIds;
+		}
+
 	//	public void playerWinLose(int winnerId, int loserId){
 	//
 	//		if (nodeIdPlayerInfo.ContainsKey (winnerId) && nodeIdPlayerInfo.ContainsKey(loserId)) { //don't track interactions between non-registrants
@@ -240,16 +252,16 @@ namespace Bubbles{
 
 				int change = neither0Winner1Loser2==0?0:neither0Winner1Loser2==1?1:-1;
 				long nowMs = gameStopwatch.ElapsedMilliseconds;
-				long deltaMs = nowMs - nodeIdPlayerInfo[nodeId].data.gameMilliseconds;
-				nodeIdPlayerInfo[nodeId].data.performance *= Mathf.Pow(2,-deltaMs/CScommon.performanceHalfLifeMilliseconds);
-				nodeIdPlayerInfo[nodeId].data.performance += change;
+				if (Bots.countCoup){
+					long deltaMs = nowMs - nodeIdPlayerInfo[nodeId].data.gameMilliseconds;
+					nodeIdPlayerInfo[nodeId].data.performance *= Mathf.Pow(2,-deltaMs/CScommon.performanceHalfLifeMilliseconds);
+					nodeIdPlayerInfo[nodeId].data.performance += change;
+				}
 				nodeIdPlayerInfo[nodeId].data.gameMilliseconds = nowMs;
 
 				scheduledScores[nodeId] = true;
 			}
 		}
-
-
 
 		public static void scoreWinnerCoup(int nodeId){ if (Bots.countCoup) score(nodeId,1);}
 		public static void scoreLoserCoup(int nodeId){ if (Bots.countCoup) score(nodeId,2);}
@@ -264,8 +276,24 @@ namespace Bubbles{
 					score (nodeId, 2);
 			}
 
-			obj.restartGame (-1); //not quite the right thing to do, but gets me evidence...
 		}
+
+		public static void scoreTeamLoss(int loserId){
+
+			int losingTeam = teamNumber (loserId);
+			foreach (var nodeId in nodeIdPlayerInfo.Keys) {
+				if (teamNumber (nodeId) == losingTeam)
+					score (nodeId, 2);
+				else if (teamNumber (nodeId) != 0)
+					score (nodeId, 1);
+			}
+
+		}
+
+		public static void scoreBlessing(int nodeId, float blessing){
+			if (nodeIdPlayerInfo.ContainsKey(nodeId)) nodeIdPlayerInfo [nodeId].data.performance += blessing;
+		}
+
 			
 		public static void registerNPC(int nodeId, string name, int team=0){
 			nodeIdPlayerInfo[nodeId] = new PlayerInfo();
@@ -425,7 +453,10 @@ namespace Bubbles{
 			
 		void Update(){
 
-	//		if (gameChosen>0){
+			if (startRound) {
+				startRound = false;
+				restartGame (-1);
+			}
 
 			reminderText.text = reminder();
 
@@ -543,7 +574,7 @@ namespace Bubbles{
 
 		public void startFuel(){
 			Node node;
-			for (int i = 1; i< Engine.nodes.Count; i++) { 
+			for (int i = 0; i< Engine.nodes.Count; i++) { 
 				node = Engine.nodes [i];
 				node.oomph = node.maxOomph*(node.isEater()?nonvegStartFuel:vegStartFuel);
 			}

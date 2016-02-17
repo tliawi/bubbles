@@ -50,6 +50,8 @@ namespace Bubbles{
 			dislocation = boneLength - dist;
 
 			effect = boneStiffness*dislocation;// - if too long, + if too short.
+			//independent of efficiency, and is proportional to dislocation. Dislocation has an upper bound if bone is compressed, but 
+			//no upper bound if bone is stretched
 
 			// Effect on one end is independent of effect on the other.
 			// Each experiences the same 'force', they react to it in inverse proportion to their burden.

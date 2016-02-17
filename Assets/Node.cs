@@ -310,9 +310,10 @@ namespace Bubbles{
 
 			target.org.decreaseHunger (targetReceives / targetOrgCanEat);//factor of zero means no change, factor of 1 means hunger is sated, i.e. becomes zero, every member at their maxOomph
 
+			bubbleServer.scoreBlessing (this.id,targetReceives); //I only get credit for what they receive
 		}
 
-		public float supply { get {return oomph/maxOomph;} }
+		public float fuelGauge { get {return oomph/maxOomph;} }
 
 		public float availableBurden() { return burden - minBurden; }
 

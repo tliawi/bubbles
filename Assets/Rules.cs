@@ -779,13 +779,51 @@ namespace Bubbles{
 				if (source0 == null || source0.org.head != source0 ) return;
 				source0.rules.Add (new FullGoalScore(source0));
 			}
-				
+
+			List<Node> myTeam;
+
 			private FullGoalScore(Node source0):base(source0){
+				source.oomph = source.maxOomph/5; // this default may be overridden in Bots
+				myTeam = new List<Node>();
+			}
+
+			//can't do this in install or constructor, team is perhaps not fully defined at that time
+			private void makeMyTeam(){
+				List<int> teamMemberIds = bubbleServer.teamMemberIds(source.id);
+				foreach (var id in teamMemberIds) myTeam.Add(Engine.nodes[id]);
+			}
+
+			private Node leastSupplied(){
+				Node worstSupplied = myTeam[0];
+				for (int i = 1; i < myTeam.Count; i++) {
+					if (myTeam[i].fuelGauge < worstSupplied.fuelGauge ) worstSupplied = myTeam[i];
+				}
+				return worstSupplied;
+			}
+
+			private void helpTheNeedy(){
+				Node worstSupplied = leastSupplied ();
+				if (worstSupplied.fuelGauge < source.fuelGauge) {
+					float fairfuelGauge = (worstSupplied.fuelGauge + source.fuelGauge)/2;
+					float mostWorstShouldGet = worstSupplied.maxOomph*fairfuelGauge - worstSupplied.oomph; //would raise his fuelGauge to fairfuelGauge level
+					float mostIShouldGive = source.oomph - fairfuelGauge * source.maxOomph; //would drop my fuelGauge to fairfuelGauge level
+					float oomphToTransfer = Mathf.Min(mostWorstShouldGet, mostIShouldGive);
+					source.oomph -= oomphToTransfer;
+					worstSupplied.oomph += oomphToTransfer*Node.linkEfficiency(source, worstSupplied); //with love. Less will be actually transfered, because of efficiency
+				}
 			}
 
 			override public void accion(){
-				if (source.oomph == source.maxOomph) {
-					bubbleServer.scoreTeamWin(source.id);
+				if (myTeam.Count == 0) makeMyTeam ();
+
+				if (source.oomph > source.maxOomph * 0.98f) {
+					bubbleServer.scoreTeamWin (source.id);
+					bubbleServer.startRound = true;
+				} else if (source.oomph < source.maxOomph * 0.03f){
+					bubbleServer.scoreTeamLoss(source.id);
+					bubbleServer.startRound = true;
+				} else {
+					helpTheNeedy ();
 				}
 			}
 		}
@@ -807,6 +845,7 @@ namespace Bubbles{
 
 					if (source.overlaps(nbr) && bubbleServer.teamNumber(nbr.id)!=0 && bubbleServer.teamNumber(nbr.id) != bubbleServer.teamNumber(source.id)) {
 						bubbleServer.scoreTeamWin (nbr.id);
+						bubbleServer.startRound = true;
 					}
 				}
 			}

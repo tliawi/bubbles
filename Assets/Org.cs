@@ -283,14 +283,14 @@ namespace Bubbles{
 			Node bestSupplied = head;
 			Node worstSupplied = bestSupplied;
 			for (int i = 1; i < members.Count; i++) {
-				if (members[i].supply < worstSupplied.supply ) worstSupplied = members[i];
-				if (members[i].supply > bestSupplied.supply ) bestSupplied = members[i];
+				if (members[i].fuelGauge < worstSupplied.fuelGauge ) worstSupplied = members[i];
+				if (members[i].fuelGauge > bestSupplied.fuelGauge ) bestSupplied = members[i];
 			}
 
-			float fairSupply = (worstSupplied.supply + bestSupplied.supply)/2;
-			float mostWorstCanUse = worstSupplied.maxOomph - worstSupplied.oomph;
-			float mostBestShouldGive = bestSupplied.oomph - fairSupply * bestSupplied.maxOomph; //will drop best's supply to fairSupply level
-			float oomphToTransfer = Mathf.Min(mostWorstCanUse, mostBestShouldGive);
+			float fairfuelGauge = (worstSupplied.fuelGauge + bestSupplied.fuelGauge)/2;
+			float mostWorstShouldGet = worstSupplied.maxOomph*fairfuelGauge - worstSupplied.oomph; //would raise his fuelGauge to fairfuelGauge level
+			float mostBestShouldGive = bestSupplied.oomph - fairfuelGauge * bestSupplied.maxOomph; //will drop best's fuelGauge to fairfuelGauge level
+			float oomphToTransfer = Mathf.Min(mostWorstShouldGet, mostBestShouldGive);
 			bestSupplied.oomph -= oomphToTransfer;
 			worstSupplied.oomph += oomphToTransfer*Node.linkEfficiency(bestSupplied, worstSupplied); //with love. Less will be actually transfered, because of efficiency
 

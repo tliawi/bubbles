@@ -7,7 +7,7 @@ using System.Collections.Generic;
 namespace Bubbles{
 	public class Bots
 	{
-		public static bool countCoup;
+		public static bool countCoup; // true: players get score when they eat each other. False: players do not, rather only get score from team goals.
 		public static float worldRadius = 400f;
 
 		public static float norm, abnormScale;
@@ -51,37 +51,40 @@ namespace Bubbles{
 			Node tail = pushVegNode( headPosition+tailDelta, tailRadius).setDna(CScommon.eaterBit, tailEat);
 
 			head.org.makeMember (tail);
+			head.addBone (tail); //length will be tailDelta.magnitude
 			if (clan != "") head.org.clan = clan;
 
 			List<Node> tailList = Rules.nodeList(tail);
 			Rules.Push1Pull2Servo.install(head,tailList);
-			Rules.NearFarPush1Pull2Cmdr.install(head, tailList, tailDelta.magnitude*0.2f,tailDelta.magnitude);
+			Rules.NearFarPush1Pull2Cmdr.install(head, tailList, tailDelta.magnitude*0.8f, tailDelta.magnitude*1.2f);
 			return head;
 		}
 
-		//tailDelta.magnitude*magFactor must be > headRadius+tailRadius
-		public static Node spawnPinchworm(Vector2 headPosition, float headRadius, bool headEat, 
-			Vector2 tailDelta, float tailRadius, bool tailEat, string clan=""){
-			float magFactor = 0.9f;
-
-			Node head = pushVegNode( headPosition, headRadius).setDna(CScommon.eaterBit, headEat);
-			if (tailDelta.magnitude*magFactor < headRadius + tailRadius) return head; //abort
-
-			Node tail = pushVegNode( headPosition+tailDelta, tailRadius).setDna(CScommon.eaterBit, tailEat);
-			head.org.makeMember (tail);
-			head.addBone (tail);
-
-			if (clan != "") head.org.clan = clan;
-
-			List<Node> tailList = Rules.nodeList(tail);
-			Rules.BonePullServo.install(head,tailList);
-			Rules.NearFarPush1Pull2Cmdr.install(head, tailList,headRadius+tailRadius,tailDelta.magnitude*magFactor);
-			return head;
-		}
+//		//tailDelta.magnitude*magFactor must be > headRadius+tailRadius
+//		public static Node spawnPinchworm(Vector2 headPosition, float headRadius, bool headEat, 
+//			Vector2 tailDelta, float tailRadius, bool tailEat, string clan=""){
+//			float magFactor = 0.9f;
+//
+//			Node head = pushVegNode( headPosition, headRadius).setDna(CScommon.eaterBit, headEat);
+//			if (tailDelta.magnitude*magFactor < headRadius + tailRadius) return head; //abort
+//
+//			Node tail = pushVegNode( headPosition+tailDelta, tailRadius).setDna(CScommon.eaterBit, tailEat);
+//			head.org.makeMember (tail);
+//			head.addBone (tail);
+//
+//			if (clan != "") head.org.clan = clan;
+//
+//			List<Node> tailList = Rules.nodeList(tail);
+//			Rules.BonePullServo.install(head,tailList);
+//			Rules.NearFarPush1Pull2Cmdr.install(head, tailList,headRadius+tailRadius,tailDelta.magnitude*magFactor);
+//			return head;
+//		}
 
 		public static Node spawnTricycle(Vector2 headPosition, float headRadius, bool headEat, 
-		                                          Vector2 tailsMidpointDelta, float widthBetweenTails, float tailsRadius, bool tailsEat, 
+		                                          Vector2 tailsMidpointDelta, float tailsRadius, bool tailsEat, 
 		                                          string clan=""){
+
+			float widthBetweenTails = tailsMidpointDelta.magnitude * 0.4f;
 
 			// mimic human or npc behavior building the scaffolding, i.e. establishing nodes and muscles and bones
 			Node head = pushVegNode( headPosition, headRadius).setDna(CScommon.eaterBit, headEat);
@@ -98,6 +101,8 @@ namespace Bubbles{
 
 			if (clan != "") head.org.clan = clan; //all have same org
 
+			head.addBone (tailL);
+			head.addBone (tailR);
 			tailL.addBone(tailR);
 
 			List<Node> tailList = Rules.nodeList( tailL, tailR );
@@ -105,7 +110,7 @@ namespace Bubbles{
 			Rules.TurnServo.install(head,tailL,tailR);
 
 			// make equilateral triangle at near end
-			Rules.NearFarPush1Pull2Cmdr.install(head,tailList, 0.75f*widthBetweenTails ,1.4f*widthBetweenTails);
+			Rules.NearFarPush1Pull2Cmdr.install(head,tailList, 0.8f*tailsMidpointDelta.magnitude ,1.2f*tailsMidpointDelta.magnitude);
 
 			return head;
 		}
@@ -116,6 +121,7 @@ namespace Bubbles{
 			return angle + Random.Range (-wander, wander);
 		}
 
+		//NOTE spawnTapeworm still doesn't have internal bones to match its muscles...
 		public static Node spawnTapeworm(Vector2 headPosition, bool headEat, 
 		                              int numSegments, float radius, bool tailEat , string clan = ""){
 
@@ -163,7 +169,7 @@ namespace Bubbles{
 			Vector2 tailDelta = 2.4f*approximateRadius*(new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle))) ;
 			float headRadius = approximateRadius * Random.Range(0.9f,0.1f);
 			float tailRadius = headRadius*Random.Range(0.7f,0.8f);
-			return spawnTricycle(headPosition,headRadius,headEat,tailDelta,tailRadius*Random.Range(1.9f,2.1f),tailRadius,tailEat, clan);
+			return spawnTricycle(headPosition,headRadius,headEat,tailDelta,tailRadius,tailEat, clan);
 		}
 
 		public static Node spawnRandomTapeworm(float approximateRadius, bool headEat, bool tailEat,int numSegments = 0, string clan="" ){
@@ -486,7 +492,7 @@ namespace Bubbles{
 	//		setUpPlayer (head, 1, "tapeworm");
 	//		head.setDna (CScommon.snarkBit,true);
 
-			head = spawnInchworm(new Vector2(-3,-3), abnorm*1.2f, true, 
+			head = spawnInchworm(new Vector2(-3,-3), abnorm*1.2f, true,
 				new Vector2(7,7), abnorm*1f, true,"snark"); 
 			setUpPlayer (head, 0, "big snark");
 			head.setDna (CScommon.snarkBit,true);
@@ -525,7 +531,7 @@ namespace Bubbles{
 			
 
 			head = spawnTricycle(new Vector2( worldRadius,offset(5))    , abnorm*1, true,
-				new Vector2(2,0), 1.4f, abnorm*0.75f, true, "t1"); //nodes 1,2,3
+				new Vector2(2,0), abnorm*0.75f, true, "t1"); //nodes 1,2,3
 			setUpPlayer(head,1,"Al",goal);
 
 			head = spawnInchworm(new Vector2( worldRadius,offset(8))    , abnorm*1.2f, true,
@@ -533,7 +539,7 @@ namespace Bubbles{
 			setUpPlayer(head,1,"Beth",goal);
 			
 			head = spawnTricycle(new Vector2( worldRadius,offset(11))    , abnorm*1, true,
-				new Vector2(2,0), 1.4f, abnorm*0.75f, true, "t1"); //nodes 6,7,8
+				new Vector2(2,0), abnorm*0.75f, true, "t1"); //nodes 6,7,8
 			setUpPlayer(head,1,"Carl",goal);
 
 			head = spawnInchworm(new Vector2( worldRadius,offset(14))    , abnorm*1.2f, true,
@@ -542,7 +548,7 @@ namespace Bubbles{
 
 			
 			head = spawnTricycle(new Vector2( worldRadius,-offset(5))   , abnorm*1, true,
-				new Vector2(2,0), 1.4f, abnorm*0.75f, true, "t2"); //nodes 11.12.13
+				new Vector2(2,0), abnorm*0.75f, true, "t2"); //nodes 11.12.13
 			setUpPlayer(head,2,"Emily",goal);
 
 			head = spawnInchworm(new Vector2( worldRadius,-offset(8))   , abnorm*1.2f, true,
@@ -550,7 +556,7 @@ namespace Bubbles{
 			setUpPlayer(head,2,"Fred",goal);
 
 			head = spawnTricycle(new Vector2( worldRadius,-offset(11))   , abnorm*1, true,
-				new Vector2(2,0), 1.4f, abnorm*0.75f, true, "t2"); //nodes 16,17,18
+				new Vector2(2,0), abnorm*0.75f, true, "t2"); //nodes 16,17,18
 			setUpPlayer(head,2,"Grace",goal);
 
 			head = spawnInchworm(new Vector2( worldRadius,-offset(14))   , abnorm*1.2f, true,
@@ -905,25 +911,23 @@ namespace Bubbles{
 			Node head, goal1, goal2;
 
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
-			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true);
+			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
 			goal1.org.clan = "shirts";
+			bubbleServer.registerNPC(goal1.id, "shirts goal", 1);
 			Rules.FullGoalScore.install(goal1);
 
 			goal2 = pushVegNode(new Vector2(0.66f*worldRadius,-0.33f*worldRadius),norm*5);
-			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true);
+			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true).setDna(CScommon.eaterBit,true);;
 			goal2.org.clan = "skins";
+			bubbleServer.registerNPC(goal2.id, "skins goal", 2);
 			Rules.FullGoalScore.install(goal2);
 
-			spawnRandomTeam (true, abnorm, 4, 3, 0, 1, "plus"); //all jeeps
-			spawnRandomTeam (true, abnorm, 4, 3, 0, 2, "minus");
+			spawnRandomTeam (false, abnorm, 6, 1, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
+			spawnRandomTeam (false, abnorm, 6, 1, 0, 2, "skins");
 
-//			head = spawnPinchworm(new Vector2(3,3), abnorm, true, 
-//				new Vector2(-abnorm, abnorm*5), abnorm, true);
 
-			//			for (int i = 0; i < popcorn; i++)
-			//				plantRandomVeg (norm);
-			//			for (int i = 0; i < popcorn; i++)
-			//				spawnRandomInchworm (norm, true, true);
+			for (int i = 0; i < popcorn; i++) plantRandomVeg (norm);
+			for (int i = 0; i < popcorn; i++) spawnRandomInchworm (norm, false, false).enableInternalMuscles (50);
 		}
 
 
