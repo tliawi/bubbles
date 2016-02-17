@@ -263,13 +263,14 @@ namespace Bubbles{
 
 					//Pushing naturally tends to equalize isoceles triangle--shorter link is more efficient, so pushes more.
 					//Pulling has the opposite effect, so need to counteract
-					if (musclesCount >= 2 && push1Pull2 == 2 ) {
-						if (muscles(0).efficiency() > muscles(musclesCount-1).efficiency()){ 
-							muscles(0).disable(); muscles(musclesCount-1).reEnable ();
-						} else {
-							muscles(0).reEnable(); muscles(musclesCount-1).disable ();
-						}
-					}
+					//NOT NEEDED WITH INTERNAL BONES
+//					if (musclesCount >= 2 && push1Pull2 == 2 ) {
+//						if (muscles(0).efficiency() > muscles(musclesCount-1).efficiency()){ 
+//							muscles(0).disable(); muscles(musclesCount-1).reEnable ();
+//						} else {
+//							muscles(0).reEnable(); muscles(musclesCount-1).disable ();
+//						}
+//					}
 				} else { disableMuscles(); priorPushPull = 0; } //so will reinitialize pushPull after turn is finished
 			}
 
@@ -816,12 +817,12 @@ namespace Bubbles{
 			override public void accion(){
 				if (myTeam.Count == 0) makeMyTeam ();
 
-				if (source.oomph > source.maxOomph * 0.98f) {
+				if (source.oomph > source.maxOomph * 0.99f) {
 					bubbleServer.scoreTeamWin (source.id);
-					bubbleServer.startRound = true;
-				} else if (source.oomph < source.maxOomph * 0.03f){
+					bubbleServer.newRound = true;
+				} else if (source.oomph < source.maxOomph * 0.01f){
 					bubbleServer.scoreTeamLoss(source.id);
-					bubbleServer.startRound = true;
+					bubbleServer.newRound = true;
 				} else {
 					helpTheNeedy ();
 				}
@@ -845,11 +846,32 @@ namespace Bubbles{
 
 					if (source.overlaps(nbr) && bubbleServer.teamNumber(nbr.id)!=0 && bubbleServer.teamNumber(nbr.id) != bubbleServer.teamNumber(source.id)) {
 						bubbleServer.scoreTeamWin (nbr.id);
-						bubbleServer.startRound = true;
+						bubbleServer.newRound = true;
 					}
 				}
 			}
 		}
-		
+
+
+		public class BlessGoal: Rule {
+
+			public static void install(Node source0, Node goal0){
+				if (source0 == null || source0.org.head != source0 ) return;
+				source0.rules.Add (new BlessGoal(source0, goal0));
+			}
+
+			private Node goal;
+
+			private BlessGoal(Node source0, Node goal0):base(source0){
+				goal = goal0;
+			}
+
+			override public void accion(){
+
+				if ( source.fuelGauge > goal.fuelGauge || source.org.oomph() > goal.maxOomph - goal.oomph ) source.bless (goal);
+
+			}
+		}
+
 	}
 }

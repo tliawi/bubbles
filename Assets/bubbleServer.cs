@@ -13,7 +13,7 @@ namespace Bubbles{
 	public class bubbleServer : MonoBehaviour {
 
 		public static bubbleServer obj;
-		public static bool startRound = false;
+		public static bool newRound = false;
 
 		private static GameObject dbgdsply;
 		private static Text dbgdsplyText;
@@ -106,7 +106,7 @@ namespace Bubbles{
 				worldRadiusI = -6;
 				vegStartFuel = 1.0f;
 				nonvegStartFuel = 0.33f;
-				Bots.popcorn = 30;
+				Bots.popcorn = 100;
 				break;
 			case 7: //tryEat
 				normScaleI = 6;
@@ -296,6 +296,9 @@ namespace Bubbles{
 
 			
 		public static void registerNPC(int nodeId, string name, int team=0){
+			
+			if (newRound) return; 
+
 			nodeIdPlayerInfo[nodeId] = new PlayerInfo();
 			nodeIdPlayerInfo[nodeId].data.nodeId = nodeId;
 			nodeIdPlayerInfo[nodeId].name = name;
@@ -380,12 +383,14 @@ namespace Bubbles{
 
 			//the one thing I DON'T do is disconnect everyone, they can stay connected for next game.
 			//Their connectionId and name are still valid. Their node assignments are off.
-			foreach (int cId in connectionIdPlayerInfo.Keys) { 
-				connectionIdPlayerInfo[cId].data.nodeId = -1; //disassociate from nodeId
-			}
+			if (!newRound) { //preserve nodeId and playerInfo between rounds
+				foreach (int cId in connectionIdPlayerInfo.Keys) { 
+					connectionIdPlayerInfo [cId].data.nodeId = -1; //disassociate from nodeId
+				}
 
-			//remove NPC and PC registrations
-			nodeIdPlayerInfo.Clear();
+				//remove NPC and PC registrations
+				nodeIdPlayerInfo.Clear ();
+			}
 
 			GC.Collect(); //while I'm at it...
 
@@ -395,8 +400,6 @@ namespace Bubbles{
 
 		void initCurrentGame()
 		{	
-			scheduledScores.Clear();
-
 			Node.initialize();
 			Bots.initialize(currentGame);
 			startFuel();
@@ -453,9 +456,9 @@ namespace Bubbles{
 			
 		void Update(){
 
-			if (startRound) {
-				startRound = false;
-				restartGame (-1);
+			if (newRound) {
+				restartGame (-1); //relaunches game while newRound is true, preserving nodeIdPlayerInfo and suppressing registerNPC
+				newRound = false;
 			}
 
 			reminderText.text = reminder();

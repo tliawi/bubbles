@@ -56,7 +56,7 @@ namespace Bubbles{
 
 			List<Node> tailList = Rules.nodeList(tail);
 			Rules.Push1Pull2Servo.install(head,tailList);
-			Rules.NearFarPush1Pull2Cmdr.install(head, tailList, tailDelta.magnitude*0.8f, tailDelta.magnitude*1.2f);
+			Rules.NearFarPush1Pull2Cmdr.install(head, tailList, tailDelta.magnitude*0.7f, tailDelta.magnitude*1.3f);
 			return head;
 		}
 
@@ -110,7 +110,7 @@ namespace Bubbles{
 			Rules.TurnServo.install(head,tailL,tailR);
 
 			// make equilateral triangle at near end
-			Rules.NearFarPush1Pull2Cmdr.install(head,tailList, 0.8f*tailsMidpointDelta.magnitude ,1.2f*tailsMidpointDelta.magnitude);
+			Rules.NearFarPush1Pull2Cmdr.install(head,tailList, 0.8f*tailsMidpointDelta.magnitude ,1.4f*tailsMidpointDelta.magnitude);
 
 			return head;
 		}
@@ -158,7 +158,7 @@ namespace Bubbles{
 			Vector2 headPosition = worldRadius * Random.insideUnitCircle;
 			float randomAngle = Random.Range(-Mathf.PI, Mathf.PI);
 			Vector2 tailDelta = Random.Range(2.3f,2.5f)*approximateRadius*(new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle))) ;
-			float headRadius = approximateRadius * Random.Range(0.9f,0.1f);
+			float headRadius = approximateRadius * Random.Range(0.9f,1.0f);
 			float tailRadius = headRadius*Random.Range(1.3f,1.5f);
 			return spawnInchworm(headPosition,headRadius,headEat,tailDelta,tailRadius,tailEat, clan);
 		}
@@ -167,7 +167,7 @@ namespace Bubbles{
 			Vector2 headPosition = worldRadius * Random.insideUnitCircle;
 			float randomAngle = Random.Range(-Mathf.PI, Mathf.PI);
 			Vector2 tailDelta = 2.4f*approximateRadius*(new Vector2(Mathf.Cos(randomAngle), Mathf.Sin(randomAngle))) ;
-			float headRadius = approximateRadius * Random.Range(0.9f,0.1f);
+			float headRadius = approximateRadius * Random.Range(0.9f,1.0f);
 			float tailRadius = headRadius*Random.Range(0.7f,0.8f);
 			return spawnTricycle(headPosition,headRadius,headEat,tailDelta,tailRadius,tailEat, clan);
 		}
@@ -922,12 +922,26 @@ namespace Bubbles{
 			bubbleServer.registerNPC(goal2.id, "skins goal", 2);
 			Rules.FullGoalScore.install(goal2);
 
-			spawnRandomTeam (false, abnorm, 6, 1, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
-			spawnRandomTeam (false, abnorm, 6, 1, 0, 2, "skins");
+			List<Node> shirts = spawnRandomTeam (false, abnorm, 6, 1, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
+			List<Node> skins = spawnRandomTeam (false, abnorm, 6, 1, 0, 2, "skins");
 
+			foreach (var n in shirts)
+				Rules.BlessGoal.install (n, goal1);
+			foreach (var n in skins)
+				Rules.BlessGoal.install (n, goal2);
+			
 
-			for (int i = 0; i < popcorn; i++) plantRandomVeg (norm);
-			for (int i = 0; i < popcorn; i++) spawnRandomInchworm (norm, false, false).enableInternalMuscles (50);
+			//plant a bunch of munchies, but not within goals
+			int startCount = Engine.nodes.Count;
+
+			//beware, this becomes an infinite loop as turmRad approaches worldRadius
+			while (Engine.nodes.Count - startCount < popcorn){
+				plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+				if (Engine.nodes[Engine.nodes.Count - 1].distance(goal1) < 2*goal1.radius) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
+				if (Engine.nodes[Engine.nodes.Count - 1].distance(goal2) < 2*goal2.radius) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
+			}
+				
+			//for (int i = 0; i < popcorn; i++) spawnRandomInchworm (norm, false, false).enableInternalMuscles (50);
 		}
 
 
