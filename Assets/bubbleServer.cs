@@ -100,10 +100,10 @@ namespace Bubbles{
 				break;
 			case 6: //giveAway
 				normScaleI = 6;
-				abnormScaleI = 1;
+				abnormScaleI = 2;
 				photoYieldI = 0;
 				baseMetabolicRateI = 0;
-				worldRadiusI = -6;
+				worldRadiusI = 0;
 				vegStartFuel = 1.0f;
 				nonvegStartFuel = 0.33f;
 				Bots.popcorn = 75;

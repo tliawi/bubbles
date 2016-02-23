@@ -778,17 +778,17 @@ namespace Bubbles{
 		//steers organism by pushing or pulling on nodes to left or right of direction of travel, to steer organism toward the goal.
 		//can only be installed on org head.
 		//only works in forward! Don't know what effects will be in reverse...
-		public class Autopilot: Rule {
+		public class GoalSeeker: Rule {
 
 			public static void install(Node source0, Node goal0){
 				if (source0 == null || source0.org.head != source0 || goal0 == null) return;
-				source0.rules.Add (new Autopilot(source0, goal0));
+				source0.rules.Add (new GoalSeeker(source0, goal0));
 			}
 
 			private Muscle muscl;
 			private Node goal;
 
-			private Autopilot(Node source0, Node goal0):base(source0){
+			private GoalSeeker(Node source0, Node goal0):base(source0){
 				goal = goal0;
 				muscl = addMuscle(source0); //a cut muscle, disabled
 				//muscle just convenience for muscles(0)
@@ -808,7 +808,7 @@ namespace Bubbles{
 				else {
 					if (muscl.target != ss.target) muscl.reTarget(ss.target);
 					if (ss.sideEffect*angleToGoal > 0) muscl.makePuller(); else muscl.makePusher();
-					muscl.enable(Mathf.RoundToInt(23*Mathf.Abs(angleToGoal/ss.sideEffect))); //coefficient tuned
+					muscl.enable(Mathf.RoundToInt(46*Mathf.Abs(angleToGoal/ss.sideEffect))); //coefficient tuned
 				}
 			}
 		}

@@ -454,7 +454,7 @@ namespace Bubbles{
 			//note that team number 0 is unscored, i.e. indicates no team at all, singleton
 			head.setDna(CScommon.playerBit,true).setTeamNumber(teamNumber); //ie is mountable presuming teamNumber == 1, 2 or 3
 
-			Rules.Autopilot.install(head,goal); //does nothing if goal is null
+			Rules.GoalSeeker.install(head,goal); //does nothing if goal is null
 			Rules.HunterNPCRule.install(head);
 			Rules.HunterPCRule.install(head,0);
 			Rules.HunterPCRule.install(head,1);
@@ -519,7 +519,7 @@ namespace Bubbles{
 
 			for (int i = 0; i<popcorn/3; i++) {
 				head = spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn");
-				Rules.Autopilot.install(head,ls);
+				Rules.GoalSeeker.install(head,ls);
 			}
 
 	//		spawnRandomTeam (false,abnorm,2,2,1,2,"people",bs);
@@ -644,7 +644,7 @@ namespace Bubbles{
 			for (int i=0; i<(popcorn*3)/4; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm);
 
 			for (int i = 0; i<popcorn/4; i++) {
-				Rules.Autopilot.install(spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn"),center);
+				Rules.GoalSeeker.install(spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn"),center);
 			}
 
 			spawnRandomTeam (true, abnorm, 2, 2, 0, 1, "shirts", center);
@@ -715,12 +715,12 @@ namespace Bubbles{
 			for (int i = 0; i<popcorn/3; i++) {
 				head = spawnRandomInchworm(norm*Random.Range (0.7f,0.8f),true,true,"popcorn");
 				head.enableInternalMuscles(50);
-				Rules.Autopilot.install(head,goal1); 
+				Rules.GoalSeeker.install(head,goal1); 
 			}
 			for (int i = 0; i<popcorn/3; i++) {
 				head = spawnRandomInchworm(norm*Random.Range (0.7f,0.8f),true,true,"popcorn");
 				head.enableInternalMuscles(50);
-				Rules.Autopilot.install(head,goal2);
+				Rules.GoalSeeker.install(head,goal2);
 			}
 
 			spawnRandomTeam (false, abnorm, 3, 3, 1, 1, "shirts", goal2);
@@ -948,11 +948,14 @@ namespace Bubbles{
 			List<Node> shirts = spawnRandomTeam (true, abnorm, 6, 1, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
 			List<Node> skins = spawnRandomTeam (true, abnorm, 6, 1, 0, 2, "skins");
 
-			foreach (var n in shirts)
+			foreach (var n in shirts){
 				Rules.BlessGoal.install (n, goal1);
-			foreach (var n in skins)
+				Rules.GoalSeeker.install(n,goal1);
+			}
+			foreach (var n in skins){
 				Rules.BlessGoal.install (n, goal2);
-			
+				Rules.GoalSeeker.install(n,goal2);
+			}
 
 			//plant a bunch of munchies, but not within goals
 			int startCount = Engine.nodes.Count;
