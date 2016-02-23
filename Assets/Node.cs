@@ -36,7 +36,7 @@ namespace Bubbles{
 			mask = ~(mask << rightBit); //shift mask into place and complement, so it is a bunch of 1's with a hole (of zeros) in it
 			return (dna & mask) | lvalue; // clear DNA in the hole, and put value into the hole
 		}
-
+			
 		// the efficiency of a link between the two nodes.
 		// public, and not a link method, so that bots can determine which potential muscles would be most efficient
 		// This is independent of metabolicOutput--the node's ability to supply the link with oomph. 
@@ -188,8 +188,9 @@ namespace Bubbles{
 
 		// concerning rules, which have muscles sourced in this node
 
-		public void enableInternalMuscles(int percent){
+		public Node enableInternalMuscles(int percent){
 			for (int i = 0; i<rules.Count; i++) rules[i].enableInternalMuscles(percent);
+			return this;
 		}
 
 		public int cutExternalMuscles(){
@@ -258,10 +259,12 @@ namespace Bubbles{
 			return this;
 		}
 		
-		public Node setTeam(int value){
+		public Node setTeamNumber (int value){
 			setDna (CScommon.leftTeamBit, CScommon.rightTeamBit, value);
 			return this;
 		}
+
+		public int teamNumber { get { return (int) CScommon.dnaNumber (dna, CScommon.leftTeamBit, CScommon.rightTeamBit); } }
 
 		public bool testDna(int bitNumber) { return testBit(dna, bitNumber);}
 
@@ -285,18 +288,9 @@ namespace Bubbles{
 		public void photosynthesis() {
 			if (testDna(CScommon.noPhotoBit)) return;
 			oomph +=  photoYield*radius2 * (maxOomph - oomph )/maxOomph; //oomph will never quite attain maxOomph, photosyn gets more inefficient as it approaches maxOomph
-			if (isPrisoner ()) { //give all your oomph to master org
-				float headHunger = org.head.maxOomph - org.head.oomph;
-				float canTransfer = Mathf.Min (headHunger, oomph);
-				org.head.oomph += canTransfer;
-				oomph -= canTransfer;
-			}
+		//prisoners transfer oomph via prisoner rule
 		}
 
-		//second class citizen, not a member of its org
-		public bool isPrisoner(){
-			return !org.members.Contains (this);
-		}
 
 		public void bless(Node target){
 
@@ -333,10 +327,7 @@ namespace Bubbles{
 		private void distributeBurden (float amount){
 			if (amount <= 0) return;
 			
-			float portion;
-
-			if (isPrisoner()) portion = amount/org.members.Count; //I'm not a member
-			else portion = amount / (org.members.Count - 1);
+			float portion = amount / (org.members.Count - 1);
 
 			for (int i = 0; i < org.members.Count; i++)
 				if (org.members [i] != this)
@@ -388,7 +379,30 @@ namespace Bubbles{
 			for (int i=0;i<rules.Count;i++) rules[i].accion();
 		}
 
+		public bool isPrisoner(){
+			for (int i = 0; i < rules.Count; i++)
+				if (rules [i].GetType () == typeof(Rules.Prisoner))
+					return true; 
+			return false;
+		}
 
+		//not having a muscle, prisoner rule can be safely removed without changing the number of links
+		public void removePrisonerRule(){
+			bool recheck;
+			do {
+				recheck = false;
+				for (int i = 0; i < rules.Count; i++){ 
+					Rules.Prisoner pRule = rules[i] as Rules.Prisoner;
+					if (pRule != null) { 
+						pRule.uninstall(); //removes from this.rules
+						recheck = true; 
+						break;
+					}
+				}
+			} while (recheck);
+		}
+
+			
 		//don't debit oomph until after all muscles have been powered by same level of oomph.
 		//Ensure that oomph demand never depasses oomph.
 		public void rulesMuscleAction(){
@@ -513,16 +527,16 @@ namespace Bubbles{
 					{
 						//liberate the captive, and if they're in a chain gang all his trailing prisoners, before eating him. 
 						//Changes prisoner orgs to independent orgs.
-						if (node.isPrisoner ()) node.org.liberatePrisoners(node); 
+						if (node.isPrisoner ()) node.removePrisonerRule();
 							
 						org.eatOomph(node.org); //transfer of oomph from node org to this org
 						//could take their burden too
 
 						node.org.cutOut(); //cut all external muscles, break all external bones, liberate all nodes orgs prisoners, from/to anywhere to/from the loser org
 
-						//either disassembleAndChain or relocate, but not both.
+						//either take prisoner or relocate, but not both.
 						if (org.hasHitch ()) {
-							org.disassembleAndChain (node.org); // If this.org is a jeep, disassembles node.org and takes nodes prisoners
+							org.takePrisoner(node.org);
 						} else {
 							if (org.bothRegistered (node.org))
 								Engine.scheduledOrgRelocations.Add (node.org);

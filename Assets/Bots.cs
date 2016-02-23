@@ -314,10 +314,12 @@ namespace Bubbles{
 		public static bool mountable(int nodeId ){
 			if (nodeId < 0 || nodeId >= Engine.nodes.Count) return false;
 			Node node = Engine.nodes [nodeId];
+//			Debug.Log (nodeId + " " + node.testDna (CScommon.playerBit) + " " + node.testDna (CScommon.playerPlayingBit) +
+//				" " + (node == node.org.head) + " " + node.teamNumber + " " + node.testDna (CScommon.goalBit));
 			if (!node.testDna(CScommon.playerBit)) return false;
 			if (node.testDna(CScommon.playerPlayingBit)) return false; //already mounted
 			if (node != node.org.head) return false; //has to be org head
-			if (bubbleServer.teamNumber(node.id) == 0) return false; // team 0 orgs can't be mounted
+			if (node.teamNumber == 0) return false; // team 0 orgs can't be mounted
 			if (node.testDna(CScommon.goalBit)) return false; //goals can't be mounted
 			return true;
 		}
@@ -334,43 +336,49 @@ namespace Bubbles{
 			}
 			return false;
 		}
-
-		public static int mountOrgHeadFromLargestTeam(){
-			int headId = idFromLargestTeam();
-			mount(headId); //if headId == -1 does nothing
-			return headId;
-		}
-
-		static List<int>[] teams = new List<int>[4]; //lists of team org head ids
+	
+		public static List<Node>[] teams = new List<Node>[4]; //lists of team members (org heads), does not change after makeTeamLists sets it up.
+		private static List<int>[] unmountedTeams = new List<int>[4]; //dynamic lists of ids of team members not yet mounted
 
 		static void makeTeamLists(){
-				
-			for (int i = 0; i<teams.Length; i++) teams[i] = new List<int>();
+			
+			//Debug.Log ("makeTeamLists " + teams.Length);
+
+			for (int i = 0; i < teams.Length; i++) {
+				teams [i] = new List<Node> ();
+				unmountedTeams [i] = new List<int> ();
+			}
 
 			for (int id=0; id < Engine.nodes.Count; id++) {
 				//i == Engine.nodes [i].id;
-				if (mountable(id)) { // mountables don't have teamNumber 0, so teams[0].Count is always 0
-					teams [bubbleServer.teamNumber(id)].Add (id); 
+				if (mountable(id)) { // mountables don't have teamNumber 0, so teams[0].Count is always 0 ,as is unmountedTeams[0].Count.
+					//Debug.Log ("node "+id+" team " + Engine.nodes[id].teamNumber + ": " + teams [Engine.nodes[id].teamNumber].Count);
+					teams [Engine.nodes[id].teamNumber].Add (Engine.nodes[id]); 
+					unmountedTeams[Engine.nodes[id].teamNumber].Add (id);
 				}
 			}
+			//at this point teams and unmountedTeams refer to the same nodes in the same order, the latter by node.id
 		}
 			
 
+		//the following three use the private unmountedTeams to keep track of which team members are still available for mounting
 		public static int idFromLargestTeam(){
-			int longest = 0;
-			for (int i=0;i<teams.Length;i++) if (teams[i].Count > teams[longest].Count) longest = i;
+			int nodeId, longest = 0;
+			for (int i=0;i<unmountedTeams.Length;i++) if (unmountedTeams[i].Count > unmountedTeams[longest].Count) longest = i;
 
-			if (teams [longest].Count == 0) return -1;
-			return teams[longest][0];
+			if (unmountedTeams [longest].Count == 0) return -1;
+			nodeId = unmountedTeams [longest] [0];
+			unmountedTeams [longest].RemoveAt (0);
+			return nodeId;
 		}
 
 		static void pullFromTeam (int id){
-			teams [bubbleServer.teamNumber(id)].Remove (id);
+			unmountedTeams [Engine.nodes[id].teamNumber].Remove(id);
 		}
 
 		//for putting back ones that have been popped off
 		static void pushTeamIdBack( int id){
-			teams [bubbleServer.teamNumber(id)].Add(id);
+			unmountedTeams [Engine.nodes[id].teamNumber].Add(id);
 		}
 
 
@@ -421,7 +429,6 @@ namespace Bubbles{
 				break;
 			}
 
-			bubbleServer.encodeTeamsInDna ();
 			makeTeamLists();
 		}
 
@@ -445,7 +452,7 @@ namespace Bubbles{
 			onSpeed(head,internalSpeed);
 
 			//note that team number 0 is unscored, i.e. indicates no team at all, singleton
-			head.setDna(CScommon.playerBit,true); //ie is mountable
+			head.setDna(CScommon.playerBit,true).setTeamNumber(teamNumber); //ie is mountable presuming teamNumber == 1, 2 or 3
 
 			Rules.Autopilot.install(head,goal); //does nothing if goal is null
 			Rules.HunterNPCRule.install(head);
@@ -453,7 +460,7 @@ namespace Bubbles{
 			Rules.HunterPCRule.install(head,1);
 
 			if (name == "") name = "B"+head.id+"T";
-			bubbleServer.registerNPC(head.id, name, teamNumber);
+			bubbleServer.registerNPC(head.id, name);
 
 			return head;
 		}
@@ -467,18 +474,22 @@ namespace Bubbles{
 				head = spawnRandomInchworm (siz, true, true, clan);
 				if (hitched) head.org.makeHitched ();
 				players.Add(setUpPlayer(head,  teamNumber, "", goal, internalSpeed));
+				Debug.Log ("spawnRandomTeam inch " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitchTip ().id:-2222));
 			}
 
 			for (int i=0; i<tricycles; i++){
 				head = spawnRandomTricycle (siz, true, true, clan);
 				if (hitched) head.org.makeHitched();
 				players.Add(setUpPlayer(head,  teamNumber, "", goal, internalSpeed));
+				Debug.Log ("spawnRandomTeam tri " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitchTip ().id:-2222));
 			}
 
 			for (int i=0; i<tapeworms; i++){
 				head = spawnRandomTapeworm (siz, true, true, 5, clan);
 				if (hitched) head.org.makeHitched ();
 				players.Add(setUpPlayer(head,teamNumber, "", goal, internalSpeed));
+				Debug.Log ("spawnRandomTeam tape " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitchTip ().id:-2222));
+
 			}
 
 			return players;
@@ -514,7 +525,7 @@ namespace Bubbles{
 	//		spawnRandomTeam (false,abnorm,2,2,1,2,"people",bs);
 	//		spawnRandomTeam (false,abnorm,2,2,1,2,"people",ls);
 
-			spawnRandomTeam (false,abnorm, 8, 0, 0, 1, "", null, 50); //null clan means each org will have unique clan
+			spawnRandomTeam (false,abnorm, 8, 0, 0, 1, "", null, 100); //"" clan means each org will have unique clan
 
 		}
 
@@ -678,13 +689,13 @@ namespace Bubbles{
 			one.addBone(two); two.addBone(three); three.addBone(one); 
 			goal.addBone(one); goal.addBone(two); goal.addBone(three);
 
-			//Weakness: Makes turm points heavier, but makes feeders easy to steal. Take them far far away and turm might starve.
-			//feeders are prisoners
-			feeder1.org = goal.org; feeder2.org = goal.org; feeder3.org = goal.org;
-
-			feeder1.offloadBurden();
-			feeder2.offloadBurden();
-			feeder3.offloadBurden();
+			//Weakness: Makes turm points heavier, but makes feeders easy to steal.
+			feeder1.org.clan = goal.org.clan; feeder2.org.clan = goal.org.clan; feeder3.org.clan = goal.org.clan; //so turm won't repel feeders
+			//make feeders prisoner, so that they feed the goal. 
+			//install unburdens the feeders Note there's no bones involved, so unburdened feeders can be stolen and dragged away
+			Rules.Prisoner.install (feeder1, goal);
+			Rules.Prisoner.install (feeder2, goal);
+			Rules.Prisoner.install (feeder3, goal);
 
 			return goal;
 		}
@@ -750,11 +761,13 @@ namespace Bubbles{
 
 			goal.org.clan = "turm";
 			
-			//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm.
-			feeder1.org = goal.org; feeder2.org = goal.org; feeder3.org = goal.org; //make feeders prisoners
-			feeder1.offloadBurden ();
-			feeder2.offloadBurden ();
-			feeder3.offloadBurden ();
+			//Weakness: Makes turm points heavier, but makes feeders easy to steal.
+			feeder1.org.clan = goal.org.clan; feeder2.org.clan = goal.org.clan; feeder3.org.clan = goal.org.clan; //so turm won't repel feeders
+			//make feeders prisoner, so that they feed the goal. 
+			//install unburdens the feeders Note there's no bones involved, so unburdened feeders can be stolen and dragged away
+			Rules.Prisoner.install (feeder1, goal);
+			Rules.Prisoner.install (feeder2, goal);
+			Rules.Prisoner.install (feeder3, goal);
 
 
 			goal1 = pushVegNode(new Vector2(-worldRadius/2f, -worldRadius/4f),norm/4);
@@ -777,20 +790,19 @@ namespace Bubbles{
 
 
 			goal1.org.makeMember (one1); goal1.org.makeMember (two1); goal1.org.makeMember (three1);
-			goal1.org.makeMember (feeder11); goal1.org.makeMember (feeder21); goal1.org.makeMember (feeder31);
 
 			one1.addBone(two1); two1.addBone(three1); three1.addBone(one1); 
 			goal1.addBone(one1); goal1.addBone(two1); goal1.addBone(three1);
 
 			goal1.org.clan = "turm1";
 
-			//Weakness: Makes turm points heavier, but makes feeders easy to steal. Eat one and you've eaten the turm--though they're fairly large.
-			//Pull them far away 
-			feeder11.org = goal1.org; feeder21.org = goal1.org; feeder31.org = goal1.org; //make feeders prisoner
-			feeder11.offloadBurden ();
-			feeder21.offloadBurden ();
-			feeder31.offloadBurden ();
-
+			//Weakness: Makes turm points heavier, but makes feeders easy to steal.
+			feeder11.org.clan = goal1.org.clan; feeder21.org.clan = goal1.org.clan; feeder31.org.clan = goal1.org.clan; //so turm won't repel feeders
+			//make feeders prisoner, so that they feed the goal. 
+			//install unburdens the feeders Note there's no bones involved, so unburdened feeders can be stolen and dragged away
+			Rules.Prisoner.install (feeder11, goal1);
+			Rules.Prisoner.install (feeder21, goal1);
+			Rules.Prisoner.install (feeder31, goal1);
 
 
 			//plant a bunch of munchies, but not within turm
@@ -900,8 +912,19 @@ namespace Bubbles{
 		}
 
 		private static void tryEat(){
+			Node goal1;
+			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
+			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true).setTeamNumber(1);
+			goal1.org.clan = "shirts";
+			bubbleServer.registerNPC(goal1.id, "shirts goal");
+			Rules.FullGoalScore.install(goal1);
 
-			spawnRandomTeam (true, abnorm, 1, 1, 0, 1);
+			spawnRandomTeam (true, abnorm, 0, 1, 0, 1, "shirts",goal1);
+
+			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+
 
 		}
 
@@ -911,19 +934,19 @@ namespace Bubbles{
 			Node head, goal1, goal2;
 
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
-			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
+			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true).setTeamNumber(1);
 			goal1.org.clan = "shirts";
-			bubbleServer.registerNPC(goal1.id, "shirts goal", 1);
+			bubbleServer.registerNPC(goal1.id, "shirts goal");
 			Rules.FullGoalScore.install(goal1);
 
 			goal2 = pushVegNode(new Vector2(0.66f*worldRadius,-0.33f*worldRadius),norm*5);
-			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true).setDna(CScommon.eaterBit,true);;
+			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true).setDna(CScommon.eaterBit,true).setTeamNumber(2);
 			goal2.org.clan = "skins";
-			bubbleServer.registerNPC(goal2.id, "skins goal", 2);
+			bubbleServer.registerNPC(goal2.id, "skins goal");
 			Rules.FullGoalScore.install(goal2);
 
-			List<Node> shirts = spawnRandomTeam (false, abnorm, 6, 1, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
-			List<Node> skins = spawnRandomTeam (false, abnorm, 6, 1, 0, 2, "skins");
+			List<Node> shirts = spawnRandomTeam (true, abnorm, 6, 1, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
+			List<Node> skins = spawnRandomTeam (true, abnorm, 6, 1, 0, 2, "skins");
 
 			foreach (var n in shirts)
 				Rules.BlessGoal.install (n, goal1);
@@ -934,14 +957,33 @@ namespace Bubbles{
 			//plant a bunch of munchies, but not within goals
 			int startCount = Engine.nodes.Count;
 
-			//beware, this becomes an infinite loop as turmRad approaches worldRadius
-			while (Engine.nodes.Count - startCount < popcorn){
-				plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
-				if (Engine.nodes[Engine.nodes.Count - 1].distance(goal1) < 2*goal1.radius) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
-				if (Engine.nodes[Engine.nodes.Count - 1].distance(goal2) < 2*goal2.radius) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
+			//beware, this becomes an infinite loop as goal radius approaches worldRadius
+			while (Engine.nodes.Count - startCount < popcorn/2){
+				head = plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+				if (head.distance(goal1) < 2*goal1.radius) removeTopNodes(1);
+				else if (head.distance(goal2) < 2*goal2.radius) removeTopNodes(1);
 			}
 				
 			//for (int i = 0; i < popcorn; i++) spawnRandomInchworm (norm, false, false).enableInternalMuscles (50);
+			startCount = Engine.nodes.Count;
+
+			//beware, this becomes an infinite loop as goal radius approaches worldRadius
+			while (Engine.nodes.Count - startCount < popcorn/2){
+				head = spawnRandomInchworm (norm, false, false).enableInternalMuscles (50);
+				if (head.org.minDistance (goal1.org) < 2 * goal1.radius)
+					removeTopNodes (2);
+				else if (head.org.minDistance (goal2.org) < 2 * goal2.radius)
+					removeTopNodes (2);
+				else {
+					Rules.cowardNPCRule.install (head);
+				}
+			}
+		}
+
+		private static void removeTopNodes(int n){
+			for (int i = 0; i < n; i++) {
+				Engine.nodes.RemoveAt (Engine.nodes.Count - 1);
+			}
 		}
 
 

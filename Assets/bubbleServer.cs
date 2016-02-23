@@ -94,7 +94,7 @@ namespace Bubbles{
 				photoYieldI = 0;
 				baseMetabolicRateI = 0;
 				worldRadiusI = -2;
-				vegStartFuel = 6f;
+				vegStartFuel = 0.6f;
 				nonvegStartFuel = 0f;
 				Bots.popcorn = 250;
 				break;
@@ -106,7 +106,7 @@ namespace Bubbles{
 				worldRadiusI = -6;
 				vegStartFuel = 1.0f;
 				nonvegStartFuel = 0.33f;
-				Bots.popcorn = 100;
+				Bots.popcorn = 75;
 				break;
 			case 7: //tryEat
 				normScaleI = 6;
@@ -115,7 +115,7 @@ namespace Bubbles{
 				baseMetabolicRateI = 0;
 				worldRadiusI = -6;
 				vegStartFuel = 1.0f;
-				nonvegStartFuel = 0f;
+				nonvegStartFuel = 0.5f;
 				Bots.popcorn = 100;
 				break;
 			default:
@@ -176,16 +176,14 @@ namespace Bubbles{
 		public class PlayerInfo {
 			public int connectionId;
 			public string name;
-			public int team; //0 meaning no team
 			public CScommon.ScoreStruct data;
 
 			public PlayerInfo(){
 				connectionId = -1;
 				name = "";
 				data.nodeId = -1;
-				team = 0;
 			}
-
+				
 			public void clearScore(){ data.plus = 0; data.minus=0; data.performance = 0; data.neither0Winner1Loser2 = 0;
 				data.gameMilliseconds = gameStopwatch.ElapsedMilliseconds; }
 		}
@@ -201,21 +199,6 @@ namespace Bubbles{
 
 		public static bool registered(int nodeId) {return nodeIdPlayerInfo.ContainsKey (nodeId);}
 
-		public static void encodeTeamsInDna(){ // just for communication to client
-			foreach (var nodeId in nodeIdPlayerInfo.Keys) foreach (var memb in Engine.nodes[nodeId].org.members) 
-				Engine.nodes[memb.id].setTeam(nodeIdPlayerInfo[nodeId].team);
-		}
-
-		public static List<int> teamMemberIds(int anyTeamMemberId){
-			List<int> tmIds = new List<int> ();
-
-			if (nodeIdPlayerInfo.ContainsKey(anyTeamMemberId)){
-				int tn = nodeIdPlayerInfo[anyTeamMemberId].team; //zero means no team
-				if (tn != 0) foreach (var idInfo in nodeIdPlayerInfo) if (idInfo.Value.team == tn) tmIds.Add(idInfo.Key);
-			}
-				
-			return tmIds;
-		}
 
 	//	public void playerWinLose(int winnerId, int loserId){
 	//
@@ -238,10 +221,8 @@ namespace Bubbles{
 	//	}
 
 		public static int teamNumber(int nodeId){
-			if (nodeIdPlayerInfo.ContainsKey (nodeId))
-				return nodeIdPlayerInfo [nodeId].team; //may be 0 indicating no team
-			else
-				return 0; //no team
+			if (nodeId >= 0) return Engine.nodes [nodeId].teamNumber; //may be 0 indicating no team
+			else return 0; //no team
 		}
 
 		public static void score(int nodeId, byte neither0Winner1Loser2){
@@ -295,14 +276,14 @@ namespace Bubbles{
 		}
 
 			
-		public static void registerNPC(int nodeId, string name, int team=0){
+		public static void registerNPC(int nodeId, string name){
 			
 			if (newRound) return; 
 
 			nodeIdPlayerInfo[nodeId] = new PlayerInfo();
 			nodeIdPlayerInfo[nodeId].data.nodeId = nodeId;
 			nodeIdPlayerInfo[nodeId].name = name;
-			nodeIdPlayerInfo[nodeId].team = team;
+			//Debug.Log ("registerNPC " + nodeId + " " + name + " " + " is " + (nodeIdPlayerInfo.Count - 1) + "th.");
 		}
 			
 		
@@ -442,7 +423,7 @@ namespace Bubbles{
 
 
 		string reminder(){
-			string s = Bots.gameName+": arrows Zz s d g 1 2 3 4 +- 0";
+			string s = Bots.gameName+": arrows Zz s d l g 1 2 3 4 +- 0";
 			foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.data.nodeId;
 			s += "  "+(paused?"(PAUSED)":"")+scaleString();
 			return s;
@@ -795,10 +776,14 @@ namespace Bubbles{
 
 		public void giveMount(int conId){
 			CScommon.intMsg nixMsg = new CScommon.intMsg ();
-			nixMsg.value = Bots.idFromLargestTeam ();//only popOrg after the timer fires, otherwise someone else could mount during the wait
+			nixMsg.value = Bots.idFromLargestTeam ();//after the timer fires, otherwise someone else could mount during the wait
+
+			Debug.Log("giveMount "+nixMsg.value+" mountable:"+ Bots.mountable(nixMsg.value));
+
+			changeMounts(-1,nixMsg.value,conId); 
 
 			checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
-			changeMounts(-1,nixMsg.value,conId); 
+
 		}
 
 		private void onRequestNodeId(NetworkMessage netMsg){
@@ -830,22 +815,22 @@ namespace Bubbles{
 		}
 
 		private void changeMounts( int oldNodeId, int newNodeId, int conId){
-			//newNodeId != oldNodeId
+			Debug.Assert (newNodeId != oldNodeId);
 		
 			connectionIdPlayerInfo[conId].data.nodeId = newNodeId;
 			connectionIdPlayerInfo[conId].clearScore();
 
 			if (oldNodeId >= 0) {
 				nodeIdPlayerInfo.Remove (oldNodeId);
-				if (!Bots.dismount(oldNodeId)) if (Debug.isDebugBuild) debugDisplay("Error, onRequestNodeId oldNodeId not mounted");
+				if (!Bots.dismount(oldNodeId)) Debug.Log("Error, onRequestNodeId oldNodeId not mounted");
 			}
 
 			if (newNodeId >= 0) {
-				nodeIdPlayerInfo[newNodeId] = connectionIdPlayerInfo[conId];
-				Bots.mount (newNodeId);
+				nodeIdPlayerInfo[newNodeId] = connectionIdPlayerInfo[conId]; //adopt name and score
+				if (!Bots.mount (newNodeId)) Debug.Log("Error, failed attempt to mount unmountable node.");
 			}
 
-			//case where both == -1 was weeded out above
+			//case where both == -1 not treated, see Assertion above
 			if (oldNodeId <0 && newNodeId>=0 ){
 				send1or2NodeNamesToAll(newNodeId, connectionIdPlayerInfo[conId].name);
 			}
@@ -1106,14 +1091,15 @@ namespace Bubbles{
 		private void sendLinksToClient(int connectionId){
 			int start = 0;
 			int segmentLength = 50;
-			
+
 			while ( start+segmentLength <= referenceLinkMsg.links.Length ){
 				checkSendToClient(connectionId,CScommon.linksMsgType, fillInLinksMsg(allocateLinksMsg(segmentLength), start));
 				start += segmentLength;
 			}
-			
+
 			if (start < referenceLinkMsg.links.Length)
 				checkSendToClient(connectionId,CScommon.linksMsgType, fillInLinksMsg(allocateLinksMsg(referenceLinkMsg.links.Length-start), start));
+
 
 		}
 
@@ -1128,11 +1114,11 @@ namespace Bubbles{
 
 			for (int i = 0; i< newReferenceLinkMsg.links.Length; i++){
 				if (!referenceLinkMsg.links[i].Equals(newReferenceLinkMsg.links[i])){
-						linkInfo.Add(referenceLinkMsg.links[i]); //struct pass by copy
+						linkInfo.Add(newReferenceLinkMsg.links[i]); //struct pass by copy
 					}
 			}
 
-			//swap so can recyle without GC
+			//swap so can recycle without GC
 			CScommon.LinksMsg temp = referenceLinkMsg;
 			referenceLinkMsg = newReferenceLinkMsg;
 			newReferenceLinkMsg = temp;

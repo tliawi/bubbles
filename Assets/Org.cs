@@ -192,23 +192,58 @@ namespace Bubbles{
 			for (; i < prsnrs.Count; i++) prsnrs [i].isolate ();
 		}
 
-		public void disassembleAndChain(Org targetOrg){
+		public void takePrisoner(Org targetOrg){
 			
 			if (!hasHitch()) return;
 
-			List<Node> isolates = targetOrg.disassemble ();
+			if (targetOrg.members.Count > 1) return; //we're only picking up rocks
+			if (prisoners().Count > 0) return; //we're only picking up one rock
+			hitchTip().addBone (targetOrg.head); //hitchTip will be hitch
+			Rules.Prisoner.install (targetOrg.head, this.head); //target prisoner, this master.
 
-			isolates [0].org = this; //but do NOT make them members, which makes them prisoners
-
-			hitchTip().addBone (isolates [0]); //add first one to tip of tail
-			for (int i= 1; i<isolates.Count; i++) {
-				isolates [i].org = this;
-				isolates [i - 1].addBone (isolates [i]);
-			}
-
-			for (int i = 0; i < isolates.Count; i++) isolates [i].offloadBurden ();
+			//comment out the above four lines, and uncomment the following, to take multi-node orgs prisoner
+//			List<Node> isolates = targetOrg.disassemble ();
+//
+//			for (int i = 0; i < isolates.Count; i++) {
+//				hitchTip ().addBone (isolates [i]);
+//				Rules.Prisoner.install (isolates [i], this.head);
+//				isolates [i].offloadBurden (this); //how do they remember who they gave their burden to? It's in the prisoner rule
+//			}
 		}
 
+
+		//give to each according to what he's already got
+		public void takePrisonersBurden(float amount){
+			if (amount <= 0) return;
+
+			float sum = 0;
+			for (int i = 0; i < members.Count; i++) sum += members[i].burden;
+
+			for (int i = 0; i < members.Count; i++) {
+				members [i].burden += amount * (members [i].burden / sum) ;
+			}
+		}
+
+		public void returnPrisonersBurden(float amount){
+			if (amount <= 0) return;
+
+			float sum = 0;
+			for (int i = 0; i < members.Count; i++) sum += members[i].availableBurden();
+
+			if (sum <= 0) {
+				Debug.Log ("returnPrisonersBurden burden <= 0");
+				return;
+			}
+
+			if (sum < amount-Node.minPosValue) Debug.Log ("returnPrisonersBurden insufficient burden");
+
+
+			for (int i = 0; i < members.Count; i++) {
+				members [i].burden -= amount * (members [i].availableBurden() / sum) ;
+				if (members [i].burden < members[i].minBurden) members [i].burden = members[i].minBurden;
+			}
+
+		}
 
 
 		//can recycle the org in first parm. If first parm null, will return a new org.
@@ -261,11 +296,12 @@ namespace Bubbles{
 
 
 		public List<Node> disassemble(){
-			
+
 			liberatePrisoners (firstPrisoner ()); //should have already been liberated, but is cheap insurance
 
 			List<Node> bits = new List<Node> (members);
-			bits.Reverse (); //so head node is last to be isolated
+
+			bits.Reverse (); //so head node is last to be isolated. This is just a superstition.
 			foreach (var node in bits) {
 				node.isolate(); //makes each into its own separate org
 			}
@@ -294,6 +330,15 @@ namespace Bubbles{
 			bestSupplied.oomph -= oomphToTransfer;
 			worstSupplied.oomph += oomphToTransfer*Node.linkEfficiency(bestSupplied, worstSupplied); //with love. Less will be actually transfered, because of efficiency
 
+		}
+
+		public float minDistance(Org other){
+			float d = head.distance (other.head);
+			foreach (var n in members)
+				foreach (var m in other.members)
+					if (n.distance (m) < d)
+						d = n.distance (m);
+			return d;
 		}
 
 		//center of balance

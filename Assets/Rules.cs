@@ -291,7 +291,7 @@ namespace Bubbles{
 				source0.rules.Add (new NearFarPush1Pull2Cmdr(source0, targets0, near0, far0));
 			}
 
-			float near, far;
+			float near, far, priorAvgLn;
 			List<Node> targets;
 
 			private NearFarPush1Pull2Cmdr(Node source0, List<Node> targets0, float near0, float far0):base(source0) {
@@ -299,7 +299,7 @@ namespace Bubbles{
 				targets = targets0;
 				near = near0;
 				far = far0;
-
+				priorAvgLn = -1000;
 				source.setState ("nearFarSwitch01", 1);
 
 			}
@@ -313,8 +313,16 @@ namespace Bubbles{
 			public override void accion() {
 				if (source.getState ("nearFarSwitch01") == 1){ //can be suppressed by setting nearFarSwitch01 to 0
 					float avgLn = avgLen();
-					if ( avgLn <= near) source.setState ("push1Pull2",1);
-					else if (avgLn >= far) source.setState ("push1Pull2",2);
+					if (avgLn <= near) {
+						source.setState ("push1Pull2", 1);
+						priorAvgLn = -1000;
+					} else if (avgLn >= far) {
+						source.setState ("push1Pull2", 2);
+						priorAvgLn = -1000;
+					} else if (Mathf.Abs (avgLn - priorAvgLn) < avgLn / 100) { //is between near and far, but not moving much, is perhaps too weak to make full range against bone
+						source.setState ("push1Pull2", source.getState ("push1Pull2") == 1 ? 2 : 1);
+						priorAvgLn = -1000;
+					} else priorAvgLn = avgLn;
 				}
 			}
 
@@ -431,6 +439,37 @@ namespace Bubbles{
 			}
 		}
 
+		public class cowardNPCRule: HunterBase{
+
+			public static void install(Node source0){
+				if (source0 == null) return;
+				source0.rules.Add (new cowardNPCRule(source0));
+			}
+
+			private cowardNPCRule(Node source0):base(source0){
+
+				fightingMuscle = addMuscle(source0); // a cut muscle, disabled
+
+			}
+
+			override public void accion(){
+
+				if (source.testDna(CScommon.playerPlayingBit)){ fightingMuscle.cut(); return;} //disabled while org is mounted by human
+
+				Node bully;
+
+				bully = source.mostDangerousNeighbor(); //may be null
+
+				if (state() == State.fleeing && !amTargeting(bully)) stopFighting(); //quit fleeing on bully == null, or shift to new danger
+
+				//regardless of state, flee the most dangerous neighbor, unless you already are...
+				if ( bully != null && !(state() == State.fleeing && amTargeting(bully))){
+					stopFighting(); 
+					startFighting(bully, State.fleeing); 
+				}
+
+			}
+		}
 
 					
 
@@ -450,7 +489,7 @@ namespace Bubbles{
 			override public void accion(){
 
 
-				if (source.testDna(CScommon.playerPlayingBit)){ fightingMuscle.cut(); return;} //disabled if org is mounted by human
+				if (source.testDna(CScommon.playerPlayingBit)){ fightingMuscle.cut(); return;} //disabled while org is mounted by human
 
 				Node bully, munchies;
 
@@ -685,7 +724,7 @@ namespace Bubbles{
 
 			override public void accion(){
 
-				if (source.testDna(CScommon.playerPlayingBit)){ pusher.cut(); return;} //disabled if org is mounted by human
+				if (source.testDna(CScommon.playerPlayingBit)){ pusher.cut(); return;} //disabled while org is mounted by human
 
 				Node targt = source.closestStranger ();
 				if (targt == null || source.distance (targt) > perimeter ) pusher.cut();
@@ -757,7 +796,7 @@ namespace Bubbles{
 
 			override public void accion(){
 				
-				if (source.testDna(CScommon.playerPlayingBit)){ muscl.cut(); return;} //disabled if org is mounted by human
+				if (source.testDna(CScommon.playerPlayingBit)){ muscl.cut(); return;} //disabled while org is mounted by human
 
 				float angleToGoal = signedAngle(goal, source, source.org.COB());
 				angleToGoal = angleToGoal>0?Mathf.PI-angleToGoal:-(Mathf.PI+angleToGoal); //does not change sign of angleToGoal
@@ -781,20 +820,14 @@ namespace Bubbles{
 				source0.rules.Add (new FullGoalScore(source0));
 			}
 
-			List<Node> myTeam;
-
 			private FullGoalScore(Node source0):base(source0){
 				source.oomph = source.maxOomph/5; // this default may be overridden in Bots
-				myTeam = new List<Node>();
-			}
 
-			//can't do this in install or constructor, team is perhaps not fully defined at that time
-			private void makeMyTeam(){
-				List<int> teamMemberIds = bubbleServer.teamMemberIds(source.id);
-				foreach (var id in teamMemberIds) myTeam.Add(Engine.nodes[id]);
 			}
+				
 
 			private Node leastSupplied(){
+				List<Node> myTeam = Bots.teams[source.teamNumber];
 				Node worstSupplied = myTeam[0];
 				for (int i = 1; i < myTeam.Count; i++) {
 					if (myTeam[i].fuelGauge < worstSupplied.fuelGauge ) worstSupplied = myTeam[i];
@@ -815,7 +848,6 @@ namespace Bubbles{
 			}
 
 			override public void accion(){
-				if (myTeam.Count == 0) makeMyTeam ();
 
 				if (source.oomph > source.maxOomph * 0.99f) {
 					bubbleServer.scoreTeamWin (source.id);
@@ -840,11 +872,13 @@ namespace Bubbles{
 			}
 
 			override public void accion(){
+				
+				int myTeamNumber = source.teamNumber;
 
 				for (int j = 0; j < source.site.neighborsCount (); j++) {
 					Node nbr = source.site.neighbors (j);
-
-					if (source.overlaps(nbr) && bubbleServer.teamNumber(nbr.id)!=0 && bubbleServer.teamNumber(nbr.id) != bubbleServer.teamNumber(source.id)) {
+					int hisTeamNumber = nbr.teamNumber;
+					if (hisTeamNumber !=0 && hisTeamNumber != myTeamNumber && source.overlaps(nbr)) {
 						bubbleServer.scoreTeamWin (nbr.id);
 						bubbleServer.newRound = true;
 					}
@@ -856,7 +890,7 @@ namespace Bubbles{
 		public class BlessGoal: Rule {
 
 			public static void install(Node source0, Node goal0){
-				if (source0 == null || source0.org.head != source0 ) return;
+				if (source0 == null || source0.org.head != source0 || goal0 == null) return;
 				source0.rules.Add (new BlessGoal(source0, goal0));
 			}
 
@@ -873,5 +907,44 @@ namespace Bubbles{
 			}
 		}
 
+		public class Prisoner: Rule {
+
+			//prisoner should be a soliton
+			public static void install(Node prisoner, Node master, Node savior = null){
+				if (prisoner == null || prisoner.org.head != prisoner || master == null || master.org.head != master) return;
+				Prisoner prule = new Prisoner (prisoner, master, savior);
+				prisoner.rules.Add (prule);
+				prule.amountGiven = prisoner.availableBurden ();
+				prisoner.burden -= prule.amountGiven;
+				master.org.takePrisonersBurden (prule.amountGiven);
+			}
+
+			public void uninstall(){
+				master.org.returnPrisonersBurden(amountGiven);
+				source.burden += amountGiven;
+				source.rules.Remove (this);
+			}
+
+			private Node master, savior;
+			public float amountGiven;
+
+			private Prisoner(Node source0, Node master0, Node savior0):base(source0){
+				master = master0;
+				savior = savior0;
+			}
+				
+			override public void accion(){
+				
+				float canTransfer = Mathf.Min (master.maxOomph-master.oomph, source.oomph);
+				master.oomph += canTransfer;
+				source.oomph -= canTransfer;
+
+				if (savior != null)
+				if (source.distance (savior) < savior.radius * 2) {
+					uninstall ();
+					install (source, savior); //dubious savior!!
+				}
+			}
+		}
 	}
 }
