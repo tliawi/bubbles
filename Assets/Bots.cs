@@ -452,7 +452,8 @@ namespace Bubbles{
 			onSpeed(head,internalSpeed);
 
 			//note that team number 0 is unscored, i.e. indicates no team at all, singleton
-			head.setDna(CScommon.playerBit,true).setTeamNumber(teamNumber); //ie is mountable presuming teamNumber == 1, 2 or 3
+			head.setDna(CScommon.playerBit,true); //ie is mountable presuming teamNumber == 1, 2 or 3
+			head.org.setTeamNumber(teamNumber);
 
 			Rules.GoalSeeker.install(head,goal); //does nothing if goal is null
 			Rules.HunterNPCRule.install(head);
@@ -678,9 +679,9 @@ namespace Bubbles{
 			Rules.TurmDefender.install(goal,5*rad);
 
 			//feeders are close
-			feeder1 = pushVegNode(z+new Vector2(0.93f*rad,0.22f*rad),1.9f*norm).setDna (CScommon.eaterBit, true);
-			feeder2 = pushVegNode(z+new Vector2(-1.2f*rad,-0.8f*rad),3.1f*norm).setDna (CScommon.eaterBit, true);
-			feeder3 = pushVegNode(z+new Vector2(0.83f*rad,-0.38f*rad),4.3f*norm).setDna (CScommon.eaterBit, true);
+			feeder1 = pushVegNode(z+new Vector2(0.93f*rad,0.22f*rad),1.2f*norm).setDna (CScommon.eaterBit, true);
+			feeder2 = pushVegNode(z+new Vector2(-1.2f*rad,-0.8f*rad),2.03f*norm).setDna (CScommon.eaterBit, true);
+			feeder3 = pushVegNode(z+new Vector2(0.83f*rad,-0.38f*rad),2.9f*norm).setDna (CScommon.eaterBit, true);
 
 
 			goal.org.clan = "turm";
@@ -914,12 +915,17 @@ namespace Bubbles{
 		private static void tryEat(){
 			Node goal1;
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
-			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true).setTeamNumber(1);
-			goal1.org.clan = "shirts";
+			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
+			goal1.org.setTeamNumber (1).clan = "shirts";
 			bubbleServer.registerNPC(goal1.id, "shirts goal");
 			Rules.FullGoalScore.install(goal1);
 
-			spawnRandomTeam (true, abnorm, 0, 1, 0, 1, "shirts",goal1);
+			List<Node> shirts = spawnRandomTeam (true, abnorm, 0, 1, 0, 1, "shirts",goal1);
+			foreach (var n in shirts){
+				Rules.BlessGoal.install (n, goal1);
+				Rules.GoalSeeker.install(n,goal1, true);
+			}
+
 
 			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
 			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
@@ -934,14 +940,14 @@ namespace Bubbles{
 			Node head, goal1, goal2;
 
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
-			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true).setTeamNumber(1);
-			goal1.org.clan = "shirts";
+			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
+			goal1.org.setTeamNumber(1).clan = "shirts";
 			bubbleServer.registerNPC(goal1.id, "shirts goal");
 			Rules.FullGoalScore.install(goal1);
 
 			goal2 = pushVegNode(new Vector2(0.66f*worldRadius,-0.33f*worldRadius),norm*5);
-			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true).setDna(CScommon.eaterBit,true).setTeamNumber(2);
-			goal2.org.clan = "skins";
+			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
+			goal2.org.setTeamNumber (2).clan = "skins";
 			bubbleServer.registerNPC(goal2.id, "skins goal");
 			Rules.FullGoalScore.install(goal2);
 
@@ -950,11 +956,11 @@ namespace Bubbles{
 
 			foreach (var n in shirts){
 				Rules.BlessGoal.install (n, goal1);
-				Rules.GoalSeeker.install(n,goal1);
+				Rules.GoalSeeker.install(n,goal1, true);
 			}
 			foreach (var n in skins){
 				Rules.BlessGoal.install (n, goal2);
-				Rules.GoalSeeker.install(n,goal2);
+				Rules.GoalSeeker.install(n,goal2, true);
 			}
 
 			//plant a bunch of munchies, but not within goals

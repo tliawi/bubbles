@@ -130,6 +130,11 @@ namespace Bubbles{
 			}
 		}
 
+		public Org setTeamNumber (int value){
+			foreach (var node in members) node.setDna (CScommon.leftTeamBit, CScommon.rightTeamBit, value);
+			return this;
+		}
+
 		//liberates all prisoners, cuts all external links to this organism, and all external links from this organism
 		public void cutOut(){
 			
@@ -152,6 +157,10 @@ namespace Bubbles{
 
 		public bool hasHitch(){
 			return hitch != null;
+		}
+
+		public bool hasPrisoner(){
+			return firstPrisoner () != null;
 		}
 
 		//returns null if no external org hitched to hitch. Assumes tail composed of nodes of different orgs than hitch's.

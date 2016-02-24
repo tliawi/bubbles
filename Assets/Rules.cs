@@ -454,7 +454,7 @@ namespace Bubbles{
 
 			override public void accion(){
 
-				if (source.testDna(CScommon.playerPlayingBit)){ fightingMuscle.cut(); return;} //disabled while org is mounted by human
+				if (source.mounted()){ fightingMuscle.cut(); return;} //disabled while org is mounted by human
 
 				Node bully;
 
@@ -488,8 +488,8 @@ namespace Bubbles{
 
 			override public void accion(){
 
-
-				if (source.testDna(CScommon.playerPlayingBit)){ fightingMuscle.cut(); return;} //disabled while org is mounted by human
+				//stop hunting while towing a prisoner to goal, so won't interfere with goalSeeker
+				if (source.mounted() || source.org.hasPrisoner()){ fightingMuscle.cut(); return;} //disabled while org is mounted by human
 
 				Node bully, munchies;
 
@@ -652,10 +652,11 @@ namespace Bubbles{
 			}
 
 			Node target;
+			Muscle muscl; 
 			
 			private SegmentPulltokenServo( Node source0, Node target0):base(source0){
 				target = target0; //next in line
-				addMuscle(target);
+				muscl = addMuscle(target); //muscl is convenience for muscles(0)
 				if (source.org.head == source){ //pulling starts with org head
 						source.setState("push1Pull2",2);
 				}
@@ -666,12 +667,12 @@ namespace Bubbles{
 			public override void accion() {
 				int push1Pull2 = source.getState ("push1Pull2");
 
-				if (push1Pull2 == 0){ muscles(0).disable(); return; }
+				if (push1Pull2 == 0){ muscl.disable(); return; }
 
 				if (push1Pull2 == 2) {
 
 					//I am the puller. Check for transition
-					if (muscles(0).relativeLength() < 1) {
+					if (muscl.relativeLength() < 1) {
 						target.restoreNaiveBurden();
 						source.setState("push1Pull2",0);
 						//pass the token to next, but not to the tail which has no rule at all
@@ -683,7 +684,7 @@ namespace Bubbles{
 					}
 					else { //normal pulling
 						target.offloadBurden(); //make target light
-						muscles(0).makePuller().reEnable();
+						muscl.makePuller().reEnable();
 					}
 					return;
 				}
@@ -691,14 +692,14 @@ namespace Bubbles{
 				if (push1Pull2 == 1){ //only the head pushes
 
 					//check for transition to pull
-					if (muscles(0).relativeLength () > 10){
+					if (muscl.relativeLength () > 10){
 						source.restoreNaiveBurden();
 						source.setState("push1Pull2",2);
 
 					}
 					else { //normal pushing
 						source.offloadBurden ();
-						muscles(0).makePusher().reEnable();
+						muscl.makePusher().reEnable();
 					}
 				}
 			}
@@ -724,7 +725,7 @@ namespace Bubbles{
 
 			override public void accion(){
 
-				if (source.testDna(CScommon.playerPlayingBit)){ pusher.cut(); return;} //disabled while org is mounted by human
+				if (source.mounted()){ pusher.cut(); return;} //disabled while org is mounted by human
 
 				Node targt = source.closestStranger ();
 				if (targt == null || source.distance (targt) > perimeter ) pusher.cut();
@@ -780,23 +781,32 @@ namespace Bubbles{
 		//only works in forward! Don't know what effects will be in reverse...
 		public class GoalSeeker: Rule {
 
-			public static void install(Node source0, Node goal0){
+			public static void install(Node source0, Node goal0, bool withPrisonerOnly0 = false){
 				if (source0 == null || source0.org.head != source0 || goal0 == null) return;
-				source0.rules.Add (new GoalSeeker(source0, goal0));
+				source0.rules.Add (new GoalSeeker(source0, goal0, withPrisonerOnly0));
 			}
+
+			private delegate bool NoArgBool();
 
 			private Muscle muscl;
 			private Node goal;
+			private NoArgBool suppressed;
 
-			private GoalSeeker(Node source0, Node goal0):base(source0){
+			private bool f(){ return false;}
+			private bool noPrisoner(){ return !source.org.hasPrisoner ();}
+
+			private GoalSeeker(Node source0, Node goal0, bool withPrisonerOnly):base(source0){
 				goal = goal0;
 				muscl = addMuscle(source0); //a cut muscle, disabled
 				//muscle just convenience for muscles(0)
+
+				if (withPrisonerOnly) suppressed = noPrisoner;
+				else suppressed = f;
 			}
 
 			override public void accion(){
 				
-				if (source.testDna(CScommon.playerPlayingBit)){ muscl.cut(); return;} //disabled while org is mounted by human
+				if (source.mounted() || suppressed() ){ muscl.cut(); return;} //disabled while org is mounted by human, or if org is not trailing a prisoner
 
 				float angleToGoal = signedAngle(goal, source, source.org.COB());
 				angleToGoal = angleToGoal>0?Mathf.PI-angleToGoal:-(Mathf.PI+angleToGoal); //does not change sign of angleToGoal
@@ -901,6 +911,8 @@ namespace Bubbles{
 			}
 
 			override public void accion(){
+
+				if (source.mounted ()) return;
 
 				if ( source.fuelGauge > goal.fuelGauge || source.org.oomph() > goal.maxOomph - goal.oomph ) source.bless (goal);
 

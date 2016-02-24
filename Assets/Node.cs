@@ -258,11 +258,6 @@ namespace Bubbles{
 			//maxOomph = CScommon.maxOomph(radius,dna); 
 			return this;
 		}
-		
-		public Node setTeamNumber (int value){
-			setDna (CScommon.leftTeamBit, CScommon.rightTeamBit, value);
-			return this;
-		}
 
 		public int teamNumber { get { return (int) CScommon.dnaNumber (dna, CScommon.leftTeamBit, CScommon.rightTeamBit); } }
 
@@ -294,17 +289,22 @@ namespace Bubbles{
 
 		public void bless(Node target){
 
-			float targetOrgCanEat = target.org.hunger ();
-			float thisOrgOomph = this.org.oomph();
+			if (this.org == target.org) return; //don't bless self--decreaseOomph below increases effect of decreaseHunger
+			
+			float eff = linkEfficiency (this, target);
+			if (eff > 0.5){
+				float targetOrgCanEat = target.org.hunger ();
+				float thisOrgOomph = this.org.oomph();
 
-			float thisSends = Mathf.Min(targetOrgCanEat, thisOrgOomph/2); //donate half of what you've got
-			float targetReceives = thisSends * linkEfficiency(this,target);
+				float thisSends = Mathf.Min(targetOrgCanEat, thisOrgOomph/2); //donate half of what you've got
+				float targetReceives = thisSends * eff;
 
-			org.decreaseOomph (thisSends / thisOrgOomph);//factor of 0 means no change, factor of 1 means oomph is zeroed.
+				org.decreaseOomph (thisSends / thisOrgOomph);//factor of 0 means no change, factor of 1 means oomph is zeroed.
 
-			target.org.decreaseHunger (targetReceives / targetOrgCanEat);//factor of zero means no change, factor of 1 means hunger is sated, i.e. becomes zero, every member at their maxOomph
+				target.org.decreaseHunger (targetReceives / targetOrgCanEat);//factor of zero means no change, factor of 1 means hunger is sated, i.e. becomes zero, every member at their maxOomph
 
-			bubbleServer.scoreBlessing (this.id,targetReceives); //I only get credit for what they receive
+				bubbleServer.scoreBlessing (this.id,targetReceives); //I only get credit for what they receive
+			}
 		}
 
 		public float fuelGauge { get {return oomph/maxOomph;} }
@@ -315,7 +315,7 @@ namespace Bubbles{
 		public void offloadBurden(){
 
 			if (org.members.Count < 2) return; //nobody to give it to
-			if (burden == minBurden) return; //nothin to give
+			if (burden <= minBurden) return; //nothin to give. Should never be less, save perhaps numerically?
 
 			//distribute burden evenly to all org members but me
 			distributeBurden (availableBurden());
@@ -384,6 +384,10 @@ namespace Bubbles{
 				if (rules [i].GetType () == typeof(Rules.Prisoner))
 					return true; 
 			return false;
+		}
+
+		public bool mounted(){
+			return testDna (CScommon.playerPlayingBit);
 		}
 
 		//not having a muscle, prisoner rule can be safely removed without changing the number of links
@@ -526,7 +530,6 @@ namespace Bubbles{
 					if (this.clan != node.clan && this.overlaps(node))
 					{
 						//liberate the captive, and if they're in a chain gang all his trailing prisoners, before eating him. 
-						//Changes prisoner orgs to independent orgs.
 						if (node.isPrisoner ()) node.removePrisonerRule();
 							
 						org.eatOomph(node.org); //transfer of oomph from node org to this org

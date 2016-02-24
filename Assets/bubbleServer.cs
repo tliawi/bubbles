@@ -80,7 +80,7 @@ namespace Bubbles{
 				break;
 			case 3: //fussball
 				normScaleI = 5;
-				abnormScaleI = 5;
+				abnormScaleI = 4;
 				photoYieldI = 0;
 				baseMetabolicRateI = 0;
 				worldRadiusI = -5;
@@ -99,14 +99,14 @@ namespace Bubbles{
 				Bots.popcorn = 250;
 				break;
 			case 6: //giveAway
-				normScaleI = 6;
+				normScaleI = 9;
 				abnormScaleI = 2;
-				photoYieldI = 0;
+				photoYieldI = 2;
 				baseMetabolicRateI = 0;
 				worldRadiusI = 0;
 				vegStartFuel = 1.0f;
 				nonvegStartFuel = 0.33f;
-				Bots.popcorn = 75;
+				Bots.popcorn = 160;
 				break;
 			case 7: //tryEat
 				normScaleI = 6;
@@ -1045,12 +1045,11 @@ namespace Bubbles{
 			return linkCount;
 		}
 
+		public static CScommon.LinkData blankLink = new CScommon.LinkData ();
 
 		//The linkId identifies the row of the referenceMsg.
 		void fillReferenceLinkMsg(CScommon.LinksMsg aReferenceLinkMsg){
 			
-			CScommon.LinkInfo blankLink = new CScommon.LinkInfo ();
-
 			int lnkcntr = 0;
 			for (int i=0; i<Engine.nodes.Count;i++) { 
 				for (int j = 0; j < Engine.nodes [i].rules.Count; j++) { 
@@ -1074,7 +1073,10 @@ namespace Bubbles{
 				}
 			}
 			//lnkcntr better be <= inflatedLinkCount. I'm reusing these arrays, so make sure the remainder is blank
-			for (;lnkcntr < inflatedLinkCount; lnkcntr++) aReferenceLinkMsg.links[lnkcntr] = blankLink;
+			for (; lnkcntr < inflatedLinkCount; lnkcntr++) {
+				aReferenceLinkMsg.links[lnkcntr].linkId = lnkcntr;
+				aReferenceLinkMsg.links [lnkcntr].linkData = blankLink;
+			}
 		}
 
 		private CScommon.LinksMsg allocateLinksMsg(int size){
