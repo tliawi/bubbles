@@ -134,7 +134,7 @@ public class Grid {
 					if (anode.rules[j].muscles(k).enabled ){
 						targetNode = anode.rules[j].muscles(k).target;
 						dist = anode.distance (targetNode);
-						if (bubbleServer.constantLinkWidth) r = anode.radius;
+						if (bubbleServer.plainMuscles) r = anode.radius;
 						else r = 3.0f*Mathf.Sqrt(anode.rules[j].muscles(k).strength());//the constant factor is purely display taste
 						
 						dx = r*(targetNode.y - anode.y)/dist;

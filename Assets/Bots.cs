@@ -475,21 +475,21 @@ namespace Bubbles{
 				head = spawnRandomInchworm (siz, true, true, clan);
 				if (hitched) head.org.makeHitched ();
 				players.Add(setUpPlayer(head,  teamNumber, "", goal, internalSpeed));
-				Debug.Log ("spawnRandomTeam inch " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitchTip ().id:-2222));
+				Debug.Log ("spawnRandomTeam inch " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
 			}
 
 			for (int i=0; i<tricycles; i++){
 				head = spawnRandomTricycle (siz, true, true, clan);
 				if (hitched) head.org.makeHitched();
 				players.Add(setUpPlayer(head,  teamNumber, "", goal, internalSpeed));
-				Debug.Log ("spawnRandomTeam tri " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitchTip ().id:-2222));
+				Debug.Log ("spawnRandomTeam tri " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
 			}
 
 			for (int i=0; i<tapeworms; i++){
 				head = spawnRandomTapeworm (siz, true, true, 5, clan);
 				if (hitched) head.org.makeHitched ();
 				players.Add(setUpPlayer(head,teamNumber, "", goal, internalSpeed));
-				Debug.Log ("spawnRandomTeam tape " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitchTip ().id:-2222));
+				Debug.Log ("spawnRandomTeam tape " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
 
 			}
 
@@ -692,11 +692,11 @@ namespace Bubbles{
 
 			//Weakness: Makes turm points heavier, but makes feeders easy to steal.
 			feeder1.org.clan = goal.org.clan; feeder2.org.clan = goal.org.clan; feeder3.org.clan = goal.org.clan; //so turm won't repel feeders
-			//make feeders prisoner, so that they feed the goal. 
-			//install unburdens the feeders Note there's no bones involved, so unburdened feeders can be stolen and dragged away
-			Rules.Prisoner.install (feeder1, goal);
-			Rules.Prisoner.install (feeder2, goal);
-			Rules.Prisoner.install (feeder3, goal);
+			//make feeders prisoner, so that they feed the goal,
+			//and move the feeders burden into goal org. Note there's no bones involved, so light,unburdened feeders can be pulled out by tractor beams
+			feeder1.org.makeStrippedServant (goal.org);
+			feeder2.org.makeStrippedServant (goal.org);
+			feeder3.org.makeStrippedServant (goal.org);
 
 			return goal;
 		}
@@ -766,9 +766,9 @@ namespace Bubbles{
 			feeder1.org.clan = goal.org.clan; feeder2.org.clan = goal.org.clan; feeder3.org.clan = goal.org.clan; //so turm won't repel feeders
 			//make feeders prisoner, so that they feed the goal. 
 			//install unburdens the feeders Note there's no bones involved, so unburdened feeders can be stolen and dragged away
-			Rules.Prisoner.install (feeder1, goal);
-			Rules.Prisoner.install (feeder2, goal);
-			Rules.Prisoner.install (feeder3, goal);
+			feeder1.org.makeStrippedServant (goal.org);
+			feeder2.org.makeStrippedServant (goal.org);
+			feeder3.org.makeStrippedServant (goal.org);
 
 
 			goal1 = pushVegNode(new Vector2(-worldRadius/2f, -worldRadius/4f),norm/4);
@@ -801,9 +801,9 @@ namespace Bubbles{
 			feeder11.org.clan = goal1.org.clan; feeder21.org.clan = goal1.org.clan; feeder31.org.clan = goal1.org.clan; //so turm won't repel feeders
 			//make feeders prisoner, so that they feed the goal. 
 			//install unburdens the feeders Note there's no bones involved, so unburdened feeders can be stolen and dragged away
-			Rules.Prisoner.install (feeder11, goal1);
-			Rules.Prisoner.install (feeder21, goal1);
-			Rules.Prisoner.install (feeder31, goal1);
+			feeder11.org.makeStrippedServant (goal1.org);
+			feeder21.org.makeStrippedServant (goal1.org);
+			feeder31.org.makeStrippedServant (goal1.org);
 
 
 			//plant a bunch of munchies, but not within turm
@@ -920,10 +920,10 @@ namespace Bubbles{
 			bubbleServer.registerNPC(goal1.id, "shirts goal");
 			Rules.FullGoalScore.install(goal1);
 
-			List<Node> shirts = spawnRandomTeam (true, abnorm, 0, 1, 0, 1, "shirts",goal1);
+			List<Node> shirts = spawnRandomTeam (true, abnorm, 0, 1, 0, 1, "shirts"); //don't do goal here, don't want any goalSeeker installed
 			foreach (var n in shirts){
 				Rules.BlessGoal.install (n, goal1);
-				Rules.GoalSeeker.install(n,goal1, true);
+				Rules.GoalSeeker.install(n,goal1, true); //do goal here, so that whileHasPrisonerOnly is true
 			}
 
 

@@ -15,6 +15,9 @@ namespace Bubbles{
 		public static bubbleServer obj;
 		public static bool newRound = false;
 
+		public static bool plainMuscles = false;
+		public static bool sendLinks = true;
+
 		private static GameObject dbgdsply;
 		private static Text dbgdsplyText;
 		private static List<string> debugDisplayList = new List<string>();
@@ -48,8 +51,6 @@ namespace Bubbles{
 		//private bool xing = false;
 
 		private  bool paused = true;
-
-		public static bool constantLinkWidth = false;
 
 		private  int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
 		private  float vegStartFuel, nonvegStartFuel;
@@ -355,6 +356,7 @@ namespace Bubbles{
 
 			referenceInitMsg = null;
 			referenceLinkMsg = null;
+			newReferenceLinkMsg = null;
 	//		referenceLinkJK = new JKStruct[0];
 
 			scheduledScores.Clear();
@@ -390,15 +392,17 @@ namespace Bubbles{
 			
 			referenceInitMsg = fillInInitMsg(allocateInitMsg(Engine.nodes.Count),0);
 
-			inflatedLinkCount = (countLinks ()*3)/2; //in case of extra links caused by restructuring orgs
+			inflatedLinkCount = countLinks (); //*3)/2; //in case of extra links caused by restructuring orgs
 
-			referenceLinkMsg = new CScommon.LinksMsg();
-			referenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];
+			if (sendLinks) {
+				referenceLinkMsg = new CScommon.LinksMsg ();
+				referenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];
 
-			newReferenceLinkMsg = new CScommon.LinksMsg();
-			newReferenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];
+				newReferenceLinkMsg = new CScommon.LinksMsg ();
+				newReferenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];
 
-			fillReferenceLinkMsg(referenceLinkMsg);
+				fillReferenceLinkMsg (referenceLinkMsg);
+			}
 
 			foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGameSize(connectionId); //and so do any clients who are still connected
 
@@ -423,7 +427,7 @@ namespace Bubbles{
 
 
 		string reminder(){
-			string s = Bots.gameName+": arrows Zz s d l g 1 2 3 4 +- 0";
+			string s = Bots.gameName+": arrows Zz s d kl g 1 2 3 4 +- 0";
 			foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.data.nodeId;
 			s += "  "+(paused?"(PAUSED)":"")+scaleString();
 			return s;
@@ -475,7 +479,11 @@ namespace Bubbles{
 			}
 
 			if (Input.GetKeyDown(KeyCode.L)){
-				constantLinkWidth = !constantLinkWidth;
+				plainMuscles = !plainMuscles;
+			}
+
+			if (Input.GetKeyDown(KeyCode.K)){
+				sendLinks = !sendLinks;
 			}
 				
 			if (Input.GetKeyDown (KeyCode.G)) { 
@@ -885,7 +893,7 @@ namespace Bubbles{
 
 			sendInitToClient(connectionId);
 			sendUpdateToClient(connectionId);
-			sendLinksToClient(connectionId);
+			if (sendLinks) sendLinksToClient(connectionId);
 			sendAllNodeNamesToClient(connectionId);
 			sendAllScoresToClient(connectionId);
 			                                               
@@ -1020,7 +1028,7 @@ namespace Bubbles{
 
 			checkForInitRevisions();
 
-			checkForLinkRevisions();
+			if (sendLinks) checkForLinkRevisions();
 
 			sendScheduledScores();
 
@@ -1063,13 +1071,16 @@ namespace Bubbles{
 						lnkcntr += 1;
 					}
 				}
-				for (int j=0; j<Engine.nodes[i].bones.Count; j++) {
-					aReferenceLinkMsg.links[lnkcntr].linkId = lnkcntr;
-					aReferenceLinkMsg.links[lnkcntr].linkData.enabled = true;
-					aReferenceLinkMsg.links[lnkcntr].linkData.linkType = CScommon.LinkType.bone;
-					aReferenceLinkMsg.links[lnkcntr].linkData.sourceId = Engine.nodes[i].bones[j].source.id; // == i
-					aReferenceLinkMsg.links[lnkcntr].linkData.targetId =  Engine.nodes[i].bones[j].target.id;
-					lnkcntr += 1;
+				for (int j=0; j<Engine.nodes[i].bones.Count; j++) { 
+					Bone b = Engine.nodes [i].bones [j];
+					if (b.isInternal()) { //only send internal bones to client
+						aReferenceLinkMsg.links [lnkcntr].linkId = lnkcntr;
+						aReferenceLinkMsg.links [lnkcntr].linkData.enabled = true;
+						aReferenceLinkMsg.links [lnkcntr].linkData.linkType = CScommon.LinkType.bone;
+						aReferenceLinkMsg.links [lnkcntr].linkData.sourceId = Engine.nodes [i].bones [j].source.id; // == i
+						aReferenceLinkMsg.links [lnkcntr].linkData.targetId = Engine.nodes [i].bones [j].target.id;
+						lnkcntr += 1;
+					}
 				}
 			}
 			//lnkcntr better be <= inflatedLinkCount. I'm reusing these arrays, so make sure the remainder is blank

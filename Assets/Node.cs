@@ -161,30 +161,29 @@ namespace Bubbles{
 
 		//a symmetric operation on this (as source) and target
 		public void addBone(Node target){
-			Bone.TwoBones ab = Bone.dualBones (this, target);
-			this.bones.Add(ab.a);
-			target.bones.Add(ab.b);
-			
+			Bone b = new Bone(this, target);
+			this.bones.Add(b);
+			target.bones.Add(b);
 		}
 
-		// A bone exists in dual form on both source and target nodes. This is done so that both of them "know" about the bone, and either can remove it.
-		// When added or removed, it is added or removed on both source and target nodes, i.e. both the bone and its dual disappear.
+		// A bone exists on both source and target nodes. This is done so that both of them "know" about the bone, and either can remove it.
+		// When added or removed, it is added or removed on both source and target nodes, i.e. on both ends
 		public void removeBone(int boneIndex){
-			bones[boneIndex].target.bones.Remove(bones[boneIndex].dual);
-			bones.RemoveAt (boneIndex);
+			bones[boneIndex].otherEnd(this).bones.Remove(bones[boneIndex]);
+			bones.RemoveAt(boneIndex);
 		}
 
 		public void clearBones(){
 			for (int i=bones.Count-1; i>=0; i--) removeBone(i);
 		}
 
-		//IF there is a simple bone chain of nodes, and this is an interior (non extremal) element of chain, and priorN is a neighbor of this in the chain,
-		//THEN otherNeighbor returns the neighbor on the other side of priorN, or null if none exists. Can be used to traverse chain in either direction.
-		public Node otherBoneChainNeighbor(Node priorN){
-			foreach (var bone in bones)
-				if (bone.target != priorN) return bone.target;
-			return null;
-		}
+//		//IF there is a simple bone chain of nodes, and this is an interior (non extremal) element of chain, and priorN is a neighbor of this in the chain,
+//		//THEN otherNeighbor returns the neighbor on the other side of priorN, or null if none exists. Can be used to traverse chain in either direction.
+//		public Node otherBoneChainNeighbor(Node priorN){
+//			foreach (var bone in bones)
+//				if (bone.otherEnd(this) != priorN) return bone.otherEnd(this);
+//			return null;
+//		}
 
 		// concerning rules, which have muscles sourced in this node
 
@@ -208,7 +207,7 @@ namespace Bubbles{
 			int sum = 0;
 
 			for (int i = bones.Count-1; i>=0; i--) {
-				if (bones [i].target.org != org) {
+				if (bones [i].otherEnd(this).org != org) {
 					removeBone (i);
 					sum += 1;
 				}
@@ -283,7 +282,12 @@ namespace Bubbles{
 		public void photosynthesis() {
 			if (testDna(CScommon.noPhotoBit)) return;
 			oomph +=  photoYield*radius2 * (maxOomph - oomph )/maxOomph; //oomph will never quite attain maxOomph, photosyn gets more inefficient as it approaches maxOomph
-		//prisoners transfer oomph via prisoner rule
+		
+			if (org.isServant()) {
+				float canTransfer = Mathf.Min (org.master.head.maxOomph-org.master.head.oomph, oomph);
+				oomph -= canTransfer;
+				org.master.head.oomph += canTransfer*linkEfficiency(this,org.master.head);
+			}
 		}
 
 
@@ -311,6 +315,12 @@ namespace Bubbles{
 
 		public float availableBurden() { return burden - minBurden; }
 
+
+
+
+		//offloadBurden, distributeBurden, scroungeBurden, and thereby restoreNaiveburden, all move burden WITHIN THIS org.
+		//Not to be confused with moving burden between orgs, implemented in org
+
 		//Become as light as possible by giving my burden to everyone in my org but me. 
 		public void offloadBurden(){
 
@@ -322,6 +332,7 @@ namespace Bubbles{
 			
 			burden = minBurden;
 		}
+	
 
 		//distributes given amount of burden to all members of org but this. 
 		private void distributeBurden (float amount){
@@ -355,7 +366,9 @@ namespace Bubbles{
 
 			Debug.Assert (amount < minPosValue);
 		}
-			
+
+		//restores a nodes burden from where it may have been shifted within its organization
+		//not the same as org.restoreNaiveBurden, which gets burden-stripped org's burden back from its master.
 		public void restoreNaiveBurden() { 
 			if (org.members.Count < 2) return;
 			if (burden == naiveBurden ) return;
@@ -369,6 +382,10 @@ namespace Bubbles{
 			
 			burden = naiveBurden;
 		}
+
+
+
+
 			
 		public void shareOomph() {
 			if (this == org.head)
@@ -379,33 +396,9 @@ namespace Bubbles{
 			for (int i=0;i<rules.Count;i++) rules[i].accion();
 		}
 
-		public bool isPrisoner(){
-			for (int i = 0; i < rules.Count; i++)
-				if (rules [i].GetType () == typeof(Rules.Prisoner))
-					return true; 
-			return false;
-		}
-
 		public bool mounted(){
 			return testDna (CScommon.playerPlayingBit);
 		}
-
-		//not having a muscle, prisoner rule can be safely removed without changing the number of links
-		public void removePrisonerRule(){
-			bool recheck;
-			do {
-				recheck = false;
-				for (int i = 0; i < rules.Count; i++){ 
-					Rules.Prisoner pRule = rules[i] as Rules.Prisoner;
-					if (pRule != null) { 
-						pRule.uninstall(); //removes from this.rules
-						recheck = true; 
-						break;
-					}
-				}
-			} while (recheck);
-		}
-
 			
 		//don't debit oomph until after all muscles have been powered by same level of oomph.
 		//Ensure that oomph demand never depasses oomph.
@@ -518,7 +511,7 @@ namespace Bubbles{
 
 
 
-		public bool isEater(){return (CScommon.testBit(dna, CScommon.eaterBit));} 
+		public bool isEater(){return (CScommon.testBit(dna, CScommon.eaterBit) && !org.isServant());} 
 
 
 		public void tryEat(Node node)
@@ -527,15 +520,12 @@ namespace Bubbles{
 			{
 				if (!node.isEater() || this.oomph > node.oomph)
 				{
-					if (this.clan != node.clan && this.overlaps(node))
+					if (this.clan != node.clan && this.overlaps(node) && !(org == node.org.master) ) //don't eat your own servants
 					{
-						//liberate the captive, and if they're in a chain gang all his trailing prisoners, before eating him. 
-						if (node.isPrisoner ()) node.removePrisonerRule();
+						node.org.cutOut(); //liberate all node.orgs servants, liberate node.org breaking its shackle, cut all muscles attacking it, cut all its external muscles.
 							
 						org.eatOomph(node.org); //transfer of oomph from node org to this org
 						//could take their burden too
-
-						node.org.cutOut(); //cut all external muscles, break all external bones, liberate all nodes orgs prisoners, from/to anywhere to/from the loser org
 
 						//either take prisoner or relocate, but not both.
 						if (org.hasHitch ()) {

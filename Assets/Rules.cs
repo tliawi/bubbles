@@ -781,9 +781,9 @@ namespace Bubbles{
 		//only works in forward! Don't know what effects will be in reverse...
 		public class GoalSeeker: Rule {
 
-			public static void install(Node source0, Node goal0, bool withPrisonerOnly0 = false){
+			public static void install(Node source0, Node goal0, bool onlyWhileHavePrisoner0 = false){
 				if (source0 == null || source0.org.head != source0 || goal0 == null) return;
-				source0.rules.Add (new GoalSeeker(source0, goal0, withPrisonerOnly0));
+				source0.rules.Add (new GoalSeeker(source0, goal0, onlyWhileHavePrisoner0));
 			}
 
 			private delegate bool NoArgBool();
@@ -795,12 +795,12 @@ namespace Bubbles{
 			private bool f(){ return false;}
 			private bool noPrisoner(){ return !source.org.hasPrisoner ();}
 
-			private GoalSeeker(Node source0, Node goal0, bool withPrisonerOnly):base(source0){
+			private GoalSeeker(Node source0, Node goal0, bool onlyWhileHavePrisoner):base(source0){
 				goal = goal0;
 				muscl = addMuscle(source0); //a cut muscle, disabled
 				//muscle just convenience for muscles(0)
 
-				if (withPrisonerOnly) suppressed = noPrisoner;
+				if (onlyWhileHavePrisoner) suppressed = noPrisoner;
 				else suppressed = f;
 			}
 
@@ -919,44 +919,45 @@ namespace Bubbles{
 			}
 		}
 
-		public class Prisoner: Rule {
+//		public class Prisoner: Rule {
+//
+//			//prisoner should be a soliton
+//			public static void install(Node prisoner, Node master, Node savior = null){
+//				if (prisoner == null || prisoner.org.head != prisoner || master == null || master.org.head != master) return;
+//				Prisoner prule = new Prisoner (prisoner, master, savior);
+//				prisoner.rules.Add (prule);
+//				prule.amountGiven = prisoner.availableBurden ();
+//				prisoner.burden -= prule.amountGiven;
+//				master.org.takePrisonersBurden (prule.amountGiven);
+//			}
+//
+//			public void uninstall(){
+//				master.org.returnPrisonersBurden(amountGiven);
+//				source.burden += amountGiven;
+//				source.rules.Remove (this);
+//			}
+//
+//			private Node master, savior;
+//			public float amountGiven;
+//
+//			private Prisoner(Node source0, Node master0, Node savior0):base(source0){
+//				master = master0;
+//				savior = savior0;
+//			}
+//				
+//			override public void accion(){
+//				
+//				float canTransfer = Mathf.Min (master.maxOomph-master.oomph, source.oomph);
+//				master.oomph += canTransfer;
+//				source.oomph -= canTransfer;
+//
+//				if (savior != null)
+//				if (source.distance (savior) < savior.radius * 2) {
+//					uninstall ();
+//					install (source, savior); //dubious savior!!
+//				}
+//			}
+//		}
 
-			//prisoner should be a soliton
-			public static void install(Node prisoner, Node master, Node savior = null){
-				if (prisoner == null || prisoner.org.head != prisoner || master == null || master.org.head != master) return;
-				Prisoner prule = new Prisoner (prisoner, master, savior);
-				prisoner.rules.Add (prule);
-				prule.amountGiven = prisoner.availableBurden ();
-				prisoner.burden -= prule.amountGiven;
-				master.org.takePrisonersBurden (prule.amountGiven);
-			}
-
-			public void uninstall(){
-				master.org.returnPrisonersBurden(amountGiven);
-				source.burden += amountGiven;
-				source.rules.Remove (this);
-			}
-
-			private Node master, savior;
-			public float amountGiven;
-
-			private Prisoner(Node source0, Node master0, Node savior0):base(source0){
-				master = master0;
-				savior = savior0;
-			}
-				
-			override public void accion(){
-				
-				float canTransfer = Mathf.Min (master.maxOomph-master.oomph, source.oomph);
-				master.oomph += canTransfer;
-				source.oomph -= canTransfer;
-
-				if (savior != null)
-				if (source.distance (savior) < savior.radius * 2) {
-					uninstall ();
-					install (source, savior); //dubious savior!!
-				}
-			}
-		}
 	}
 }

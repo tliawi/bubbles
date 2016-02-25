@@ -21,6 +21,7 @@ T test stuff du jour
 S step (only works while paused)
 D toggle DebugDisplay panel
 G toggle (cost of) grid display
+K toggle links being sent to client
 L toggle link constant width display
 Zz zoom camera in/out
 arrows camera movement

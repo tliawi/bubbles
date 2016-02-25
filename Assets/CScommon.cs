@@ -234,7 +234,7 @@ public static class CScommon {
 	public const int leftTeamBit = 8; //teams 0,1,2 and 3
 	//skipping 9
 	public const int goalBit = 10;
-	public const int jeepBit = 11;
+	public const int hitchBit = 11;
 
 	//thanks to http://www.dotnetperls.com/and
 	public static string longToString(long dna)

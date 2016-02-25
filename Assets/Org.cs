@@ -6,6 +6,7 @@ namespace Bubbles{
 	public class Org {
 		
 		// aNodes and bNodes are lists of nodes, all of whom must belong to the same org else the whole operation fails.
+		// Preserves total burden within the org.
 		// Some nodes may be in both aNodes and bNodes.
 		// 0 <= fraction <=1
 		// Attempts to put fraction of the total burden in aNodes, and (1-fraction) thereof in bNodes.
@@ -38,6 +39,68 @@ namespace Bubbles{
 
 		}
 
+		float availableBurden(){
+			float sum = 0;
+			for (int i = 0; i < members.Count; i++) {
+				sum += members [i].availableBurden() ;
+			}
+			return sum;
+		}
+
+		float burden(){
+			float sum = 0;
+			for (int i = 0; i < members.Count; i++) {
+				sum += members [i].burden;
+			}
+			return sum;
+		}
+
+		//transfer all org availableburden to master
+		private void stripAvailableBurden (){
+			if (master == null) return;
+
+			float orgAvailableBurden = availableBurden (); //this is the same as sum of member's naiveBurden-minBurden, i.e. available burden is wholly lost or wholly restored, never in part.
+
+
+			float masterBurden = master.burden ();
+
+			for (int i = 0; i < members.Count; i++) members [i].burden = members[i].minBurden; //remove all available burden here
+
+			//distribute destroyed orgAvailableBurden to nodes of master org, in proportion so master's dynamics aren't overly changed
+			for (int i=0; i< master.members.Count; i++) master.members[i].burden += orgAvailableBurden* master.members[i].burden/masterBurden;
+
+		}
+
+		//undoes stripAvailableBurden, save that if burden within the org had been redistributed, this restores each node's naiveBurden.
+		//when this is called, all nodes must be at minburden
+		private void restoreNaiveBurden(){
+
+			if (master == null)
+				return;
+			
+			float orgRestoredBurden = 0;
+			foreach (var member in members) {
+				Debug.Assert (member.burden == member.minBurden);
+				orgRestoredBurden += member.naiveBurden - member.minBurden;
+				member.burden = member.naiveBurden;
+			}
+
+			List<float> excessMasterBurden = new List<float> ();
+			foreach (var member in master.members)
+				excessMasterBurden.Add (Mathf.Max (0f, member.burden - member.naiveBurden));
+			
+			float sumExcessBurden = 0; foreach (var x in excessMasterBurden)
+				sumExcessBurden += x;
+
+			Debug.Assert (sumExcessBurden >= orgRestoredBurden);
+
+			for (int i = 0; i < master.members.Count; i++) {
+				master.members [i].burden -= orgRestoredBurden * excessMasterBurden [i] / sumExcessBurden;
+			}
+
+
+		}
+
 
 		public List<Node> members; //this has Count of at least 1, and its first member is considered the head of the org for directional purposes
 		public Node head { get; private set; } //convenience for members[0]
@@ -46,7 +109,10 @@ namespace Bubbles{
 		public string clan;
 		public Dictionary<string,int> states; //Keys are independent state dimensions.
 
-		private Node hitch; //org doesn't exist with no members
+		public Node hitch { get; private set; }  //a member of this org
+		public Org master; //not this org. See mustFeed, hasLostBurden, mustFollow
+		public bool isStrippedOfBurden {get; private set;}
+		public bool mustFollow { get; private set; }
 
 		public Org (Node firstMember){
 			members = new List<Node>();
@@ -60,6 +126,40 @@ namespace Bubbles{
 		public Org setRandomClan() {
 			clan = Random.Range(0,int.MaxValue).ToString();
 			return this;
+		}
+
+		public void makeServant( Org master0) {
+			if (master == null && master0!=this) master = master0; //all this photosynthesis will go to master0.head
+		}
+
+		public void makeStrippedServant(Org master0) {
+			makeServant (master0);
+			if (isServant ()) stripAvailableBurden ();
+		}
+
+		public void makeShackledStrippedServant(Org master0){
+			if (master0.hasHitch ()) {
+				makeStrippedServant (master0);
+				//put a shackle, an external bone, between this.head and master0.hitch
+				head.addBone(master0.hitch); //master0's servants are at the otherEnd of all external bones out of master0.hitch
+			}
+		}
+
+		public bool isServant(){ return master != null; } //at a minimum, all photosynth of this org is fed to master. May also be stripped of burden, and may also be hitched.
+
+		public bool isStrippedServant() { return isServant () && availableBurden () == 0; }
+
+		//the external link added to head is informally called the 'shackle'. All external bones are shackles.
+		public bool isshackledStrippedServant() {
+			return isStrippedServant () && head.bones.Count > 0 && head.bones [head.bones.Count - 1].otherEnd(head).org == master;
+		}
+
+		public void liberate(){ 
+			if (isServant()) {
+				if (isshackledStrippedServant ()) head.removeBone (head.bones.Count - 1);
+				if (isStrippedServant ()) restoreNaiveBurden ();
+				master = null;
+			}
 		}
 
 		public bool bothRegistered(Org loser){
@@ -135,18 +235,20 @@ namespace Bubbles{
 			return this;
 		}
 
-		//liberates all prisoners, cuts all external links to this organism, and all external links from this organism
+
 		public void cutOut(){
 			
-			liberatePrisoners (firstPrisoner());
+			liberatePrisoners(); //liberate any prisoners--those shackled to my hitch by an external bone
+
+			liberate(); //liberate org from being a prisoner, breaking its external bone, and from being a burden-stripped servant, or even just an oomph-feeding servant
 
 			//take out all muscles attacking me
 			List<Muscle> attackers = new List<Muscle>(enemyMuscles);
 			foreach (var muscl in attackers) muscl.cut ();
 			Debug.Assert (enemyMuscles.Count == 0);
 
-			//take out all of my external muscles and bones
-			foreach (var memb in members) { memb.cutExternalMuscles(); memb.breakExternalBones();}
+			//take out all of my external muscles
+			foreach (var memb in members) { memb.cutExternalMuscles();}
 
 		}
 
@@ -160,139 +262,34 @@ namespace Bubbles{
 		}
 
 		public bool hasPrisoner(){
-			return firstPrisoner () != null;
-		}
-
-		//returns null if no external org hitched to hitch. Assumes tail composed of nodes of different orgs than hitch's.
-		public Node firstPrisoner(){
-			//no bones, or no external bone added on top of internal bones
-			return (hitch == null || hitch.bones.Count == 0 || !(hitch.bones [hitch.bones.Count - 1].target.isPrisoner()))?
-				null: hitch.bones [hitch.bones.Count - 1].target;
+			if (hitch == null) return false;
+			return prisoners ().Count > 0;
 		}
 
 		public List<Node> prisoners(){
 			List<Node> prsnrs = new List<Node> ();
-			Node nextT;
-			Node priorT = hitch;
-			Node t = firstPrisoner ();
-			if (t == null) return prsnrs; //if !hasHitch() t will be null
-			prsnrs.Add(t);
-			while ((nextT = t.otherBoneChainNeighbor(priorT)) != null){ 
-				prsnrs.Add (nextT);
-				priorT = t; 
-				t = nextT; 
-			}
+			if (hitch == null || hitch.bones.Count == 0) return prsnrs; //empty
+			foreach (var b in hitch.bones) if (b.isExternal()) prsnrs.Add(b.otherEnd(hitch));
 			return prsnrs;
 		}
-
-		//only use if hasHitch().
-		public Node hitchTip(){ //tip of chaingang of prisoners beginning at hitch. Is actual hitching point
-			List<Node> prsnrs = prisoners();
-			if (prsnrs.Count == 0) return hitch;
-			return prsnrs [prsnrs.Count - 1];
-		}
-
-		public void liberatePrisoners(Node startPrisoner){
-			if (startPrisoner == null) return;
-			List<Node> prsnrs = prisoners ();
-			int i = prsnrs.IndexOf (startPrisoner);
-			if (i < 0) { startPrisoner.isolate (); return; } //may not be a prisoner of a jeep
-				
-			for (; i < prsnrs.Count; i++) prsnrs [i].isolate ();
-		}
-
-		public void takePrisoner(Org targetOrg){
 			
+		// "prisoners" are shackledStrippedServants
+		public void liberatePrisoners(){
+			List<Node> prsnrs = prisoners ();
+			for (int i=0; i < prsnrs.Count; i++) prsnrs[i].org.liberate ();
+		}
+
+		public void takePrisoner(Org victim){
+
+			if (victim.members.Count > 1) return; //we're only picking up rocks
 			if (!hasHitch()) return;
-
-			if (targetOrg.members.Count > 1) return; //we're only picking up rocks
-			if (prisoners().Count > 0) return; //we're only picking up one rock
-			hitchTip().addBone (targetOrg.head); //hitchTip will be hitch
-			Rules.Prisoner.install (targetOrg.head, this.head); //target prisoner, this master.
-
-			//comment out the above four lines, and uncomment the following, to take multi-node orgs prisoner
-//			List<Node> isolates = targetOrg.disassemble ();
-//
-//			for (int i = 0; i < isolates.Count; i++) {
-//				hitchTip ().addBone (isolates [i]);
-//				Rules.Prisoner.install (isolates [i], this.head);
-//				isolates [i].offloadBurden (this); //how do they remember who they gave their burden to? It's in the prisoner rule
-//			}
-		}
-
-
-		//give to each according to what he's already got
-		public void takePrisonersBurden(float amount){
-			if (amount <= 0) return;
-
-			float sum = 0;
-			for (int i = 0; i < members.Count; i++) sum += members[i].burden;
-
-			for (int i = 0; i < members.Count; i++) {
-				members [i].burden += amount * (members [i].burden / sum) ;
-			}
-		}
-
-		public void returnPrisonersBurden(float amount){
-			if (amount <= 0) return;
-
-			float sum = 0;
-			for (int i = 0; i < members.Count; i++) sum += members[i].availableBurden();
-
-			if (sum <= 0) {
-				Debug.Log ("returnPrisonersBurden burden <= 0");
-				return;
-			}
-
-			if (sum < amount-Node.minPosValue) Debug.Log ("returnPrisonersBurden insufficient burden");
-
-
-			for (int i = 0; i < members.Count; i++) {
-				members [i].burden -= amount * (members [i].availableBurden() / sum) ;
-				if (members [i].burden < members[i].minBurden) members [i].burden = members[i].minBurden;
-			}
+			//if (prisoners().Count > 0) return; //we're only picking up one rock
+			victim.makeShackledStrippedServant(this);
 
 		}
 
 
-		//can recycle the org in first parm. If first parm null, will return a new org.
-		// // // recycling is too dangerous. What happens to all the members.org? 
-	//	public static Org makeOrg(Org org, Node firstMember, string clan0 = ""){
-	//
-	//		if (org == null)
-	//			return new Org (firstMember, clan);
-	//		
-	//		org.members.Clear();
-	//		org.enemyMuscles.Clear();
-	//		org.states.Clear();
-	//		org.rules.Clear();
-	//
-	//		org.members.Add (firstMember);
-	//		org.leastNodeId = firstMember.id;
-	//		org.clan = (clan0=="")?getRandomClan():clan0;
-	//		return org;
-	//	}
-
-
-	//	public void clearTrust(){
-	//		trustHead = this;
-	//		foreach (Node n in trusters) n.trustHead = n;
-	//		trusters.Clear ();
-	//	}
-
-		//breaking this org into independent nodes having loner (members.Count == 1) organisms
-		//state preserved, in this org and in all new orgs the same
-		// What To Do With EnemyMuscles??? Presume org has been cut out? Need to cut out all the new organisms, so that nobody's targeting them, and their enemyMuscles is empty
-	//	public void shatter(){
-	//		for (int i = 1; i < members.Count; i++) { //head unaffected
-	//			members [i].org = new Org (members [i].org);
-	//			members [i].org.states = new Dictionary<string,int> (states); // ???
-	//		}
-	//		members.Clear ();
-	//		members.Add (head);
-	//	}
-
-		//error to do this of a node that isn't alone in its org
+		//error to do this of a node that isn't a soliton, i.e. alone in its org
 		public void makeMember(Node node){ //ancien addTruster
 			if (members.Contains(node)) return;
 			if (node.org.members.Count > 1) {
@@ -306,7 +303,7 @@ namespace Bubbles{
 
 		public List<Node> disassemble(){
 
-			liberatePrisoners (firstPrisoner ()); //should have already been liberated, but is cheap insurance
+			liberatePrisoners(); //should have already been liberated, but is cheap insurance
 
 			List<Node> bits = new List<Node> (members);
 
