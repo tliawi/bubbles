@@ -110,9 +110,7 @@ namespace Bubbles{
 		public Dictionary<string,int> states; //Keys are independent state dimensions.
 
 		public Node hitch { get; private set; }  //a member of this org
-		public Org master; //not this org. See mustFeed, hasLostBurden, mustFollow
-		public bool isStrippedOfBurden {get; private set;}
-		public bool mustFollow { get; private set; }
+		public Org master; //not this org.
 
 		public Org (Node firstMember){
 			members = new List<Node>();
@@ -150,13 +148,13 @@ namespace Bubbles{
 		public bool isStrippedServant() { return isServant () && availableBurden () == 0; }
 
 		//the external link added to head is informally called the 'shackle'. All external bones are shackles.
-		public bool isshackledStrippedServant() {
+		public bool isShackledStrippedServant() {
 			return isStrippedServant () && head.bones.Count > 0 && head.bones [head.bones.Count - 1].otherEnd(head).org == master;
 		}
 
 		public void liberate(){ 
 			if (isServant()) {
-				if (isshackledStrippedServant ()) head.removeBone (head.bones.Count - 1);
+				if (isShackledStrippedServant ()) head.removeBone (head.bones.Count - 1);
 				if (isStrippedServant ()) restoreNaiveBurden ();
 				master = null;
 			}

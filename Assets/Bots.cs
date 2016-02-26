@@ -664,7 +664,7 @@ namespace Bubbles{
 			float norm = abnorm;
 
 			//not quite on center, so pushing of links within turm will be unstable, so hopefully turm will purge itself of interlopers
-			goal = pushVegNode(z+new Vector2(0.01f,-0.0223f),norm/4).setDna(CScommon.noPhotoBit, true);
+			goal = pushVegNode(z+new Vector2(0.01f,-0.0223f),norm/3).setDna(CScommon.noPhotoBit, true);
 			goal.org.clan = "turm";
 			bubbleServer.registerNPC(goal.id,"goal");
 			Rules.TouchGoalScore.install (goal);
@@ -916,6 +916,7 @@ namespace Bubbles{
 			Node goal1;
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
 			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
+			goal1.org.makeHitched (goal1); //so it can accept prisoners
 			goal1.org.setTeamNumber (1).clan = "shirts";
 			bubbleServer.registerNPC(goal1.id, "shirts goal");
 			Rules.FullGoalScore.install(goal1);
@@ -923,7 +924,8 @@ namespace Bubbles{
 			List<Node> shirts = spawnRandomTeam (true, abnorm, 0, 1, 0, 1, "shirts"); //don't do goal here, don't want any goalSeeker installed
 			foreach (var n in shirts){
 				Rules.BlessGoal.install (n, goal1);
-				Rules.GoalSeeker.install(n,goal1, true); //do goal here, so that whileHasPrisonerOnly is true
+				Rules.GoalSeeker.install(n,goal1, true); //install goal here, so that whileHasPrisonerOnly is true
+				Rules.GivePrisoners.install(n.org,goal1.org);
 			}
 
 
@@ -942,25 +944,29 @@ namespace Bubbles{
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
 			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
 			goal1.org.setTeamNumber(1).clan = "shirts";
+			goal1.org.makeHitched (goal1); //so it can accept prisoners
 			bubbleServer.registerNPC(goal1.id, "shirts goal");
 			Rules.FullGoalScore.install(goal1);
 
 			goal2 = pushVegNode(new Vector2(0.66f*worldRadius,-0.33f*worldRadius),norm*5);
 			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
 			goal2.org.setTeamNumber (2).clan = "skins";
+			goal2.org.makeHitched (goal2); //so it can accept prisoners
 			bubbleServer.registerNPC(goal2.id, "skins goal");
 			Rules.FullGoalScore.install(goal2);
 
 			List<Node> shirts = spawnRandomTeam (true, abnorm, 6, 1, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
-			List<Node> skins = spawnRandomTeam (true, abnorm, 6, 1, 0, 2, "skins");
+			List<Node> skins  = spawnRandomTeam (true, abnorm, 6, 1, 0, 2, "skins");  //and don't do goal here, don't want any goalSeeker installed
 
 			foreach (var n in shirts){
 				Rules.BlessGoal.install (n, goal1);
-				Rules.GoalSeeker.install(n,goal1, true);
+				Rules.GoalSeeker.install(n,goal1, true);//install goal here, so that whileHasPrisonerOnly is true
+				Rules.GivePrisoners.install(n.org,goal1.org);
 			}
 			foreach (var n in skins){
 				Rules.BlessGoal.install (n, goal2);
 				Rules.GoalSeeker.install(n,goal2, true);
+				Rules.GivePrisoners.install(n.org,goal2.org);
 			}
 
 			//plant a bunch of munchies, but not within goals

@@ -358,16 +358,16 @@ namespace Bubbles{
 							amount = 0;
 							break;
 						} else {
-							org.members [i].burden -= surplus;
+							org.members [i].burden = org.members [i].naiveBurden; // i.e, subtract surplus, but do so in a way that doesn't accumulate numeric error
 							amount -= surplus;
 						}
 					}
 				}
 
-			Debug.Assert (amount < minPosValue);
+			Debug.Assert (amount < 0.0001);
 		}
 
-		//restores a nodes burden from where it may have been shifted within its organization
+		//restores a node's burden from where it may have been shifted within its organization
 		//not the same as org.restoreNaiveBurden, which gets burden-stripped org's burden back from its master.
 		public void restoreNaiveBurden() { 
 			if (org.members.Count < 2) return;
@@ -416,7 +416,7 @@ namespace Bubbles{
 		}
 
 		public void activateBones(){
-			for (int i=0;i<bones.Count;i++) bones[i].action();
+			for (int i=0;i<bones.Count;i++) if (this == bones[i].source) bones[i].action(); //only do it once, it is symmetrical
 		}
 
 		//called after nx and ny have been fully hallucinated, and before they've been folded back into x and y
@@ -520,7 +520,7 @@ namespace Bubbles{
 			{
 				if (!node.isEater() || this.oomph > node.oomph)
 				{
-					if (this.clan != node.clan && this.overlaps(node) && !(org == node.org.master) ) //don't eat your own servants
+					if (this.clan != node.clan && this.overlaps(node) && !(node.org.isServant() && node.org.master.clan == org.clan) ) //don't eat your own servants, indeed servants of anybody in your clan
 					{
 						node.org.cutOut(); //liberate all node.orgs servants, liberate node.org breaking its shackle, cut all muscles attacking it, cut all its external muscles.
 							

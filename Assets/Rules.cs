@@ -611,6 +611,9 @@ namespace Bubbles{
 			}
 			
 			public override void accion() {
+
+				if (source.org.isStrippedServant ()) return; //can't use offload/restore burden when stripped
+					
 				int forward0Reverse1; //for now simplify things
 				int push1Pull2 = source.getState ("push1Pull2");
 
@@ -665,6 +668,9 @@ namespace Bubbles{
 
 			//someday add forward0Reverse1 to these considerations, will reverse giveBurden/retakeBurden
 			public override void accion() {
+
+				if (source.org.isStrippedServant ()) return; //can't use offload/restore burden when stripped
+
 				int push1Pull2 = source.getState ("push1Pull2");
 
 				if (push1Pull2 == 0){ muscl.disable(); return; }
@@ -919,45 +925,30 @@ namespace Bubbles{
 			}
 		}
 
-//		public class Prisoner: Rule {
-//
-//			//prisoner should be a soliton
-//			public static void install(Node prisoner, Node master, Node savior = null){
-//				if (prisoner == null || prisoner.org.head != prisoner || master == null || master.org.head != master) return;
-//				Prisoner prule = new Prisoner (prisoner, master, savior);
-//				prisoner.rules.Add (prule);
-//				prule.amountGiven = prisoner.availableBurden ();
-//				prisoner.burden -= prule.amountGiven;
-//				master.org.takePrisonersBurden (prule.amountGiven);
-//			}
-//
-//			public void uninstall(){
-//				master.org.returnPrisonersBurden(amountGiven);
-//				source.burden += amountGiven;
-//				source.rules.Remove (this);
-//			}
-//
-//			private Node master, savior;
-//			public float amountGiven;
-//
-//			private Prisoner(Node source0, Node master0, Node savior0):base(source0){
-//				master = master0;
-//				savior = savior0;
-//			}
-//				
-//			override public void accion(){
-//				
-//				float canTransfer = Mathf.Min (master.maxOomph-master.oomph, source.oomph);
-//				master.oomph += canTransfer;
-//				source.oomph -= canTransfer;
-//
-//				if (savior != null)
-//				if (source.distance (savior) < savior.radius * 2) {
-//					uninstall ();
-//					install (source, savior); //dubious savior!!
-//				}
-//			}
-//		}
+		//When master attains the goal, transfers all of master's prisoners to the goal
+		public class GivePrisoners: Rule {
+			public static void install(Org master, Org  goal){
+				if (master == null || goal == null || master == goal) return;
+				GivePrisoners gpRule = new GivePrisoners (master,goal);
+				master.head.rules.Add (gpRule);
+			}
+
+			private Org master, goal;
+
+			private GivePrisoners(Org master0, Org goal0):base(master0.head){
+				master = master0;
+				goal = goal0;
+			}
+				
+			override public void accion(){
+				if (master.head.overlaps (goal.head)) {
+					List<Node> prisoners = master.prisoners ();
+					master.liberatePrisoners ();
+					foreach (var prisoner in prisoners)
+						goal.takePrisoner (prisoner.org);
+				}
+			}
+		}
 
 	}
 }
