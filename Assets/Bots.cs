@@ -175,7 +175,7 @@ namespace Bubbles{
 		public static Node spawnRandomTapeworm(float approximateRadius, bool headEat, bool tailEat,int numSegments = 0, string clan="" ){
 			Vector2 headPosition = worldRadius * Random.insideUnitCircle;
 			if (numSegments == 0) numSegments = Random.Range(2,7);
-			return spawnTapeworm(headPosition,headEat,numSegments,approximateRadius*Random.Range(0.9f,0.111111f),tailEat, clan);
+			return spawnTapeworm(headPosition,headEat,numSegments,approximateRadius,tailEat, clan);
 		}
 
 
@@ -451,7 +451,7 @@ namespace Bubbles{
 
 			onSpeed(head,internalSpeed);
 
-			//note that team number 0 is unscored, i.e. indicates no team at all, singleton
+			//note that team number 0 is unscored, i.e. indicates no team at all
 			head.setDna(CScommon.playerBit,true); //ie is mountable presuming teamNumber == 1, 2 or 3
 			head.org.setTeamNumber(teamNumber);
 
@@ -500,9 +500,9 @@ namespace Bubbles{
 			Node head;
 			Node bs,ls;
 
-	//		head = spawnTapeworm(new Vector2(100,100),true, 7, abnorm*0.8f, true ,"snark");
-	//		setUpPlayer (head, 1, "tapeworm");
-	//		head.setDna (CScommon.snarkBit,true);
+			head = spawnTapeworm(new Vector2(100,100),true, 7, abnorm*0.8f, true ,"snark");
+			setUpPlayer (head, 1, "tapeworm");
+			head.setDna (CScommon.snarkBit,true);
 
 			head = spawnInchworm(new Vector2(-3,-3), abnorm*1.2f, true,
 				new Vector2(7,7), abnorm*1f, true,"snark"); 
@@ -936,45 +936,60 @@ namespace Bubbles{
 
 		}
 
+		//moves org to opposite side of the field...
+		private static void flip(Org org){
+			float del = 2*org.head.x; //head is org.members[0]
+			foreach (var n in org.members) n.nx = n.x = n.x - del;
+		}
 
 
 		public static void giveawayInit(){
 			Node head, goal1, goal2;
+			float goalRadius = Random.Range (5 * norm, 6 * norm);
 
-			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,0.33f*worldRadius),norm*5);
+			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,Random.Range(-0.33f,0.33f)*worldRadius),goalRadius);
 			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
 			goal1.org.setTeamNumber(1).clan = "shirts";
 			goal1.org.makeHitched (goal1); //so it can accept prisoners
 			bubbleServer.registerNPC(goal1.id, "shirts goal");
 			Rules.FullGoalScore.install(goal1);
 
-			goal2 = pushVegNode(new Vector2(0.66f*worldRadius,-0.33f*worldRadius),norm*5);
+			goal2 = pushVegNode(new Vector2(0.66f*worldRadius,Random.Range(-0.33f,0.33f)*worldRadius),goalRadius);
 			goal2.setDna (CScommon.noPhotoBit, true).setDna(CScommon.goalBit, true).setDna(CScommon.eaterBit,true);
 			goal2.org.setTeamNumber (2).clan = "skins";
 			goal2.org.makeHitched (goal2); //so it can accept prisoners
 			bubbleServer.registerNPC(goal2.id, "skins goal");
 			Rules.FullGoalScore.install(goal2);
 
-			List<Node> shirts = spawnRandomTeam (true, abnorm, 6, 1, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
-			List<Node> skins  = spawnRandomTeam (true, abnorm, 6, 1, 0, 2, "skins");  //and don't do goal here, don't want any goalSeeker installed
+			List<Node> shirts = spawnRandomTeam (true, abnorm, 4, 3, 0, 1, "shirts"); //set first parm true to make them towing (emprisoning) jeeps
+			List<Node> skins  = spawnRandomTeam (true, abnorm, 4, 3, 0, 2, "skins");  //and don't do goal here, don't want any goalSeeker installed
 
 			foreach (var n in shirts){
+				if (n == n.org.head && n.x > 0) flip (n.org); //start with team close to their node
 				Rules.BlessGoal.install (n, goal1);
 				Rules.GoalSeeker.install(n,goal1, true);//install goal here, so that whileHasPrisonerOnly is true
 				Rules.GivePrisoners.install(n.org,goal1.org);
 			}
 			foreach (var n in skins){
+				if (n == n.org.head && n.x < 0) flip (n.org); //start with team close to their node
 				Rules.BlessGoal.install (n, goal2);
 				Rules.GoalSeeker.install(n,goal2, true);
 				Rules.GivePrisoners.install(n.org,goal2.org);
 			}
+
+			//variety show
+			head = spawnRandomTapeworm (abnorm * 1.4f, true, true, 7, "homer");
+
+			Node snark = spawnRandomInchworm(abnorm*1.1f, true, true, "snark"); 
+			setUpPlayer (snark, 0, "snark");
+			snark.setDna (CScommon.snarkBit,true);
 
 			//plant a bunch of munchies, but not within goals
 			int startCount = Engine.nodes.Count;
 
 			//beware, this becomes an infinite loop as goal radius approaches worldRadius
 			while (Engine.nodes.Count - startCount < popcorn/2){
-				head = plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+				head = plantRandomVeg(Random.Range(0.5f*norm, 2f*norm));
 				if (head.distance(goal1) < 2*goal1.radius) removeTopNodes(1);
 				else if (head.distance(goal2) < 2*goal2.radius) removeTopNodes(1);
 			}
@@ -983,8 +998,23 @@ namespace Bubbles{
 			startCount = Engine.nodes.Count;
 
 			//beware, this becomes an infinite loop as goal radius approaches worldRadius
+			//snark followers
 			while (Engine.nodes.Count - startCount < popcorn/2){
-				head = spawnRandomInchworm (norm, false, false).enableInternalMuscles (50);
+				head = spawnRandomInchworm (Random.Range(0.4f*norm,0.9f*norm), false, false);
+				if (head.org.minDistance (goal1.org) < 2 * goal1.radius)
+					removeTopNodes (2);
+				else if (head.org.minDistance (goal2.org) < 2 * goal2.radius)
+					removeTopNodes (2);
+				else {
+					Rules.cowardNPCRule.install (head);
+					Rules.GoalSeeker.install (head, snark); //most eagerly sought after
+				}
+			}
+
+			//beware, this becomes an infinite loop as goal radius approaches worldRadius
+			// don't follow snark
+			while (Engine.nodes.Count - startCount < popcorn/2){
+				head = spawnRandomInchworm (Random.Range(norm,2f*norm), false, false).enableInternalMuscles (70);
 				if (head.org.minDistance (goal1.org) < 2 * goal1.radius)
 					removeTopNodes (2);
 				else if (head.org.minDistance (goal2.org) < 2 * goal2.radius)

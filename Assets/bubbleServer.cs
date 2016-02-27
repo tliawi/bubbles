@@ -82,11 +82,11 @@ namespace Bubbles{
 				Bots.popcorn = 250;
 				break;
 			case 6: //giveAway
-				normScaleI = 9;
+				normScaleI = 7;
 				abnormScaleI = 2;
 				photoYieldI = 2;
 				baseMetabolicRateI = 0;
-				worldRadiusI = 0;
+				worldRadiusI = 1;
 				vegStartFuel = 1.0f;
 				nonvegStartFuel = 0.33f;
 				Bots.popcorn = 160;
