@@ -198,7 +198,7 @@ public class Grid {
 		vix = makeTriangle(avertex, vertices[firstVertx+2], vertices[firstVertx], uvClass, vix);
 	} else if (closestVertexi == firstVertx + 2){
 		vix = makeTriangle(avertex, vertices[firstVertx], vertices[firstVertx+1], uvClass, vix);
-	} else Debug.Log ("error in nearest");
+	} else if (Debug.isDebugBuild) Debug.Log ("error in nearest");
 
 */
 

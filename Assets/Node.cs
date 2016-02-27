@@ -60,7 +60,7 @@ namespace Bubbles{
 			gGravity = Mathf.Exp(Random.Range(1.25f*norm, 0.75f*norm)); //assumes norm is negative.
 				gCG.x = 0.2f*Bots.worldRadius*(Random.value - 0.5f);
 				gCG.y = 0.2f*Bots.worldRadius*(Random.value - 0.5f);
-			Debug.Assert (!float.IsNaN (gCG.x) && !float.IsNaN (gCG.y),"resetGravity bad gCG");
+			if (Debug.isDebugBuild) Debug.Assert (!float.IsNaN (gCG.x) && !float.IsNaN (gCG.y),"resetGravity bad gCG");
 		}
 
 		public static void initialize(){
@@ -345,7 +345,8 @@ namespace Bubbles{
 					org.members [i].burden += portion;
 		}
 
-		//only takes from those that are beyond naive burden.
+		//take burden from everyone in org (but me),
+		//who is beyond naive burden.
 		private void scroungeBurden(float amount){
 			if (amount <= 0) return;
 
@@ -364,7 +365,7 @@ namespace Bubbles{
 					}
 				}
 
-			Debug.Assert (amount < 0.0001);
+			if (Debug.isDebugBuild) Debug.Assert(amount < 0.00001);
 		}
 
 		//restores a node's burden from where it may have been shifted within its organization

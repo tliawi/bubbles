@@ -79,16 +79,15 @@ public class Engine {
 		
 			bubbleServer.checkVals(nodes[i].nx,nodes[i].ny,msg+":"+nodes[i].id+":NXNY");
 			
-			UnityEngine.Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+":"+nodes[i].id+": x!=nx or y!=ny");
+			if (UnityEngine.Debug.isDebugBuild) UnityEngine.Debug.Assert (nodes[i].x == nodes[i].nx && nodes[i].y == nodes[i].ny, msg+":"+nodes[i].id+": x!=nx or y!=ny");
 
 		}
 	}
 
-
 	private static long preVoronoi, inVoronoi, postVoronoi;
 	static void printVoronoiTimes(){
 		double sum = preVoronoi + inVoronoi + postVoronoi;
-		UnityEngine.Debug.Log(sum/(1000*tickCounter)+" ms:"+preVoronoi/sum+" "+inVoronoi/sum+" "+postVoronoi/sum);
+		if (UnityEngine.Debug.isDebugBuild) UnityEngine.Debug.Log(sum/(1000*tickCounter)+" ms:"+preVoronoi/sum+" "+inVoronoi/sum+" "+postVoronoi/sum);
 	}
 
 	private static void makeNeighbors(){
@@ -102,7 +101,7 @@ public class Engine {
 
 			x = nodes[i].x; y = nodes[i].y;
 			if(float.IsNaN(x) || float.IsNaN (y) || float.IsInfinity(x) || float.IsInfinity (y)){
-				bubbleServer.debugDisplay("ERROR: makeNeighbors Nan or Inf "+i);
+				if (UnityEngine.Debug.isDebugBuild) UnityEngine.Debug.Log("ERROR: makeNeighbors Nan or Inf "+i);
 				nodes[i].x = nodes[i].y = 33; //something!
 			}
 			if (maxx < x) maxx = x;
@@ -138,7 +137,7 @@ public class Engine {
 	static long makeNeighborsTime, tryToEatNeighborsTime, doAllRulesTime, activateAllTime, updatePositionsTime, relocationsTime, photoOomphTime;
 	static void printTimes(){
 		double sumTimes = makeNeighborsTime+tryToEatNeighborsTime+doAllRulesTime+activateAllTime+updatePositionsTime+relocationsTime+photoOomphTime;
-		UnityEngine.Debug.Log(sumTimes/(1000*tickCounter)+" ms:"+makeNeighborsTime/sumTimes+" "+tryToEatNeighborsTime/sumTimes+" "+doAllRulesTime/sumTimes+" "+activateAllTime/sumTimes+" "+updatePositionsTime/sumTimes+" "+relocationsTime/sumTimes+" "+photoOomphTime/sumTimes);
+		if (UnityEngine.Debug.isDebugBuild) UnityEngine.Debug.Log(sumTimes/(1000*tickCounter)+" ms:"+makeNeighborsTime/sumTimes+" "+tryToEatNeighborsTime/sumTimes+" "+doAllRulesTime/sumTimes+" "+activateAllTime/sumTimes+" "+updatePositionsTime/sumTimes+" "+relocationsTime/sumTimes+" "+photoOomphTime/sumTimes);
 	}
 		
 	public static int tickCounter { get; private set; }

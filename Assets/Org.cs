@@ -70,8 +70,8 @@ namespace Bubbles{
 			for (int i=0; i< master.members.Count; i++) master.members[i].burden += orgAvailableBurden* master.members[i].burden/masterBurden;
 
 		}
-
-		//undoes stripAvailableBurden, save that if burden within the org had been redistributed, this restores each node's naiveBurden.
+		//repatriates this orgs naiveBurden from the master
+		//undoes stripAvailableBurden, save that if burden within this org had been redistributed within the org at the time it was stripped, this restores each node's naiveBurden to it.
 		//when this is called, all nodes must be at minburden
 		private void restoreNaiveBurden(){
 
@@ -80,7 +80,7 @@ namespace Bubbles{
 			
 			float orgRestoredBurden = 0;
 			foreach (var member in members) {
-				Debug.Assert (member.burden == member.minBurden);
+				if (Debug.isDebugBuild) Debug.Assert (member.burden == member.minBurden);
 				orgRestoredBurden += member.naiveBurden - member.minBurden;
 				member.burden = member.naiveBurden;
 			}
@@ -92,10 +92,10 @@ namespace Bubbles{
 			float sumExcessBurden = 0; foreach (var x in excessMasterBurden)
 				sumExcessBurden += x;
 
-			Debug.Assert (sumExcessBurden >= orgRestoredBurden);
-
+			if (Debug.isDebugBuild) Debug.Assert (sumExcessBurden > orgRestoredBurden - 0.00001f);
+				
 			for (int i = 0; i < master.members.Count; i++) {
-				master.members [i].burden -= orgRestoredBurden * excessMasterBurden [i] / sumExcessBurden;
+				master.members [i].burden =  Mathf.Max(master.members[i].naiveBurden, master.members[i].burden - orgRestoredBurden * (excessMasterBurden [i] / sumExcessBurden));
 			}
 
 
@@ -243,7 +243,7 @@ namespace Bubbles{
 			//take out all muscles attacking me
 			List<Muscle> attackers = new List<Muscle>(enemyMuscles);
 			foreach (var muscl in attackers) muscl.cut ();
-			Debug.Assert (enemyMuscles.Count == 0);
+			if (Debug.isDebugBuild) Debug.Assert (enemyMuscles.Count == 0);
 
 			//take out all of my external muscles
 			foreach (var memb in members) { memb.cutExternalMuscles();}
@@ -291,7 +291,7 @@ namespace Bubbles{
 		public void makeMember(Node node){ //ancien addTruster
 			if (members.Contains(node)) return;
 			if (node.org.members.Count > 1) {
-				Debug.LogError ("Inconsistent organisms!!");
+				if (Debug.isDebugBuild) Debug.LogError ("Inconsistent organisms!!");
 				node.isolate();
 			}
 			node.org = this;

@@ -262,7 +262,7 @@ namespace Bubbles{
 	//		//compare pre to post
 	//		if (pre != Engine.nodes[sourceId].getState("forward0Reverse1")) togglePushPull(Engine.nodes[sourceId]); //so has immediate effect
 	//
-	//		//if (UnityEngine.Debug.isDebugBuild) bubbleServer.debugDisplay ("fr "+forward0Reverse1+" "+Engine.nodes[sourceId].getState ("forward0Reverse1"));
+	//		//if (Debug.isDebugBuild) bubbleServer.debugDisplay ("fr "+forward0Reverse1+" "+Engine.nodes[sourceId].getState ("forward0Reverse1"));
 	//	}
 
 		//changes the metabolic rate (power) of internal muscles of the given mount
@@ -314,7 +314,7 @@ namespace Bubbles{
 		public static bool mountable(int nodeId ){
 			if (nodeId < 0 || nodeId >= Engine.nodes.Count) return false;
 			Node node = Engine.nodes [nodeId];
-//			Debug.Log (nodeId + " " + node.testDna (CScommon.playerBit) + " " + node.testDna (CScommon.playerPlayingBit) +
+//			if (Debug.isDebugBuild) Debug.Log (nodeId + " " + node.testDna (CScommon.playerBit) + " " + node.testDna (CScommon.playerPlayingBit) +
 //				" " + (node == node.org.head) + " " + node.teamNumber + " " + node.testDna (CScommon.goalBit));
 			if (!node.testDna(CScommon.playerBit)) return false;
 			if (node.testDna(CScommon.playerPlayingBit)) return false; //already mounted
@@ -342,7 +342,7 @@ namespace Bubbles{
 
 		static void makeTeamLists(){
 			
-			//Debug.Log ("makeTeamLists " + teams.Length);
+			//if (Debug.isDebugBuild) Debug.Log ("makeTeamLists " + teams.Length);
 
 			for (int i = 0; i < teams.Length; i++) {
 				teams [i] = new List<Node> ();
@@ -352,7 +352,7 @@ namespace Bubbles{
 			for (int id=0; id < Engine.nodes.Count; id++) {
 				//i == Engine.nodes [i].id;
 				if (mountable(id)) { // mountables don't have teamNumber 0, so teams[0].Count is always 0 ,as is unmountedTeams[0].Count.
-					//Debug.Log ("node "+id+" team " + Engine.nodes[id].teamNumber + ": " + teams [Engine.nodes[id].teamNumber].Count);
+					//if (Debug.isDebugBuild) Debug.Log ("node "+id+" team " + Engine.nodes[id].teamNumber + ": " + teams [Engine.nodes[id].teamNumber].Count);
 					teams [Engine.nodes[id].teamNumber].Add (Engine.nodes[id]); 
 					unmountedTeams[Engine.nodes[id].teamNumber].Add (id);
 				}
@@ -475,21 +475,21 @@ namespace Bubbles{
 				head = spawnRandomInchworm (siz, true, true, clan);
 				if (hitched) head.org.makeHitched ();
 				players.Add(setUpPlayer(head,  teamNumber, "", goal, internalSpeed));
-				Debug.Log ("spawnRandomTeam inch " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
+				if (Debug.isDebugBuild) Debug.Log ("spawnRandomTeam inch " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
 			}
 
 			for (int i=0; i<tricycles; i++){
 				head = spawnRandomTricycle (siz, true, true, clan);
 				if (hitched) head.org.makeHitched();
 				players.Add(setUpPlayer(head,  teamNumber, "", goal, internalSpeed));
-				Debug.Log ("spawnRandomTeam tri " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
+				if (Debug.isDebugBuild) Debug.Log ("spawnRandomTeam tri " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
 			}
 
 			for (int i=0; i<tapeworms; i++){
 				head = spawnRandomTapeworm (siz, true, true, 5, clan);
 				if (hitched) head.org.makeHitched ();
 				players.Add(setUpPlayer(head,teamNumber, "", goal, internalSpeed));
-				Debug.Log ("spawnRandomTeam tape " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
+				if (Debug.isDebugBuild) Debug.Log ("spawnRandomTeam tape " + hitched + " " + head.id + " " + (head.org.hasHitch ()?head.org.hitch.id:-2222));
 
 			}
 

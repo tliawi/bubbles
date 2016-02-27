@@ -22,7 +22,7 @@ namespace Delaunay
 
 		//jf is never called
 		public void Dispose ()
-		{	Bubbles.bubbleServer.debugDisplay("ERROR, SiteList.Dispose!!");
+		{	if (Debug.isDebugBuild)Debug.Log("ERROR, SiteList.Dispose!!");//jf
 			if (_sites != null) {
 				for (int i = 0; i < _sites.Count; i++) {
 					Site site = _sites [i];
