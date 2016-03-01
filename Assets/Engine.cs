@@ -130,7 +130,8 @@ public class Engine {
 	}
 
 	private static void doScheduledRelocations(){
-		foreach (var org in scheduledOrgRelocations) org.randomRelocate();
+		if (Bots.gameName == "race") foreach (var org in scheduledOrgRelocations) org.raceRelocate();
+		else foreach (var org in scheduledOrgRelocations) org.randomRelocate();
 		scheduledOrgRelocations.Clear ();
 	}
 

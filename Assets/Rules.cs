@@ -866,10 +866,10 @@ namespace Bubbles{
 			override public void accion(){
 
 				if (source.oomph > source.maxOomph * 0.99f) {
-					bubbleServer.scoreTeamWin (source.id);
+					Score.scoreTeamWin (source.teamNumber);
 					bubbleServer.newRound = true;
 				} else if (source.oomph < source.maxOomph * 0.01f){
-					bubbleServer.scoreTeamLoss(source.id);
+					Score.scoreTeamLoss(source.teamNumber);
 					bubbleServer.newRound = true;
 				} else {
 					helpTheNeedy ();
@@ -895,7 +895,7 @@ namespace Bubbles{
 					Node nbr = source.site.neighbors (j);
 					int hisTeamNumber = nbr.teamNumber;
 					if (hisTeamNumber !=0 && hisTeamNumber != myTeamNumber && source.overlaps(nbr)) {
-						bubbleServer.scoreTeamWin (nbr.id);
+						Score.scoreTeamWin (hisTeamNumber);
 						bubbleServer.newRound = true;
 					}
 				}
@@ -944,8 +944,11 @@ namespace Bubbles{
 				if (master.head.overlaps (goal.head)) {
 					List<Node> prisoners = master.prisoners ();
 					master.liberatePrisoners ();
-					foreach (var prisoner in prisoners)
+					foreach (var prisoner in prisoners) {
 						goal.takePrisoner (prisoner.org);
+						Score.scoreBlessing (master.head.id, prisoner.naiveBurden);
+					}
+					
 				}
 			}
 		}

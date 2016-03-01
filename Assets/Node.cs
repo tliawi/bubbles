@@ -301,13 +301,15 @@ namespace Bubbles{
 				float thisOrgOomph = this.org.oomph();
 
 				float thisSends = Mathf.Min(targetOrgCanEat, thisOrgOomph/2); //donate half of what you've got
+				if (thisSends < minPosValue) return; //guard against potential zerodivide below
+
 				float targetReceives = thisSends * eff;
 
 				org.decreaseOomph (thisSends / thisOrgOomph);//factor of 0 means no change, factor of 1 means oomph is zeroed.
 
 				target.org.decreaseHunger (targetReceives / targetOrgCanEat);//factor of zero means no change, factor of 1 means hunger is sated, i.e. becomes zero, every member at their maxOomph
 
-				bubbleServer.scoreBlessing (this.id,targetReceives); //I only get credit for what they receive
+				if (CScommon.testBit(target.dna,CScommon.goalBit) && target.teamNumber == this.teamNumber) Score.scoreBlessing (this.id,targetReceives); //I only get credit for what they receive
 			}
 		}
 
@@ -497,7 +499,7 @@ namespace Bubbles{
 
 		private List<int> registeredOrgNodes(){
 			List<int> registeredIds = new List<int>();
-			foreach (var node in org.members) if (bubbleServer.registered(node.id)) registeredIds.Add(node.id);
+			foreach (var node in org.members) if (Score.registered(node.id)) registeredIds.Add(node.id);
 			return registeredIds;
 		}
 
@@ -536,7 +538,7 @@ namespace Bubbles{
 								Engine.scheduledOrgRelocations.Add (node.org);
 						}
 
-						if (org.bothRegistered(node.org)) org.scoresCoupAgainst(node.org); //keep score
+						if (org.bothRegistered(node.org)) Score.scoreCoup(this.id); 
 
 					}
 				}

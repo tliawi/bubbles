@@ -161,17 +161,19 @@ namespace Bubbles{
 		}
 
 		public bool bothRegistered(Org loser){
-			return bubbleServer.registered (head.id) && bubbleServer.registered (loser.head.id);
+			return Score.registered (head.id) && Score.registered (loser.head.id);
 		}
 
 		public void scheduleRelocation(Org loser) {
-			if (bubbleServer.registered(head.id) && bubbleServer.registered(loser.head.id))
+			if (Score.registered(head.id) && Score.registered(loser.head.id))
 				Engine.scheduledOrgRelocations.Add(loser);
 		}
-			
-		public void scoresCoupAgainst(Org loser){
-			bubbleServer.scoreWinnerCoup(head.id);
-			bubbleServer.scoreLoserCoup(loser.head.id);
+
+		public void raceRelocate(){ //stage right
+			float delta = Bots.worldRadius - head.x;
+			foreach (var memb in members) { 
+				memb.nx = memb.x += delta; 
+			}
 		}
 
 		//preserves form and orientation of the organism. Called when x==nx, y==ny, and preserves that.
