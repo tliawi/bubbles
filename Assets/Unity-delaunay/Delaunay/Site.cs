@@ -119,7 +119,7 @@ namespace Delaunay
 		//So if I kept a reference in static _pool, that would make a memory leak, because I no longer pop them out of there, instead recycling node.site. 
 		//So I never want anything in this Site._pool. This is the only way stuff gets in there.
 		public void Dispose ()
-		{	Bubbles.bubbleServer.debugDisplay("ERROR: Site.Dispose!");
+		{	if(Debug.isDebugBuild) Debug.Log("ERROR: Site.Dispose!"); //jf
 //			_coord = null;
 			Clear ();
 			_pool.Push (this);

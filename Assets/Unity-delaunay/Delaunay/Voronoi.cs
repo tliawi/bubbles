@@ -45,7 +45,7 @@ namespace Delaunay
 		//I think the coder of Voronoi made a mistake to abuse iDispose and dispose to frustrate the gc (keep pools), it's the exact opposite of their normal usage. 
 		//It would have been better to name them "recycle" or something.
 		public void Dispose ()
-		{   Bubbles.bubbleServer.debugDisplay("ERROR, Voronoi.Dispose!!");
+		{   if (Debug.isDebugBuild) Debug.Log("ERROR, Voronoi.Dispose!!"); //jf
 			int i, n;
 			if (_sites != null) {
 				_sites.Dispose ();

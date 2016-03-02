@@ -12,33 +12,34 @@ namespace Bubbles{
 		public Node source {get; private set;}
 		public Node target {get; private set;}
 		public float boneLength { get; private set; }
-		public Bone dual;
 
-		private Bone (Node source0, Node target0){
+		public Bone (Node source0, Node target0){
 			source = source0;
 			target = target0;
+			boneLength = source.distance (target);
 		}
 
-		public struct TwoBones { 
-			public Bone a;
-			public Bone b; 
+		public Node otherEnd(Node oneEnd){
+			if (oneEnd == source ) return target;
+			if (oneEnd == target) return source;
+			return null;
 		}
 
-		public static TwoBones dualBones(Node source0, Node target0){
-			TwoBones duals = new TwoBones ();
-			duals.a = new Bone (source0, target0);
-			duals.b = new Bone (target0, source0);
-			duals.b.boneLength = duals.a.boneLength = source0.distance (target0);
-			duals.a.dual = duals.b;
-			duals.b.dual = duals.a;
-			return duals;
+		public bool isExternal(){
+			return target.org != source.org;
 		}
 
-		//only for bone links. Elastically pushes or pulls its source/target pair, to maintain the distance between them at boneLength
+		public bool isInternal(){
+			return target.org == source.org;
+		}
+
+			
+		// Elastically pushes or pulls its source/target pair, to maintain the distance between them at boneLength.
 		public void action()
-		{	float dx = target.x - source.x;
+		{	
+			float dx = target.x - source.x;
 			float dy = target.y - source.y;
-			float dislocation, effect, dist;
+			float dislocation, effect, dist, sourceEffect, targetEffect;
 
 			if (dx == 0 && dy == 0) { //bone has no notion of what direction to push
 				float v = Random.Range (-Mathf.PI, Mathf.PI);
@@ -59,15 +60,16 @@ namespace Bubbles{
 			//it is structural, i.e. bones between large masses are, in muscle terms, much stronger than
 			//bones between small burdens.
 
-			effect *= target.burden /(source.burden + target.burden);
+			sourceEffect = effect * target.burden / (source.burden + target.burden);
+			targetEffect = effect * source.burden / (source.burden + target.burden);
 
-			source.nx -= effect*dx/dist;
-			source.ny -= effect*dy/dist;
+			source.nx -= sourceEffect * dx/dist;
+			source.ny -= sourceEffect * dy/dist;
 
 		
-			//target will be moved when target processes this bone's dual
+			target.nx += targetEffect * dx/dist;
+			target.ny += targetEffect * dy/dist;
 
 		}
-
 	}
 }

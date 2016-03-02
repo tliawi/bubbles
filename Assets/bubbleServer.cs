@@ -15,29 +15,15 @@ namespace Bubbles{
 		public static bubbleServer obj;
 		public static bool newRound = false;
 
-		private static GameObject dbgdsply;
-		private static Text dbgdsplyText;
-		private static List<string> debugDisplayList = new List<string>();
+		public static bool plainMuscles = false;
+		public static bool sendLinks = true;
 
-		//unity doesn't like dbgdsply.activeSelf being called outside the main thread, in particular
-		//when I use a timer to mount an org automatically some time after a connection--apparently that's not in the same thread.
-		public static void debugDisplay(string s) {
-
-			if (debugDisplayList.Count>8) debugDisplayList.RemoveAt(0);
-			debugDisplayList.Add (s);
-
-			string ss = "";
-			for (int i=0;i<debugDisplayList.Count; i++) ss += debugDisplayList[i] + "\n";
-
-			if (dbgdsply.activeSelf)  dbgdsplyText.text = ss;
-
-			if (s != "") Debug.Log(s);
-		}
+		public static List<int> scheduledMounts = new List<int>();
 
 		public static bool checkVals(float x, float y, string msg){
 			bool b = false;
-			if (float.IsNaN(x) || float.IsNaN (y)) { if (UnityEngine.Debug.isDebugBuild) debugDisplay ("XXX Nan: "+msg); b = true;}
-			if (float.IsInfinity(x) || float.IsInfinity(y)) { if (UnityEngine.Debug.isDebugBuild) debugDisplay ("XXX Inf: "+msg); b = true;}
+			if (float.IsNaN(x) || float.IsNaN (y)) { if (Debug.isDebugBuild) Debug.Log ("XXX Nan: "+msg); b = true;}
+			if (float.IsInfinity(x) || float.IsInfinity(y)) { if (Debug.isDebugBuild) Debug.Log ("XXX Inf: "+msg); b = true;}
 			return b;
 		}
 
@@ -49,12 +35,10 @@ namespace Bubbles{
 
 		private  bool paused = true;
 
-		public static bool constantLinkWidth = false;
-
 		private  int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
 		private  float vegStartFuel, nonvegStartFuel;
 
-		private static Dictionary<int,bool> scheduledScores = new Dictionary<int,bool>();
+		public static Dictionary<int,bool> scheduledScores = new Dictionary<int,bool>();
 
 		private  void resetDefaultScales(int newGame){
 			switch (newGame) { 
@@ -99,13 +83,13 @@ namespace Bubbles{
 				Bots.popcorn = 250;
 				break;
 			case 6: //giveAway
-				normScaleI = 9;
-				abnormScaleI = 2;
-				photoYieldI = 2;
-				baseMetabolicRateI = 0;
-				worldRadiusI = 0;
+				normScaleI = 7;
+				abnormScaleI = -1;
+				photoYieldI = 3;
+				baseMetabolicRateI = 4;
+				worldRadiusI = 1;
 				vegStartFuel = 1.0f;
-				nonvegStartFuel = 0.33f;
+				nonvegStartFuel = 0.5f;
 				Bots.popcorn = 160;
 				break;
 			case 7: //tryEat
@@ -173,44 +157,11 @@ namespace Bubbles{
 		private Text reminderText;
 		private static System.Diagnostics.Stopwatch gameStopwatch = new System.Diagnostics.Stopwatch();
 
-		public class PlayerInfo {
-			public int connectionId;
-			public string name;
-			public CScommon.ScoreStruct data;
 
-			public PlayerInfo(){
-				connectionId = -1;
-				name = "";
-				data.nodeId = -1;
-			}
-				
-			public void clearScore(){ data.plus = 0; data.minus=0; data.performance = 0; data.neither0Winner1Loser2 = 0;
-				data.gameMilliseconds = gameStopwatch.ElapsedMilliseconds; }
-		}
-
-		private Dictionary<int, PlayerInfo> connectionIdPlayerInfo = new Dictionary<int, PlayerInfo>();
-		// replaces private Dictionary<int,int> connectionIdNodeId = new Dictionary<int,int>();
-		// and private Dictionary<int,string> connectionIdName = new Dictionary<int,string>();
-
-
+		private Dictionary<int, Score.PlayerInfo> connectionIdPlayerInfo = new Dictionary<int, Score.PlayerInfo>();
 		//NOTE: some players (NPC's like snarks) may be in nodeIdPlayerInfo but they are not "connected" and so are not in connectionIdPlayerInfo.
 		//Some players (connected spectators) may be in connectionIdPlayerInfo but they are not associated with any node, so are not in nodeIdPlayerInfo.
-		private static Dictionary<int, PlayerInfo> nodeIdPlayerInfo = new Dictionary<int,PlayerInfo>();
 
-		public static bool registered(int nodeId) {return nodeIdPlayerInfo.ContainsKey (nodeId);}
-
-
-	//	public void playerWinLose(int winnerId, int loserId){
-	//
-	//		if (nodeIdPlayerInfo.ContainsKey (winnerId) && nodeIdPlayerInfo.ContainsKey(loserId)) { //don't track interactions between non-registrants
-	//
-	//			nodeIdPlayerInfo[winnerId].scorePlus += 1;
-	//			nodeIdPlayerInfo[loserId].scoreMinus += 1;
-	//
-	//			send2ScoresToAll(winnerId, loserId);
-	//
-	//		}
-	//	}
 
 	//	Dictionary<int,System.Diagnostics.Stopwatch> stopwatches = new Dictionary<int,System.Diagnostics.Stopwatch>();
 		//holds one stopwatch for every nodeId for which you want to display performance.
@@ -219,72 +170,6 @@ namespace Bubbles{
 	//		long delta = stopwatches[ss.nodeId].ElapsedMilliseconds; //the amount of time, in milliseconds, since you last received a scoreMsg for this player
 	//		return ss.performance*Mathf.Pow(2,-delta/CScommon.performanceHalfLifeMilliseconds);
 	//	}
-
-		public static int teamNumber(int nodeId){
-			if (nodeId >= 0) return Engine.nodes [nodeId].teamNumber; //may be 0 indicating no team
-			else return 0; //no team
-		}
-
-		public static void score(int nodeId, byte neither0Winner1Loser2){
-			if (nodeIdPlayerInfo.ContainsKey(nodeId)){
-				if (neither0Winner1Loser2==1) nodeIdPlayerInfo[nodeId].data.plus += 1;
-				if (neither0Winner1Loser2==2) nodeIdPlayerInfo[nodeId].data.minus += 1;
-				nodeIdPlayerInfo[nodeId].data.neither0Winner1Loser2 = neither0Winner1Loser2;
-
-				int change = neither0Winner1Loser2==0?0:neither0Winner1Loser2==1?1:-1;
-				long nowMs = gameStopwatch.ElapsedMilliseconds;
-				if (Bots.countCoup){
-					long deltaMs = nowMs - nodeIdPlayerInfo[nodeId].data.gameMilliseconds;
-					nodeIdPlayerInfo[nodeId].data.performance *= Mathf.Pow(2,-deltaMs/CScommon.performanceHalfLifeMilliseconds);
-					nodeIdPlayerInfo[nodeId].data.performance += change;
-				}
-				nodeIdPlayerInfo[nodeId].data.gameMilliseconds = nowMs;
-
-				scheduledScores[nodeId] = true;
-			}
-		}
-
-		public static void scoreWinnerCoup(int nodeId){ if (Bots.countCoup) score(nodeId,1);}
-		public static void scoreLoserCoup(int nodeId){ if (Bots.countCoup) score(nodeId,2);}
-
-		public static void scoreTeamWin(int winnerId){
-			
-			int winningTeam = teamNumber (winnerId);
-			foreach (var nodeId in nodeIdPlayerInfo.Keys) {
-				if (teamNumber (nodeId) == winningTeam)
-					score (nodeId, 1);
-				else if (teamNumber (nodeId) != 0)
-					score (nodeId, 2);
-			}
-
-		}
-
-		public static void scoreTeamLoss(int loserId){
-
-			int losingTeam = teamNumber (loserId);
-			foreach (var nodeId in nodeIdPlayerInfo.Keys) {
-				if (teamNumber (nodeId) == losingTeam)
-					score (nodeId, 2);
-				else if (teamNumber (nodeId) != 0)
-					score (nodeId, 1);
-			}
-
-		}
-
-		public static void scoreBlessing(int nodeId, float blessing){
-			if (nodeIdPlayerInfo.ContainsKey(nodeId)) nodeIdPlayerInfo [nodeId].data.performance += blessing;
-		}
-
-			
-		public static void registerNPC(int nodeId, string name){
-			
-			if (newRound) return; 
-
-			nodeIdPlayerInfo[nodeId] = new PlayerInfo();
-			nodeIdPlayerInfo[nodeId].data.nodeId = nodeId;
-			nodeIdPlayerInfo[nodeId].name = name;
-			//Debug.Log ("registerNPC " + nodeId + " " + name + " " + " is " + (nodeIdPlayerInfo.Count - 1) + "th.");
-		}
 			
 		
 		private float zoom = 1;
@@ -319,8 +204,6 @@ namespace Bubbles{
 
 			Grid.initialize();
 			reminderText = GameObject.FindWithTag ("betweenGames").GetComponent<Text>();
-			dbgdsply = GameObject.FindWithTag("scrollView");
-			dbgdsplyText = GameObject.Find ("Canvas/Scroll View/Viewport/myScrollContent").GetComponent<Text> ();
 			displayGrid = true;
 
 			timers = new Dictionary<int,System.Timers.Timer>();
@@ -351,13 +234,14 @@ namespace Bubbles{
 			
 			paused = true;
 			gameStopwatch.Reset();
-			dbgdsply.SetActive(false);
 
 			referenceInitMsg = null;
 			referenceLinkMsg = null;
+			newReferenceLinkMsg = null;
 	//		referenceLinkJK = new JKStruct[0];
 
 			scheduledScores.Clear();
+			scheduledMounts.Clear();
 
 			Grid.deallocate ();
 			Engine.deallocate(); //kills all nodes, with their rules, with their muscles, so whole bots setup is destroyed
@@ -370,7 +254,7 @@ namespace Bubbles{
 				}
 
 				//remove NPC and PC registrations
-				nodeIdPlayerInfo.Clear ();
+				Score.nodeIdPlayerInfo.Clear ();
 			}
 
 			GC.Collect(); //while I'm at it...
@@ -387,18 +271,27 @@ namespace Bubbles{
 			Grid.initialize ();
 			Grid.display(); //since start paused, want to be able to see the paused initial game state.
 			Engine.initialize();
+
+			if (newRound) { 
+				remountEverybody ();
+				Score.newRound ();
+			} else {
+				Score.newGame ();
+			}
 			
 			referenceInitMsg = fillInInitMsg(allocateInitMsg(Engine.nodes.Count),0);
 
-			inflatedLinkCount = (countLinks ()*3)/2; //in case of extra links caused by restructuring orgs
+			inflatedLinkCount = countLinks (); //*3)/2; //in case of extra links caused by restructuring orgs
 
-			referenceLinkMsg = new CScommon.LinksMsg();
-			referenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];
+			if (sendLinks) {
+				referenceLinkMsg = new CScommon.LinksMsg ();
+				referenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];
 
-			newReferenceLinkMsg = new CScommon.LinksMsg();
-			newReferenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];
+				newReferenceLinkMsg = new CScommon.LinksMsg ();
+				newReferenceLinkMsg.links = new CScommon.LinkInfo[inflatedLinkCount];
 
-			fillReferenceLinkMsg(referenceLinkMsg);
+				fillReferenceLinkMsg (referenceLinkMsg);
+			}
 
 			foreach (var connectionId in connectionIdPlayerInfo.Keys) sendGameSize(connectionId); //and so do any clients who are still connected
 
@@ -423,7 +316,7 @@ namespace Bubbles{
 
 
 		string reminder(){
-			string s = Bots.gameName+": arrows Zz s d l g 1 2 3 4 +- 0";
+			string s = Bots.gameName+": arrows Zz s kl g 1 2 3 4 +- 0";
 			foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.data.nodeId;
 			s += "  "+(paused?"(PAUSED)":"")+scaleString();
 			return s;
@@ -438,7 +331,7 @@ namespace Bubbles{
 		void Update(){
 
 			if (newRound) {
-				restartGame (-1); //relaunches game while newRound is true, preserving nodeIdPlayerInfo and suppressing registerNPC
+				restartGame (-1); //relaunches game while newRound is true, preserving nodeIdPlayerInfo, suppressing registerNPC, remounting existing users
 				newRound = false;
 			}
 
@@ -451,19 +344,19 @@ namespace Bubbles{
 
 			if (Input.GetKeyDown(KeyCode.T)){ //testing sandbox
 				long lng;
-				if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(Node.setBit(1023L,0,0,1)));
-					if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(Node.setBit(1023L,0,0,0)));
+				if (Debug.isDebugBuild) Debug.Log(CScommon.longToString(Node.setBit(1023L,0,0,1)));
+				if (Debug.isDebugBuild) Debug.Log(CScommon.longToString(Node.setBit(1023L,0,0,0)));
 				lng = Node.setBit(1023L,3,2,0);
-				if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+				if (Debug.isDebugBuild) Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
 				lng = Node.setBit(1023L,3,2,1);
-				if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+				if (Debug.isDebugBuild) Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
 				lng = Node.setBit(1023L,3,2,2);
-				if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+				if (Debug.isDebugBuild) Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
 				lng = Node.setBit(1023L,3,2,3);
-				if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
+				if (Debug.isDebugBuild) Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,3,2));
 
 				lng = Node.setBit(1023L,14,4,255*2);
-				if (Debug.isDebugBuild) debugDisplay(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,14,4));
+				if (Debug.isDebugBuild) Debug.Log(CScommon.longToString(lng) + " " + CScommon.dnaNumber(lng,14,4));
 
 			}
 
@@ -475,17 +368,16 @@ namespace Bubbles{
 			}
 
 			if (Input.GetKeyDown(KeyCode.L)){
-				constantLinkWidth = !constantLinkWidth;
+				plainMuscles = !plainMuscles;
+			}
+
+			if (Input.GetKeyDown(KeyCode.K)){
+				sendLinks = !sendLinks;
 			}
 				
 			if (Input.GetKeyDown (KeyCode.G)) { 
 				displayGrid = !displayGrid; 
 			} 
-
-			if (Input.GetKeyDown (KeyCode.D)){
-				dbgdsply.SetActive (!dbgdsply.activeSelf);
-				if (dbgdsply.activeSelf) if (Debug.isDebugBuild) debugDisplay(""); //to render annotations made while it was inactive
-			}
 
 			if (Input.GetKey(KeyCode.Z)){
 				if (Input.GetKey(KeyCode.LeftShift)) zoomCameraIn ();
@@ -551,7 +443,13 @@ namespace Bubbles{
 				//and discussion at http://forum.unity3d.com/threads/the-truth-about-fixedupdate.231637/
 				if (oldTickCounter != Engine.tickCounter) {
 					oldTickCounter = Engine.tickCounter;
+
 					sendUpdateMsg();
+					checkForInitRevisions();
+					if (sendLinks) checkForLinkRevisions();
+					sendScheduledMounts ();
+					sendScheduledScores ();
+
 				}
 			}
 		}
@@ -578,7 +476,7 @@ namespace Bubbles{
 	//		}
 	//		else
 	//		{
-	//			Debug.LogError ("Create match failed");
+	//			if (Debug.isDebugBuild) Debug.LogError ("Create match failed");
 	//		}
 	//	}
 
@@ -608,10 +506,10 @@ namespace Bubbles{
 			NetworkServer.RegisterHandler (CScommon.blessMsgType, onBlessMsg);
 
 		}
-		
+
 
 		void OnConnectedS(NetworkMessage netMsg) 
-		{	connectionIdPlayerInfo[netMsg.conn.connectionId] = new PlayerInfo();
+		{	connectionIdPlayerInfo[netMsg.conn.connectionId] = new Score.PlayerInfo();
 			connectionIdPlayerInfo[netMsg.conn.connectionId].connectionId = netMsg.conn.connectionId;
 			sendGameSize(netMsg.conn.connectionId);
 		}
@@ -620,11 +518,11 @@ namespace Bubbles{
 
 		void checkSendToClient(int connectionId, short msgType, MessageBase msg){
 			if (NetworkServer.connections[connectionId].connectionId != connectionId) { 
-				if (Debug.isDebugBuild) debugDisplay("checkSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId); 
+				if (Debug.isDebugBuild) Debug.Log("checkSend CRAZY "+connectionId+" "+NetworkServer.connections[connectionId].connectionId); 
 				return;
 			}
 			if (NetworkServer.connections.Count <= connectionId || NetworkServer.connections[connectionId] == null ){
-				if (Debug.isDebugBuild) debugDisplay("checkSend WARNING: client disconnected "+connectionId);
+				if (Debug.isDebugBuild) Debug.Log("checkSend WARNING: client disconnected "+connectionId);
 				return;
 			}
 			NetworkServer.SendToClient(connectionId, msgType, msg);
@@ -636,15 +534,21 @@ namespace Bubbles{
 			gameSizeMsg.numNodes = Engine.nodes.Count;
 			gameSizeMsg.numLinks = inflatedLinkCount; 
 			gameSizeMsg.worldRadius = Bots.worldRadius;
+
+			gameSizeMsg.gameName = Bots.gameName;
+			gameSizeMsg.gameNumber = currentGame;
+			gameSizeMsg.gameStart = !newRound;
+			gameSizeMsg.teams = Bots.teamDefs;
+
 			checkSendToClient(connectionId,CScommon.gameSizeMsgType,gameSizeMsg);
-			if (Debug.isDebugBuild) debugDisplay("gameSize sent to conId "+connectionId);
+			if (Debug.isDebugBuild) Debug.Log("gameSize to conId "+connectionId);
 		}
 
 		// // // handlers
 
 		public void OnDisconnectedS(NetworkMessage netMsg)
 		{	int cId = netMsg.conn.connectionId;
-			if (Debug.isDebugBuild) debugDisplay("Disconnection id:"+cId);
+			if (Debug.isDebugBuild) Debug.Log("Disconnection id:"+cId);
 
 			netMsg.conn.FlushChannels(); //causes "attempt to send to not connected connection." but apparently that's normal
 			netMsg.conn.Dispose(); //get rid of any existing buffers of stuff being sent? doesn't help
@@ -658,7 +562,7 @@ namespace Bubbles{
 			Bots.dismount(nodeId);
 
 			connectionIdPlayerInfo.Remove(cId);
-			nodeIdPlayerInfo.Remove (nodeId);
+			Score.nodeIdPlayerInfo.Remove (nodeId);
 			
 			send1or2NodeNamesToAll(nodeId, "");
 
@@ -707,7 +611,7 @@ namespace Bubbles{
 		private void onLookAtNode(NetworkMessage netMsg){
 			if (paused || connectionIdPlayerInfo[netMsg.conn.connectionId].data.nodeId <0) return;
 			CScommon.intMsg nixMsg = netMsg.ReadMessage<CScommon.intMsg>();
-			if (Debug.isDebugBuild) debugDisplay ("onLookAtNode unimplemented"+nixMsg.value );
+			if (Debug.isDebugBuild) Debug.Log ("onLookAtNode unimplemented"+nixMsg.value );
 		}
 
 		private void onRestartMsg(NetworkMessage netMsg){
@@ -768,22 +672,35 @@ namespace Bubbles{
 
 		private void scheduleRequestNodeId(int conId){
 			System.Timers.Timer aTimer = new System.Timers.Timer (500); //may replace an old one
-			aTimer.Elapsed += delegate { giveMount (conId); };
+			aTimer.Elapsed += delegate { scheduledMounts.Add(conId); };
 			aTimer.AutoReset = false; //one shot
 			aTimer.Enabled = true;
 			timers [conId] = aTimer;
 		}
 
-		public void giveMount(int conId){
+		public void sendScheduledMounts(){
 			CScommon.intMsg nixMsg = new CScommon.intMsg ();
-			nixMsg.value = Bots.idFromLargestTeam ();//after the timer fires, otherwise someone else could mount during the wait
 
-			Debug.Log("giveMount "+nixMsg.value+" mountable:"+ Bots.mountable(nixMsg.value));
+			foreach (int conId in scheduledMounts) {
+				
+				nixMsg.value = Bots.idFromLargestTeam ();//after the timer fires, otherwise someone else could mount during the wait
 
-			changeMounts(-1,nixMsg.value,conId); 
+				if (Debug.isDebugBuild)
+					Debug.Log ("giveMount " + nixMsg.value + " mountable:" + Bots.mountable (nixMsg.value));
 
-			checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
+				changeMounts (-1, nixMsg.value, conId); 
 
+				checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
+			}
+
+			scheduledMounts.Clear ();
+
+		}
+
+		private void remountEverybody(){
+			foreach (int conId in connectionIdPlayerInfo.Keys) {
+				Bots.mount (connectionIdPlayerInfo [conId].data.nodeId);
+			}
 		}
 
 		private void onRequestNodeId(NetworkMessage netMsg){
@@ -821,13 +738,13 @@ namespace Bubbles{
 			connectionIdPlayerInfo[conId].clearScore();
 
 			if (oldNodeId >= 0) {
-				nodeIdPlayerInfo.Remove (oldNodeId);
-				if (!Bots.dismount(oldNodeId)) Debug.Log("Error, onRequestNodeId oldNodeId not mounted");
+				Score.nodeIdPlayerInfo.Remove (oldNodeId);
+				if (!Bots.dismount(oldNodeId)) if (Debug.isDebugBuild) Debug.Log("Error, onRequestNodeId oldNodeId not mounted");
 			}
 
 			if (newNodeId >= 0) {
-				nodeIdPlayerInfo[newNodeId] = connectionIdPlayerInfo[conId]; //adopt name and score
-				if (!Bots.mount (newNodeId)) Debug.Log("Error, failed attempt to mount unmountable node.");
+				Score.nodeIdPlayerInfo[newNodeId] = connectionIdPlayerInfo[conId]; //adopt name and score
+				if (!Bots.mount (newNodeId)) if (Debug.isDebugBuild) Debug.Log("Error, failed attempt to mount unmountable node.");
 			}
 
 			//case where both == -1 not treated, see Assertion above
@@ -881,11 +798,11 @@ namespace Bubbles{
 
 		private void sendWorldToClient(int connectionId){
 
-			if (Debug.isDebugBuild) debugDisplay("Sending world to "+connectionIdPlayerInfo[connectionId].name);
+			if (Debug.isDebugBuild) Debug.Log("Sending world to "+connectionIdPlayerInfo[connectionId].name);
 
 			sendInitToClient(connectionId);
 			sendUpdateToClient(connectionId);
-			sendLinksToClient(connectionId);
+			if (sendLinks) sendLinksToClient(connectionId);
 			sendAllNodeNamesToClient(connectionId);
 			sendAllScoresToClient(connectionId);
 			                                               
@@ -894,11 +811,11 @@ namespace Bubbles{
 
 		private void sendAllNodeNamesToClient(int connectionId){
 			CScommon.NodeNamesMsg nnmsg = new CScommon.NodeNamesMsg();
-			nnmsg.arry = new CScommon.NodeName[nodeIdPlayerInfo.Keys.Count];
+			nnmsg.arry = new CScommon.NodeName[Score.nodeIdPlayerInfo.Keys.Count];
 			int i = 0;
-			foreach (int nodeId in nodeIdPlayerInfo.Keys){
-				PlayerInfo pi = nodeIdPlayerInfo[nodeId];
-				if (pi.data.nodeId != nodeId) if (Debug.isDebugBuild) debugDisplay("error in sendAllNodeNames");
+			foreach (int nodeId in Score.nodeIdPlayerInfo.Keys){
+				Score.PlayerInfo pi = Score.nodeIdPlayerInfo[nodeId];
+				if (pi.data.nodeId != nodeId) if (Debug.isDebugBuild) Debug.Log("error in sendAllNodeNames");
 				nnmsg.arry[i].nodeId = pi.data.nodeId; // == nodeId
 				nnmsg.arry[i].name = pi.name;
 				i += 1;
@@ -907,30 +824,41 @@ namespace Bubbles{
 		}
 
 		private void sendAllScoresToClient(int connectionId){
-			CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
-			smsg.arry = new CScommon.ScoreStruct[nodeIdPlayerInfo.Count];
-			int i = 0;
-			foreach (int nodeId in nodeIdPlayerInfo.Keys){
-				smsg.arry[i] = nodeIdPlayerInfo[nodeId].data;
-				i++;
-			}
-			checkSendToClient(connectionId,CScommon.scoreMsgType,smsg);
-		}
 
+			if (Score.hasTeams) {
+				CScommon.TeamScoreMsg tsm = new CScommon.TeamScoreMsg ();
+				tsm.score = Score.teamScores [1];
+				tsm.teamNumber = 1;
+				checkSendToClient (connectionId, CScommon.teamScoreMsgType, tsm);
+
+				tsm.score = Score.teamScores [2];
+				tsm.teamNumber = 2;
+				checkSendToClient (connectionId, CScommon.teamScoreMsgType, tsm);
+			}
+			
+			foreach (int nodeId in Score.nodeIdPlayerInfo.Keys) {
+				int tn = Score.teamNumber (nodeId);
+				if (!Score.hasTeams || tn == 1 || tn == 2) {
+					checkSendToClient (connectionId, CScommon.performanceMsgType, Score.nodeIdPlayerInfo [nodeId].data);
+				}
+			}
+
+//			CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
+//			smsg.arry = new CScommon.ScoreStruct[nodeIdPlayerInfo.Count];
+//			int i = 0;
+//			foreach (int nodeId in Score.nodeIdPlayerInfo.Keys){
+//				smsg.arry[i] = Score.nodeIdPlayerInfo[nodeId].data;
+//				i++;
+//			}
+//			checkSendToClient(connectionId,CScommon.scoreMsgType,smsg);
+		}
 
 		private void sendScheduledScores(){
 			if (scheduledScores.Count == 0) return;
 
-			CScommon.ScoreMsg smsg = new CScommon.ScoreMsg();
-			smsg.arry = new CScommon.ScoreStruct[scheduledScores.Count];
-
-			int i=0;
 			foreach (var nodeId in scheduledScores.Keys) {
-				smsg.arry[i] = nodeIdPlayerInfo[nodeId].data;
-				i++;
+				NetworkServer.SendToAll (CScommon.performanceMsgType,Score.nodeIdPlayerInfo[nodeId].data);
 			}
-
-			NetworkServer.SendToAll (CScommon.scoreMsgType,smsg);
 
 			scheduledScores.Clear();
 		}	
@@ -1003,7 +931,7 @@ namespace Bubbles{
 			foreach (NetworkConnection conn in NetworkServer.connections){
 				s += conn == null?"null":conn.connectionId+", ";
 			}
-			if (!s.Equals (oldConnections)){ if (Debug.isDebugBuild) debugDisplay(oldConnections + " /"); if (Debug.isDebugBuild) debugDisplay(s); oldConnections = s;}
+			if (!s.Equals (oldConnections)){ if (Debug.isDebugBuild) Debug.Log(oldConnections + " /"); if (Debug.isDebugBuild) Debug.Log(s); oldConnections = s;}
 
 			while ( start+segmentLength <= Engine.nodes.Count ){
 				//reliable SendToAll fails with "ChannelBuffer buffer limit of 16 packets reached." if client is paused, like for dragging window around on screen
@@ -1017,12 +945,6 @@ namespace Bubbles{
 			}
 
 			//for big messages, use NetworkServer.SendByChannelToAll (CScommon.updateMsgType, updateMsg, bigMsgChannel);
-
-			checkForInitRevisions();
-
-			checkForLinkRevisions();
-
-			sendScheduledScores();
 
 		}
 
@@ -1063,13 +985,16 @@ namespace Bubbles{
 						lnkcntr += 1;
 					}
 				}
-				for (int j=0; j<Engine.nodes[i].bones.Count; j++) {
-					aReferenceLinkMsg.links[lnkcntr].linkId = lnkcntr;
-					aReferenceLinkMsg.links[lnkcntr].linkData.enabled = true;
-					aReferenceLinkMsg.links[lnkcntr].linkData.linkType = CScommon.LinkType.bone;
-					aReferenceLinkMsg.links[lnkcntr].linkData.sourceId = Engine.nodes[i].bones[j].source.id; // == i
-					aReferenceLinkMsg.links[lnkcntr].linkData.targetId =  Engine.nodes[i].bones[j].target.id;
-					lnkcntr += 1;
+				for (int j=0; j<Engine.nodes[i].bones.Count; j++) { 
+					Bone b = Engine.nodes [i].bones [j];
+					if (b.isInternal()) { //only send internal bones to client
+						aReferenceLinkMsg.links [lnkcntr].linkId = lnkcntr;
+						aReferenceLinkMsg.links [lnkcntr].linkData.enabled = true;
+						aReferenceLinkMsg.links [lnkcntr].linkData.linkType = CScommon.LinkType.bone;
+						aReferenceLinkMsg.links [lnkcntr].linkData.sourceId = Engine.nodes [i].bones [j].source.id; // == i
+						aReferenceLinkMsg.links [lnkcntr].linkData.targetId = Engine.nodes [i].bones [j].target.id;
+						lnkcntr += 1;
+					}
 				}
 			}
 			//lnkcntr better be <= inflatedLinkCount. I'm reusing these arrays, so make sure the remainder is blank
@@ -1157,7 +1082,7 @@ namespace Bubbles{
 			
 			if (nodeInfoList.Count == 0) return;
 
-			if (nodeInfoList.Count > 80) if (Debug.isDebugBuild) debugDisplay("Warning, initRevision may need segmentation: "+nodeInfoList.Count);
+			if (nodeInfoList.Count > 80) if (Debug.isDebugBuild) Debug.Log("Warning, initRevision may need segmentation: "+nodeInfoList.Count);
 
 			//copy list into an array. Messages can't contain complex classes or generic containers
 			//(see http://docs.unity3d.com/Manual/UNetMessages.html )

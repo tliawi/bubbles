@@ -611,6 +611,9 @@ namespace Bubbles{
 			}
 			
 			public override void accion() {
+
+				if (source.org.isStrippedServant ()) return; //can't use offload/restore burden when stripped
+					
 				int forward0Reverse1; //for now simplify things
 				int push1Pull2 = source.getState ("push1Pull2");
 
@@ -665,6 +668,9 @@ namespace Bubbles{
 
 			//someday add forward0Reverse1 to these considerations, will reverse giveBurden/retakeBurden
 			public override void accion() {
+
+				if (source.org.isStrippedServant ()) return; //can't use offload/restore burden when stripped
+
 				int push1Pull2 = source.getState ("push1Pull2");
 
 				if (push1Pull2 == 0){ muscl.disable(); return; }
@@ -781,9 +787,9 @@ namespace Bubbles{
 		//only works in forward! Don't know what effects will be in reverse...
 		public class GoalSeeker: Rule {
 
-			public static void install(Node source0, Node goal0, bool withPrisonerOnly0 = false){
+			public static void install(Node source0, Node goal0, bool onlyWhileHavePrisoner0 = false){
 				if (source0 == null || source0.org.head != source0 || goal0 == null) return;
-				source0.rules.Add (new GoalSeeker(source0, goal0, withPrisonerOnly0));
+				source0.rules.Add (new GoalSeeker(source0, goal0, onlyWhileHavePrisoner0));
 			}
 
 			private delegate bool NoArgBool();
@@ -795,12 +801,12 @@ namespace Bubbles{
 			private bool f(){ return false;}
 			private bool noPrisoner(){ return !source.org.hasPrisoner ();}
 
-			private GoalSeeker(Node source0, Node goal0, bool withPrisonerOnly):base(source0){
+			private GoalSeeker(Node source0, Node goal0, bool onlyWhileHavePrisoner):base(source0){
 				goal = goal0;
 				muscl = addMuscle(source0); //a cut muscle, disabled
 				//muscle just convenience for muscles(0)
 
-				if (withPrisonerOnly) suppressed = noPrisoner;
+				if (onlyWhileHavePrisoner) suppressed = noPrisoner;
 				else suppressed = f;
 			}
 
@@ -848,22 +854,17 @@ namespace Bubbles{
 			private void helpTheNeedy(){
 				Node worstSupplied = leastSupplied ();
 				if (worstSupplied.fuelGauge < source.fuelGauge) {
-					float fairfuelGauge = (worstSupplied.fuelGauge + source.fuelGauge)/2;
-					float mostWorstShouldGet = worstSupplied.maxOomph*fairfuelGauge - worstSupplied.oomph; //would raise his fuelGauge to fairfuelGauge level
-					float mostIShouldGive = source.oomph - fairfuelGauge * source.maxOomph; //would drop my fuelGauge to fairfuelGauge level
-					float oomphToTransfer = Mathf.Min(mostWorstShouldGet, mostIShouldGive);
-					source.oomph -= oomphToTransfer;
-					worstSupplied.oomph += oomphToTransfer*Node.linkEfficiency(source, worstSupplied); //with love. Less will be actually transfered, because of efficiency
+					Score.addToProductivity (source.id, -source.fillToFuelGauge (worstSupplied)); //debit productivity of recipient
 				}
 			}
 
 			override public void accion(){
 
 				if (source.oomph > source.maxOomph * 0.99f) {
-					bubbleServer.scoreTeamWin (source.id);
+					Score.scoreTeamWin (source.teamNumber);
 					bubbleServer.newRound = true;
 				} else if (source.oomph < source.maxOomph * 0.01f){
-					bubbleServer.scoreTeamLoss(source.id);
+					Score.scoreTeamLoss(source.teamNumber);
 					bubbleServer.newRound = true;
 				} else {
 					helpTheNeedy ();
@@ -889,7 +890,7 @@ namespace Bubbles{
 					Node nbr = source.site.neighbors (j);
 					int hisTeamNumber = nbr.teamNumber;
 					if (hisTeamNumber !=0 && hisTeamNumber != myTeamNumber && source.overlaps(nbr)) {
-						bubbleServer.scoreTeamWin (nbr.id);
+						Score.scoreTeamWin (hisTeamNumber);
 						bubbleServer.newRound = true;
 					}
 				}
@@ -897,9 +898,9 @@ namespace Bubbles{
 		}
 
 
-		public class BlessGoal: Rule {
+		public class BlessGoal: Rule { 
 
-			public static void install(Node source0, Node goal0){
+			public static void install(Node source0, Node goal0){ //used on ai's to make them automatically bless their goal
 				if (source0 == null || source0.org.head != source0 || goal0 == null) return;
 				source0.rules.Add (new BlessGoal(source0, goal0));
 			}
@@ -914,49 +915,38 @@ namespace Bubbles{
 
 				if (source.mounted ()) return;
 
-				if ( source.fuelGauge > goal.fuelGauge || source.org.oomph() > goal.maxOomph - goal.oomph ) source.bless (goal);
+				if (source.fuelGauge > goal.fuelGauge) Score.addToProductivity(source.id,source.fillToFuelGauge (goal)); //avoid giving so much that goal would give it back...
 
 			}
 		}
 
-		public class Prisoner: Rule {
-
-			//prisoner should be a soliton
-			public static void install(Node prisoner, Node master, Node savior = null){
-				if (prisoner == null || prisoner.org.head != prisoner || master == null || master.org.head != master) return;
-				Prisoner prule = new Prisoner (prisoner, master, savior);
-				prisoner.rules.Add (prule);
-				prule.amountGiven = prisoner.availableBurden ();
-				prisoner.burden -= prule.amountGiven;
-				master.org.takePrisonersBurden (prule.amountGiven);
+		//When master attains the goal, transfers all of master's prisoners to the goal
+		public class GivePrisoners: Rule {
+			public static void install(Org master, Org  goal){
+				if (master == null || goal == null || master == goal) return;
+				GivePrisoners gpRule = new GivePrisoners (master,goal);
+				master.head.rules.Add (gpRule);
 			}
 
-			public void uninstall(){
-				master.org.returnPrisonersBurden(amountGiven);
-				source.burden += amountGiven;
-				source.rules.Remove (this);
-			}
+			private Org master, goal;
 
-			private Node master, savior;
-			public float amountGiven;
-
-			private Prisoner(Node source0, Node master0, Node savior0):base(source0){
+			private GivePrisoners(Org master0, Org goal0):base(master0.head){
 				master = master0;
-				savior = savior0;
+				goal = goal0;
 			}
 				
 			override public void accion(){
-				
-				float canTransfer = Mathf.Min (master.maxOomph-master.oomph, source.oomph);
-				master.oomph += canTransfer;
-				source.oomph -= canTransfer;
+				if (master.head.overlaps (goal.head)) {
+					List<Node> prisoners = master.prisoners ();
+					master.liberatePrisoners ();
+					foreach (var prisoner in prisoners) {
+						goal.takePrisoner (prisoner.org);
+						prisoner.setState("donorId", master.head.id); //so that credit can be given to donor for photoyield of prisoner
+					}
 
-				if (savior != null)
-				if (source.distance (savior) < savior.radius * 2) {
-					uninstall ();
-					install (source, savior); //dubious savior!!
 				}
 			}
 		}
+
 	}
 }

@@ -60,7 +60,7 @@ namespace Bubbles{
 			gGravity = Mathf.Exp(Random.Range(1.25f*norm, 0.75f*norm)); //assumes norm is negative.
 				gCG.x = 0.2f*Bots.worldRadius*(Random.value - 0.5f);
 				gCG.y = 0.2f*Bots.worldRadius*(Random.value - 0.5f);
-			Debug.Assert (!float.IsNaN (gCG.x) && !float.IsNaN (gCG.y),"resetGravity bad gCG");
+			if (Debug.isDebugBuild) Debug.Assert (!float.IsNaN (gCG.x) && !float.IsNaN (gCG.y),"resetGravity bad gCG");
 		}
 
 		public static void initialize(){
@@ -161,30 +161,29 @@ namespace Bubbles{
 
 		//a symmetric operation on this (as source) and target
 		public void addBone(Node target){
-			Bone.TwoBones ab = Bone.dualBones (this, target);
-			this.bones.Add(ab.a);
-			target.bones.Add(ab.b);
-			
+			Bone b = new Bone(this, target);
+			this.bones.Add(b);
+			target.bones.Add(b);
 		}
 
-		// A bone exists in dual form on both source and target nodes. This is done so that both of them "know" about the bone, and either can remove it.
-		// When added or removed, it is added or removed on both source and target nodes, i.e. both the bone and its dual disappear.
+		// A bone exists on both source and target nodes. This is done so that both of them "know" about the bone, and either can remove it.
+		// When added or removed, it is added or removed on both source and target nodes, i.e. on both ends
 		public void removeBone(int boneIndex){
-			bones[boneIndex].target.bones.Remove(bones[boneIndex].dual);
-			bones.RemoveAt (boneIndex);
+			bones[boneIndex].otherEnd(this).bones.Remove(bones[boneIndex]);
+			bones.RemoveAt(boneIndex);
 		}
 
 		public void clearBones(){
 			for (int i=bones.Count-1; i>=0; i--) removeBone(i);
 		}
 
-		//IF there is a simple bone chain of nodes, and this is an interior (non extremal) element of chain, and priorN is a neighbor of this in the chain,
-		//THEN otherNeighbor returns the neighbor on the other side of priorN, or null if none exists. Can be used to traverse chain in either direction.
-		public Node otherBoneChainNeighbor(Node priorN){
-			foreach (var bone in bones)
-				if (bone.target != priorN) return bone.target;
-			return null;
-		}
+//		//IF there is a simple bone chain of nodes, and this is an interior (non extremal) element of chain, and priorN is a neighbor of this in the chain,
+//		//THEN otherNeighbor returns the neighbor on the other side of priorN, or null if none exists. Can be used to traverse chain in either direction.
+//		public Node otherBoneChainNeighbor(Node priorN){
+//			foreach (var bone in bones)
+//				if (bone.otherEnd(this) != priorN) return bone.otherEnd(this);
+//			return null;
+//		}
 
 		// concerning rules, which have muscles sourced in this node
 
@@ -208,7 +207,7 @@ namespace Bubbles{
 			int sum = 0;
 
 			for (int i = bones.Count-1; i>=0; i--) {
-				if (bones [i].target.org != org) {
+				if (bones [i].otherEnd(this).org != org) {
 					removeBone (i);
 					sum += 1;
 				}
@@ -266,6 +265,7 @@ namespace Bubbles{
 
 		public bool overlaps(Node node) { return distance(node) < radius + node.radius; }
 
+		public float hunger(){ return maxOomph - oomph; }
 
 		public float distance2(Node target){
 			return (x-target.x)*(x-target.x)+(y-target.y)*(y-target.y);
@@ -283,33 +283,54 @@ namespace Bubbles{
 		public void photosynthesis() {
 			if (testDna(CScommon.noPhotoBit)) return;
 			oomph +=  photoYield*radius2 * (maxOomph - oomph )/maxOomph; //oomph will never quite attain maxOomph, photosyn gets more inefficient as it approaches maxOomph
-		//prisoners transfer oomph via prisoner rule
+		
+			if (org.isServant()) {
+				float canTransfer = Mathf.Min (org.master.head.hunger(), oomph);
+				oomph -= canTransfer;
+				float transfer = canTransfer*linkEfficiency(this,org.master.head);
+				org.master.head.oomph += transfer;
+
+				int donorId = org.head.getState ("donorId"); //int.MinValue if no donorId present
+				if (donorId >= 0) Score.addToProductivity(donorId,transfer);//donor gets credit for donated servant's work
+			}
 		}
 
+		//presumption is that this.fuelGauge > target.fuelGauge
+		public float fillToFuelGauge(Node target){
+			Debug.Assert (this.fuelGauge > target.fuelGauge);
+
+			float fairfuelGauge = (target.fuelGauge + fuelGauge)/2;
+			float mostTargetShouldGet = target.maxOomph*fairfuelGauge - target.oomph; //would raise his fuelGauge to fairfuelGauge level
+			float mostIShouldGive = oomph - fairfuelGauge * maxOomph; //would drop my fuelGauge to fairfuelGauge level
+			float oomphToTransfer = Mathf.Min(mostTargetShouldGet, mostIShouldGive);
+			oomph -= oomphToTransfer;
+			oomphToTransfer *= Node.linkEfficiency(this, target); //less is delivered than was sent...
+			target.oomph += oomphToTransfer;
+			return oomphToTransfer;
+		}
 
 		public void bless(Node target){
 
 			if (this.org == target.org) return; //don't bless self--decreaseOomph below increases effect of decreaseHunger
-			
-			float eff = linkEfficiency (this, target);
-			if (eff > 0.5){
-				float targetOrgCanEat = target.org.hunger ();
-				float thisOrgOomph = this.org.oomph();
 
-				float thisSends = Mathf.Min(targetOrgCanEat, thisOrgOomph/2); //donate half of what you've got
-				float targetReceives = thisSends * eff;
+			float thisSends = Mathf.Min(target.hunger(), this.oomph/2); //donate half of what you've got
+			float targetReceives = thisSends * linkEfficiency (this, target);
 
-				org.decreaseOomph (thisSends / thisOrgOomph);//factor of 0 means no change, factor of 1 means oomph is zeroed.
+			this.oomph -= thisSends;
+			target.oomph += targetReceives;
 
-				target.org.decreaseHunger (targetReceives / targetOrgCanEat);//factor of zero means no change, factor of 1 means hunger is sated, i.e. becomes zero, every member at their maxOomph
-
-				bubbleServer.scoreBlessing (this.id,targetReceives); //I only get credit for what they receive
-			}
+			if (CScommon.testBit(target.dna,CScommon.goalBit) && target.teamNumber == this.teamNumber) Score.addToProductivity (this.id,targetReceives); //I only get credit for what they receive
 		}
 
 		public float fuelGauge { get {return oomph/maxOomph;} }
 
 		public float availableBurden() { return burden - minBurden; }
+
+
+
+
+		//offloadBurden, distributeBurden, scroungeBurden, and thereby restoreNaiveburden, all move burden WITHIN THIS org.
+		//Not to be confused with moving burden between orgs, implemented in org
 
 		//Become as light as possible by giving my burden to everyone in my org but me. 
 		public void offloadBurden(){
@@ -322,6 +343,7 @@ namespace Bubbles{
 			
 			burden = minBurden;
 		}
+	
 
 		//distributes given amount of burden to all members of org but this. 
 		private void distributeBurden (float amount){
@@ -334,7 +356,8 @@ namespace Bubbles{
 					org.members [i].burden += portion;
 		}
 
-		//only takes from those that are beyond naive burden.
+		//take burden from everyone in org (but me),
+		//who is beyond naive burden.
 		private void scroungeBurden(float amount){
 			if (amount <= 0) return;
 
@@ -347,15 +370,17 @@ namespace Bubbles{
 							amount = 0;
 							break;
 						} else {
-							org.members [i].burden -= surplus;
+							org.members [i].burden = org.members [i].naiveBurden; // i.e, subtract surplus, but do so in a way that doesn't accumulate numeric error
 							amount -= surplus;
 						}
 					}
 				}
 
-			Debug.Assert (amount < minPosValue);
+			if (Debug.isDebugBuild) Debug.Assert(amount < 0.00001);
 		}
-			
+
+		//restores a node's burden from where it may have been shifted within its organization
+		//not the same as org.restoreNaiveBurden, which gets burden-stripped org's burden back from its master.
 		public void restoreNaiveBurden() { 
 			if (org.members.Count < 2) return;
 			if (burden == naiveBurden ) return;
@@ -369,6 +394,10 @@ namespace Bubbles{
 			
 			burden = naiveBurden;
 		}
+
+
+
+
 			
 		public void shareOomph() {
 			if (this == org.head)
@@ -379,33 +408,9 @@ namespace Bubbles{
 			for (int i=0;i<rules.Count;i++) rules[i].accion();
 		}
 
-		public bool isPrisoner(){
-			for (int i = 0; i < rules.Count; i++)
-				if (rules [i].GetType () == typeof(Rules.Prisoner))
-					return true; 
-			return false;
-		}
-
 		public bool mounted(){
 			return testDna (CScommon.playerPlayingBit);
 		}
-
-		//not having a muscle, prisoner rule can be safely removed without changing the number of links
-		public void removePrisonerRule(){
-			bool recheck;
-			do {
-				recheck = false;
-				for (int i = 0; i < rules.Count; i++){ 
-					Rules.Prisoner pRule = rules[i] as Rules.Prisoner;
-					if (pRule != null) { 
-						pRule.uninstall(); //removes from this.rules
-						recheck = true; 
-						break;
-					}
-				}
-			} while (recheck);
-		}
-
 			
 		//don't debit oomph until after all muscles have been powered by same level of oomph.
 		//Ensure that oomph demand never depasses oomph.
@@ -423,7 +428,7 @@ namespace Bubbles{
 		}
 
 		public void activateBones(){
-			for (int i=0;i<bones.Count;i++) bones[i].action();
+			for (int i=0;i<bones.Count;i++) if (this == bones[i].source) bones[i].action(); //only do it once, it is symmetrical
 		}
 
 		//called after nx and ny have been fully hallucinated, and before they've been folded back into x and y
@@ -503,7 +508,7 @@ namespace Bubbles{
 
 		private List<int> registeredOrgNodes(){
 			List<int> registeredIds = new List<int>();
-			foreach (var node in org.members) if (bubbleServer.registered(node.id)) registeredIds.Add(node.id);
+			foreach (var node in org.members) if (Score.registered(node.id)) registeredIds.Add(node.id);
 			return registeredIds;
 		}
 
@@ -518,7 +523,7 @@ namespace Bubbles{
 
 
 
-		public bool isEater(){return (CScommon.testBit(dna, CScommon.eaterBit));} 
+		public bool isEater(){return (CScommon.testBit(dna, CScommon.eaterBit) && !org.isServant());} 
 
 
 		public void tryEat(Node node)
@@ -527,15 +532,12 @@ namespace Bubbles{
 			{
 				if (!node.isEater() || this.oomph > node.oomph)
 				{
-					if (this.clan != node.clan && this.overlaps(node))
+					if (this.clan != node.clan && this.overlaps(node) && !(node.org.isServant() && node.org.master.clan == org.clan) ) //don't eat your own servants, indeed servants of anybody in your clan
 					{
-						//liberate the captive, and if they're in a chain gang all his trailing prisoners, before eating him. 
-						if (node.isPrisoner ()) node.removePrisonerRule();
+						node.org.cutOut(); //liberate all node.orgs servants, liberate node.org breaking its shackle, cut all muscles attacking it, cut all its external muscles.
 							
 						org.eatOomph(node.org); //transfer of oomph from node org to this org
 						//could take their burden too
-
-						node.org.cutOut(); //cut all external muscles, break all external bones, liberate all nodes orgs prisoners, from/to anywhere to/from the loser org
 
 						//either take prisoner or relocate, but not both.
 						if (org.hasHitch ()) {
@@ -545,7 +547,7 @@ namespace Bubbles{
 								Engine.scheduledOrgRelocations.Add (node.org);
 						}
 
-						if (org.bothRegistered(node.org)) org.scoresCoupAgainst(node.org); //keep score
+						if (org.bothRegistered(node.org)) Score.scoreCoup(this.id); 
 
 					}
 				}

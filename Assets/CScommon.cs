@@ -11,9 +11,9 @@ public static class CScommon {
 
 	public const short nodeIdMsgType = 300; //intMsg, server tells a client which bubble they are associated with, often in response to their requestNodeIdMsg
 	public const short updateMsgType = 301; //UpdateMsg, server sends to all clients frequently to update positions of bubbles. Uses DynamicNodeData[]
-	public const short scoreMsgType = 302; //server sends player scores to client
+	public const short performanceMsgType = 302; //server sends player scores to client
 	public const short targetNodeType = 303; //TargetNodeMsg, client tells server that they want a link made from their bubble to a given target bubble
-	//public const short lookAtNodeType = 304; //unused
+	public const short teamScoreMsgType = 304; 
 	public const short initMsgType = 305; // InitMsg, server sends to clients relatively static info on many bubbles.
 	public const short initRequestType = 306; //stringMsg containing a name. Client affirms having received gameSizeMsg, requests initialization
 	public const short push1Pull2MsgType = 307; //intMsg, manual push/pull 1:push, 2:Pull, 3. togglePushPull, 0. return to automatic pushPull
@@ -42,7 +42,7 @@ public static class CScommon {
 	public const short broadCastMsgType = 318; //stringMsg, sent from client to server, and rebroadcast by server to all clients.
 	public const short scaleMsgType = 319; //stringMsg, sent from server to all clients whenever scales are set or changed, a very succinct summary of scales
 	public const short nodeNamesMsgType = 320;
-
+		
 	//use value of zero to toggle server "pause" state without changing game.
 
 //  Summary of messagery:
@@ -89,10 +89,21 @@ public static class CScommon {
 //		public KeyCode keyCode;
 //	}
 
+	public struct TeamStruct{
+		public string teamName;
+		public byte teamNumber;
+		public int nodeId;
+	}
+
 	public class GameSizeMsg: MessageBase {
 		public int numNodes;
 		public int numLinks;
 		public float worldRadius;
+
+		public string gameName;
+		public int gameNumber;
+		public bool gameStart; // false on new round in same game
+		public TeamStruct[] teams;
 	}
 
 	public class NameNodeIdMsg : MessageBase{
@@ -110,18 +121,34 @@ public static class CScommon {
 		public NodeName[] arry;
 	}
 
-	public struct ScoreStruct{
-		public int nodeId;
-		public int plus;
-		public int minus;
-		public byte  neither0Winner1Loser2; //0 if is an initial score, like when you first join an ongoing game. Nobody got eaten.
-		public float performance; // recent rate at which this player has generated plus (and avoided minus).
-		public long gameMilliseconds;
+//	public struct ScoreStruct{
+//		public int nodeId;
+//		public int plus;
+//		public int minus;
+//		public byte  neither0Winner1Loser2; //0 if is an initial score, like when you first join an ongoing game. Nobody got eaten.
+//		public float performance; // recent rate at which this player has generated plus (and avoided minus).
+//		public long gameMilliseconds;
+//	}
+//		
+//	public class ScoreMsg: MessageBase{
+//		public ScoreStruct[] arry;
+//	}
+
+	public class TeamScoreMsg: MessageBase {
+		public byte teamNumber;
+		public int score;
 	}
 
-	public class ScoreMsg: MessageBase{
-		public ScoreStruct[] arry;
+	public class PerformanceMsg: MessageBase {
+		public int nodeId;
+		public float productivity;
+		public float level;
 	}
+
+//	public class ScoreMsg: MessageBase {
+//		public int[] TeamScores; // TeamScores[0] is to be ignored. TeamScores[1] and TeamScores[2] contain team scores.
+//		public PerformanceScoreStruct[] Performances; 
+//	}
 
 //	public class LinkTypeMsg : MessageBase {
 //		public LinkType linkType;
@@ -234,7 +261,7 @@ public static class CScommon {
 	public const int leftTeamBit = 8; //teams 0,1,2 and 3
 	//skipping 9
 	public const int goalBit = 10;
-	public const int jeepBit = 11;
+	public const int hitchBit = 11;
 
 	//thanks to http://www.dotnetperls.com/and
 	public static string longToString(long dna)

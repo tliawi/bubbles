@@ -134,7 +134,7 @@ public class Grid {
 					if (anode.rules[j].muscles(k).enabled ){
 						targetNode = anode.rules[j].muscles(k).target;
 						dist = anode.distance (targetNode);
-						if (bubbleServer.constantLinkWidth) r = anode.radius;
+						if (bubbleServer.plainMuscles) r = anode.radius;
 						else r = 3.0f*Mathf.Sqrt(anode.rules[j].muscles(k).strength());//the constant factor is purely display taste
 						
 						dx = r*(targetNode.y - anode.y)/dist;
@@ -198,7 +198,7 @@ public class Grid {
 		vix = makeTriangle(avertex, vertices[firstVertx+2], vertices[firstVertx], uvClass, vix);
 	} else if (closestVertexi == firstVertx + 2){
 		vix = makeTriangle(avertex, vertices[firstVertx], vertices[firstVertx+1], uvClass, vix);
-	} else Debug.Log ("error in nearest");
+	} else if (Debug.isDebugBuild) Debug.Log ("error in nearest");
 
 */
 
