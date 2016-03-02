@@ -265,6 +265,7 @@ namespace Bubbles{
 
 		public bool overlaps(Node node) { return distance(node) < radius + node.radius; }
 
+		public float hunger(){ return maxOomph - oomph; }
 
 		public float distance2(Node target){
 			return (x-target.x)*(x-target.x)+(y-target.y)*(y-target.y);
@@ -284,33 +285,41 @@ namespace Bubbles{
 			oomph +=  photoYield*radius2 * (maxOomph - oomph )/maxOomph; //oomph will never quite attain maxOomph, photosyn gets more inefficient as it approaches maxOomph
 		
 			if (org.isServant()) {
-				float canTransfer = Mathf.Min (org.master.head.maxOomph-org.master.head.oomph, oomph);
+				float canTransfer = Mathf.Min (org.master.head.hunger(), oomph);
 				oomph -= canTransfer;
-				org.master.head.oomph += canTransfer*linkEfficiency(this,org.master.head);
+				float transfer = canTransfer*linkEfficiency(this,org.master.head);
+				org.master.head.oomph += transfer;
+
+				int donorId = org.head.getState ("donorId"); //int.MinValue if no donorId present
+				if (donorId >= 0) Score.addToProductivity(donorId,transfer);//donor gets credit for donated servant's work
 			}
 		}
 
+		//presumption is that this.fuelGauge > target.fuelGauge
+		public float fillToFuelGauge(Node target){
+			Debug.Assert (this.fuelGauge > target.fuelGauge);
+
+			float fairfuelGauge = (target.fuelGauge + fuelGauge)/2;
+			float mostTargetShouldGet = target.maxOomph*fairfuelGauge - target.oomph; //would raise his fuelGauge to fairfuelGauge level
+			float mostIShouldGive = oomph - fairfuelGauge * maxOomph; //would drop my fuelGauge to fairfuelGauge level
+			float oomphToTransfer = Mathf.Min(mostTargetShouldGet, mostIShouldGive);
+			oomph -= oomphToTransfer;
+			oomphToTransfer *= Node.linkEfficiency(this, target); //less is delivered than was sent...
+			target.oomph += oomphToTransfer;
+			return oomphToTransfer;
+		}
 
 		public void bless(Node target){
 
 			if (this.org == target.org) return; //don't bless self--decreaseOomph below increases effect of decreaseHunger
-			
-			float eff = linkEfficiency (this, target);
-			if (eff > 0.5){
-				float targetOrgCanEat = target.org.hunger ();
-				float thisOrgOomph = this.org.oomph();
 
-				float thisSends = Mathf.Min(targetOrgCanEat, thisOrgOomph/2); //donate half of what you've got
-				if (thisSends < minPosValue) return; //guard against potential zerodivide below
+			float thisSends = Mathf.Min(target.hunger(), this.oomph/2); //donate half of what you've got
+			float targetReceives = thisSends * linkEfficiency (this, target);
 
-				float targetReceives = thisSends * eff;
+			this.oomph -= thisSends;
+			target.oomph += targetReceives;
 
-				org.decreaseOomph (thisSends / thisOrgOomph);//factor of 0 means no change, factor of 1 means oomph is zeroed.
-
-				target.org.decreaseHunger (targetReceives / targetOrgCanEat);//factor of zero means no change, factor of 1 means hunger is sated, i.e. becomes zero, every member at their maxOomph
-
-				if (CScommon.testBit(target.dna,CScommon.goalBit) && target.teamNumber == this.teamNumber) Score.scoreBlessing (this.id,targetReceives); //I only get credit for what they receive
-			}
+			if (CScommon.testBit(target.dna,CScommon.goalBit) && target.teamNumber == this.teamNumber) Score.addToProductivity (this.id,targetReceives); //I only get credit for what they receive
 		}
 
 		public float fuelGauge { get {return oomph/maxOomph;} }

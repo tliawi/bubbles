@@ -508,8 +508,8 @@ namespace Bubbles{
 			Node head;
 			Node bs,ls;
 
-			head = spawnTapeworm(new Vector2(100,100),true, 7, abnorm*0.8f, true ,"snark");
-			setUpPlayer (head, 1, "tapeworm");
+			head = spawnTapeworm(new Vector2(100,100),true, 7, abnorm*0.8f, true ,"antisnark");
+			setUpPlayer (head, 0, "tapeworm");
 			head.setDna (CScommon.snarkBit,true);
 
 			head = spawnInchworm(new Vector2(-3,-3), abnorm*1.2f, true,
@@ -1011,7 +1011,7 @@ namespace Bubbles{
 
 		public static CScommon.TeamStruct[] giveawayInit(){
 			Node head, goal1, goal2;
-			float goalRadius = Random.Range (5 * norm, 6 * norm);
+			float goalRadius = 7 * norm;
 
 			goal1 = pushVegNode(new Vector2(-0.66f*worldRadius,Random.Range(-0.33f,0.33f)*worldRadius),goalRadius);
 			goal1.setDna (CScommon.noPhotoBit, true).setDna (CScommon.goalBit, true).setDna(CScommon.eaterBit,true);

@@ -13,6 +13,18 @@ namespace Bubbles{
 
 		public static int[] teamScores = new int[3]; // only use 1,2. team 0 means no team
 
+		public static void newGame(){
+			for (int i = 0; i < teamScores.Length; i++)
+				teamScores [i] = 0;
+			newRound ();
+		}
+
+		public static void newRound(){
+			foreach (var nodeId in nodeIdPlayerInfo.Keys) {
+				nodeIdPlayerInfo [nodeId].data.productivity = 0;
+			}
+		}
+
 		public static int teamNumber(int nodeId){
 			if (nodeId >= 0) return Engine.nodes [nodeId].teamNumber; //may be 0 indicating no team
 			else return 0; //no team
@@ -114,10 +126,10 @@ namespace Bubbles{
 				scoreTeamWin (1);
 		}
 
-
-		public static void scoreBlessing(int nodeId, float blessing){
+		//can be called with a negative amount to debit productivity
+		public static void addToProductivity(int nodeId, float amount){
 			if (nodeIdPlayerInfo.ContainsKey (nodeId)) {
-				nodeIdPlayerInfo [nodeId].data.productivity += blessing;
+				nodeIdPlayerInfo [nodeId].data.productivity += amount;
 				bubbleServer.scheduledScores [nodeId] = true;
 			}
 		}

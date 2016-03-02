@@ -102,6 +102,7 @@ public static class CScommon {
 
 		public string gameName;
 		public int gameNumber;
+		public bool gameStart; // false on new round in same game
 		public TeamStruct[] teams;
 	}
 
@@ -144,6 +145,10 @@ public static class CScommon {
 		public float level;
 	}
 
+//	public class ScoreMsg: MessageBase {
+//		public int[] TeamScores; // TeamScores[0] is to be ignored. TeamScores[1] and TeamScores[2] contain team scores.
+//		public PerformanceScoreStruct[] Performances; 
+//	}
 
 //	public class LinkTypeMsg : MessageBase {
 //		public LinkType linkType;

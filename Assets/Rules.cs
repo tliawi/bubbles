@@ -854,12 +854,7 @@ namespace Bubbles{
 			private void helpTheNeedy(){
 				Node worstSupplied = leastSupplied ();
 				if (worstSupplied.fuelGauge < source.fuelGauge) {
-					float fairfuelGauge = (worstSupplied.fuelGauge + source.fuelGauge)/2;
-					float mostWorstShouldGet = worstSupplied.maxOomph*fairfuelGauge - worstSupplied.oomph; //would raise his fuelGauge to fairfuelGauge level
-					float mostIShouldGive = source.oomph - fairfuelGauge * source.maxOomph; //would drop my fuelGauge to fairfuelGauge level
-					float oomphToTransfer = Mathf.Min(mostWorstShouldGet, mostIShouldGive);
-					source.oomph -= oomphToTransfer;
-					worstSupplied.oomph += oomphToTransfer*Node.linkEfficiency(source, worstSupplied); //with love. Less will be actually transfered, because of efficiency
+					Score.addToProductivity (source.id, -source.fillToFuelGauge (worstSupplied)); //debit productivity of recipient
 				}
 			}
 
@@ -903,9 +898,9 @@ namespace Bubbles{
 		}
 
 
-		public class BlessGoal: Rule {
+		public class BlessGoal: Rule { 
 
-			public static void install(Node source0, Node goal0){
+			public static void install(Node source0, Node goal0){ //used on ai's to make them automatically bless their goal
 				if (source0 == null || source0.org.head != source0 || goal0 == null) return;
 				source0.rules.Add (new BlessGoal(source0, goal0));
 			}
@@ -920,7 +915,7 @@ namespace Bubbles{
 
 				if (source.mounted ()) return;
 
-				if ( source.fuelGauge > goal.fuelGauge || source.org.oomph() > goal.maxOomph - goal.oomph ) source.bless (goal);
+				if (source.fuelGauge > goal.fuelGauge) Score.addToProductivity(source.id,source.fillToFuelGauge (goal)); //avoid giving so much that goal would give it back...
 
 			}
 		}
@@ -946,9 +941,9 @@ namespace Bubbles{
 					master.liberatePrisoners ();
 					foreach (var prisoner in prisoners) {
 						goal.takePrisoner (prisoner.org);
-						Score.scoreBlessing (master.head.id, prisoner.naiveBurden);
+						prisoner.setState("donorId", master.head.id); //so that credit can be given to donor for photoyield of prisoner
 					}
-					
+
 				}
 			}
 		}

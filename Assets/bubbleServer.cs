@@ -18,6 +18,7 @@ namespace Bubbles{
 		public static bool plainMuscles = false;
 		public static bool sendLinks = true;
 
+		public static List<int> scheduledMounts = new List<int>();
 
 		public static bool checkVals(float x, float y, string msg){
 			bool b = false;
@@ -83,12 +84,12 @@ namespace Bubbles{
 				break;
 			case 6: //giveAway
 				normScaleI = 7;
-				abnormScaleI = 2;
-				photoYieldI = 2;
-				baseMetabolicRateI = 0;
+				abnormScaleI = -1;
+				photoYieldI = 3;
+				baseMetabolicRateI = 4;
 				worldRadiusI = 1;
 				vegStartFuel = 1.0f;
-				nonvegStartFuel = 0.33f;
+				nonvegStartFuel = 0.5f;
 				Bots.popcorn = 160;
 				break;
 			case 7: //tryEat
@@ -240,6 +241,7 @@ namespace Bubbles{
 	//		referenceLinkJK = new JKStruct[0];
 
 			scheduledScores.Clear();
+			scheduledMounts.Clear();
 
 			Grid.deallocate ();
 			Engine.deallocate(); //kills all nodes, with their rules, with their muscles, so whole bots setup is destroyed
@@ -269,6 +271,13 @@ namespace Bubbles{
 			Grid.initialize ();
 			Grid.display(); //since start paused, want to be able to see the paused initial game state.
 			Engine.initialize();
+
+			if (newRound) { 
+				remountEverybody ();
+				Score.newRound ();
+			} else {
+				Score.newGame ();
+			}
 			
 			referenceInitMsg = fillInInitMsg(allocateInitMsg(Engine.nodes.Count),0);
 
@@ -322,7 +331,7 @@ namespace Bubbles{
 		void Update(){
 
 			if (newRound) {
-				restartGame (-1); //relaunches game while newRound is true, preserving nodeIdPlayerInfo and suppressing registerNPC
+				restartGame (-1); //relaunches game while newRound is true, preserving nodeIdPlayerInfo, suppressing registerNPC, remounting existing users
 				newRound = false;
 			}
 
@@ -434,7 +443,13 @@ namespace Bubbles{
 				//and discussion at http://forum.unity3d.com/threads/the-truth-about-fixedupdate.231637/
 				if (oldTickCounter != Engine.tickCounter) {
 					oldTickCounter = Engine.tickCounter;
+
 					sendUpdateMsg();
+					checkForInitRevisions();
+					if (sendLinks) checkForLinkRevisions();
+					sendScheduledMounts ();
+					sendScheduledScores ();
+
 				}
 			}
 		}
@@ -522,6 +537,7 @@ namespace Bubbles{
 
 			gameSizeMsg.gameName = Bots.gameName;
 			gameSizeMsg.gameNumber = currentGame;
+			gameSizeMsg.gameStart = !newRound;
 			gameSizeMsg.teams = Bots.teamDefs;
 
 			checkSendToClient(connectionId,CScommon.gameSizeMsgType,gameSizeMsg);
@@ -656,22 +672,35 @@ namespace Bubbles{
 
 		private void scheduleRequestNodeId(int conId){
 			System.Timers.Timer aTimer = new System.Timers.Timer (500); //may replace an old one
-			aTimer.Elapsed += delegate { giveMount (conId); };
+			aTimer.Elapsed += delegate { scheduledMounts.Add(conId); };
 			aTimer.AutoReset = false; //one shot
 			aTimer.Enabled = true;
 			timers [conId] = aTimer;
 		}
 
-		public void giveMount(int conId){
+		public void sendScheduledMounts(){
 			CScommon.intMsg nixMsg = new CScommon.intMsg ();
-			nixMsg.value = Bots.idFromLargestTeam ();//after the timer fires, otherwise someone else could mount during the wait
 
-			if (Debug.isDebugBuild) Debug.Log("giveMount "+nixMsg.value+" mountable:"+ Bots.mountable(nixMsg.value));
+			foreach (int conId in scheduledMounts) {
+				
+				nixMsg.value = Bots.idFromLargestTeam ();//after the timer fires, otherwise someone else could mount during the wait
 
-			changeMounts(-1,nixMsg.value,conId); 
+				if (Debug.isDebugBuild)
+					Debug.Log ("giveMount " + nixMsg.value + " mountable:" + Bots.mountable (nixMsg.value));
 
-			checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
+				changeMounts (-1, nixMsg.value, conId); 
 
+				checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
+			}
+
+			scheduledMounts.Clear ();
+
+		}
+
+		private void remountEverybody(){
+			foreach (int conId in connectionIdPlayerInfo.Keys) {
+				Bots.mount (connectionIdPlayerInfo [conId].data.nodeId);
+			}
 		}
 
 		private void onRequestNodeId(NetworkMessage netMsg){
@@ -916,12 +945,6 @@ namespace Bubbles{
 			}
 
 			//for big messages, use NetworkServer.SendByChannelToAll (CScommon.updateMsgType, updateMsg, bigMsgChannel);
-
-			checkForInitRevisions();
-
-			if (sendLinks) checkForLinkRevisions();
-
-			sendScheduledScores();
 
 		}
 
