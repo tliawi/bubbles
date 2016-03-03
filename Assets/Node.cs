@@ -8,10 +8,9 @@ namespace Bubbles{
 	public class Node {
 
 		//physics fundamental tuning constants
-		public static readonly float minBurdenMultiplier = 0.1f; //governs how more efficient use of shiftBurden is, than solo movement. If 1, inchworms more comperable to solos.
+		public static readonly float minGripMultiplier = 0.0625f; //governs how more efficient dragging while at minGrip than at naiveGrip.
 
-		// photoyield should be slow enough that inchworms that don't eat should be slow. 
-		// That makes solos that don't eat minBurdenMuliplier/2 as fast, since they can't shiftBurden, and there's not two photosynthesizers
+		// photoyield should be slow enough that inchworms and bugs that don't eat should be slow. 
 		public static float photoYield = 0.08f;
 		public static readonly float minRadius = 0.0000001f;  //bottom of fractal possibilities, don't want to push float representation
 		public static float maxRelSpeed = CScommon.inefficientLink/2; // maximum relative speed (movement in one fixedframe /radius). Strong medicine, setting it much lower really slows everything down
@@ -75,12 +74,12 @@ namespace Bubbles{
 		//all these functions of radius, set in setRadius
 		public float radius  { get; private set; }
 		public float radius2 { get; private set;}
-		public float minBurden { get; private set; }
+		public float minGrip { get; private set; }
 		public float maxOomph { get; private set; }
 
 		public long dna  { get; private set; }
 		public float oomph;
-		public float burden;
+		public float grip;
 
 		public List<Bone> bones;
 		public List<Rules.Rule> rules;
@@ -110,10 +109,10 @@ namespace Bubbles{
 
 		public string clan { get { return org.clan;}}
 
-		//Restores burden. Does not change position, radius, oomph, dna, pcOfset. 
+		//Restores grip. Does not change position, radius, oomph, dna, pcOfset. 
 		//Makes the node have individual org of which it is the head
 		public void isolate(){
-			restoreNaiveBurden();
+			grip = naiveGrip;
 			clearBones();
 
 			//cut all enemy muscles attacking me
@@ -150,11 +149,11 @@ namespace Bubbles{
 		//  d, unit of distance in world coordinate system (think meters)
 		//  f, fixedFrame time interval (think seconds), the inverse of fixedFrame rate
 		//  o, oomph
-		//  b, burden. Think friction, so analogous to a real-world force but there is no notion of mass nor accelleration 
+		//  b, grip. Think friction, so analogous to a real-world force but there is no notion of mass nor accelleration 
 		//  (newton unit of force is kg*m/s^2, jule unit of energy = newton*meter = kg*m^2/s^2),
 		//    so force has to be defined purely as friction. At perfect efficiency, 
-		//    the unit burden b can be moved a unit distance d at a price of a unit oomph o
-		//  o = d*b so units of o are like "burden meters"--moving a burden of 5 one step costs the same as moving a burden of 1 five steps.
+		//    the unit grip b can be moved a unit distance d at a price of a unit oomph o
+		//  o = d*b so units of o are like "grip meters"--moving a grip of 5 one step costs the same as moving a grip of 1 five steps.
 		//  Power consumption is o per second, so o/f or o*fixedFrameRate
 
 
@@ -221,19 +220,18 @@ namespace Bubbles{
 		//	}
 
 
-		public float naiveBurden {get { return radius2; } }
+		public float naiveGrip {get { return radius2; } }
 
 		public void setRadius(float r) { 
 			if (r > minRadius) radius = r; 
 			else radius = minRadius; 
 			radius2 = radius*radius;
-			//oomph has a max, burden has a min, both dependent on radius^2
-			burden = naiveBurden;
+			//oomph has a max, grip has a min, both dependent on radius^2
+			grip = naiveGrip;
 			maxOomph = CScommon.maxOomph(radius);
-			minBurden = naiveBurden*minBurdenMultiplier;
+			minGrip = naiveGrip*minGripMultiplier;
 		}
 
-		private float naiveAvailableBurden(){ return naiveBurden - minBurden; }
 
 		//these functions return this to support function chaining
 		public Node setOomph(float mph){
@@ -324,79 +322,7 @@ namespace Bubbles{
 
 		public float fuelGauge { get {return oomph/maxOomph;} }
 
-		public float availableBurden() { return burden - minBurden; }
-
-
-
-
-		//offloadBurden, distributeBurden, scroungeBurden, and thereby restoreNaiveburden, all move burden WITHIN THIS org.
-		//Not to be confused with moving burden between orgs, implemented in org
-
-		//Become as light as possible by giving my burden to everyone in my org but me. 
-		public void offloadBurden(){
-
-			if (org.members.Count < 2) return; //nobody to give it to
-			if (burden <= minBurden) return; //nothin to give. Should never be less, save perhaps numerically?
-
-			//distribute burden evenly to all org members but me
-			distributeBurden (availableBurden());
-			
-			burden = minBurden;
-		}
-	
-
-		//distributes given amount of burden to all members of org but this. 
-		private void distributeBurden (float amount){
-			if (amount <= 0) return;
-			
-			float portion = amount / (org.members.Count - 1);
-
-			for (int i = 0; i < org.members.Count; i++)
-				if (org.members [i] != this)
-					org.members [i].burden += portion;
-		}
-
-		//take burden from everyone in org (but me),
-		//who is beyond naive burden.
-		private void scroungeBurden(float amount){
-			if (amount <= 0) return;
-
-			for (int i = 0; i < org.members.Count; i++)
-				if (org.members [i] != this) {
-					float surplus = org.members [i].burden - org.members [i].naiveBurden ;
-					if (surplus > 0) { 
-						if (surplus > amount) {
-							org.members [i].burden -= amount;
-							amount = 0;
-							break;
-						} else {
-							org.members [i].burden = org.members [i].naiveBurden; // i.e, subtract surplus, but do so in a way that doesn't accumulate numeric error
-							amount -= surplus;
-						}
-					}
-				}
-
-			if (Debug.isDebugBuild) Debug.Assert(amount < 0.00001);
-		}
-
-		//restores a node's burden from where it may have been shifted within its organization
-		//not the same as org.restoreNaiveBurden, which gets burden-stripped org's burden back from its master.
-		public void restoreNaiveBurden() { 
-			if (org.members.Count < 2) return;
-			if (burden == naiveBurden ) return;
-
-			float delta = burden - naiveBurden ; //if positive I have too much, if negative not enough
-
-			if (delta > 0)
-				distributeBurden (delta);
-			else
-				scroungeBurden (-delta);
-			
-			burden = naiveBurden;
-		}
-
-
-
+		public float availableGrip() { return grip - minGrip; }
 
 			
 		public void shareOomph() {
@@ -447,9 +373,9 @@ namespace Bubbles{
 			//Without speed unmoving nodes would slowly migrate to the center.
 			//Without speed, during pushing part of cycle *both* ends would get moved inwards, towards the origin,
 			//and during pulling *both* ends would get moved outwards, whereas
-			//With speed, you effect the faster moving parts more, donc the pushed low-burden high-speed head gets moved inwards
-			//more than the high-burden low-speed tail, and the pulled low-burden tail gets moved outwards
-			//more than the high-burden low-spead head, imparting a rotating effect to the bot as a whole
+			//With speed, you effect the faster moving parts more, donc the pushed low-grip high-speed head gets moved inwards
+			//more than the high-grip low-speed tail, and the pulled low-grip tail gets moved outwards
+			//more than the high-grip low-spead head, imparting a rotating effect to the bot as a whole
 			// Note that if speed is too great, gravity can sling someone off the map. Need to have an upper limit on speed, 
 			// or I can't use the gravity approach. Link efficiency and maxrelspeed do some of that work.
 			speed = Mathf.Sqrt(speed2);
@@ -537,7 +463,6 @@ namespace Bubbles{
 						node.org.cutOut(); //liberate all node.orgs servants, liberate node.org breaking its shackle, cut all muscles attacking it, cut all its external muscles.
 							
 						org.eatOomph(node.org); //transfer of oomph from node org to this org
-						//could take their burden too
 
 						//either take prisoner or relocate, but not both.
 						if (org.hasHitch ()) {
@@ -589,7 +514,7 @@ namespace Bubbles{
 			{	them = site.neighbors(i);
 				if (them.org != org) { //don't try to steer by pushing on self
 					float angl = Rules.signedAngle(this,cob,them); //positive to the left, negative to the right
-					sideEffect = Mathf.Sin(angl) * (them.burden/(them.burden+this.burden)) * linkEfficiency(this,them); // think pull or push orthogonal to the org orientation
+					sideEffect = Mathf.Sin(angl) * (them.grip/(them.grip+this.grip)) * linkEfficiency(this,them); // think pull or push orthogonal to the org orientation
 					suitability = Mathf.Abs(sideEffect); //min value is 0
 					if (suitability > bestSuitability) {
 						best.target = them;
@@ -643,10 +568,10 @@ namespace Bubbles{
 		// The effect of muscles as friction motors is rationalized in
 		// https://docs.google.com/document/d/14xpTCuiDns5AyiM-Od-4ZTVE5LU4yoOv3AW4sYux_LU/edit?usp=sharing
 		// activatemuscles is called every frame tick.
-		// burden is analogous to friction between the node and the world coordinate "surface".
-		// A link between two nodes having large burdens (large coefficients of friction) moves them more slowly 
-		// than the equivalent link between two small burdens. 
-		// Dragging burden costs energy, so displacing two 'heavy' objects is going to take more energy than displacing two 'light' objects.
+		// grip is analogous to friction between the node and the world coordinate "surface".
+		// A link between two nodes having large grips (large coefficients of friction) moves them more slowly 
+		// than the equivalent link between two small grips. 
+		// Dragging grip costs energy, so displacing two 'heavy' objects is going to take more energy than displacing two 'light' objects.
 
 
 

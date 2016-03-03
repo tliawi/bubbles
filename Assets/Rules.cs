@@ -60,6 +60,19 @@ namespace Bubbles{
 			return lst;
 		}
 
+		public static void shiftGrip( int sourceLow0Hi1, Node source, List<Node> targetList){
+			if (sourceLow0Hi1 == 0) {
+				source.grip = source.minGrip;
+				foreach (var n in targetList)
+					n.grip = n.naiveGrip;
+			} else {
+				source.grip = source.naiveGrip;
+				foreach (var n in targetList)
+					n.grip = n.minGrip;
+			}
+		}
+
+
 		public struct SteeringStruct{
 			public Node target;
 			public float sideEffect; //positive if pull will pull you to the left, negative if pull will pull you to the right, and proportional to the steering effect
@@ -145,18 +158,16 @@ namespace Bubbles{
 			}
 
 			int countDown;
-			List<Node> sourceList;
-			List<Node> targetList;
+			Node firstTarget, lastTarget;
 
-			private TurnServo(Node source0, Node firstTarget, Node lastTarget):base(source0){
+			private TurnServo(Node source0, Node firstTarget0, Node lastTarget0):base(source0){
 
-				//ASSUMPTION: order of muscles sweeps from L to R,
+				//ASSUMPTION: order of muscles sweeps from L to R
+				firstTarget = firstTarget0; lastTarget = lastTarget0;
+
 				addMuscle(firstTarget);
 				addMuscle(lastTarget);
 				disableMuscles();
-
-				sourceList = nodeList(source);
-				targetList = nodeList(firstTarget, lastTarget);
 
 				countDown = 0;
 				source.setState ("turn",0);
@@ -180,7 +191,9 @@ namespace Bubbles{
 				if (turn == 1 || turn == -1) { //starting a turn
 					source.setState ("turn", 12345); //signal that I am doing a turn
 
-					Org.shiftBurden (0,sourceList,targetList);
+					source.grip = source.minGrip;
+					firstTarget.grip = firstTarget.naiveGrip;
+					lastTarget.grip = lastTarget.naiveGrip;
 					
 					//make muscles work at cross purposes, for elliptical movement (movement of head in an elliptical orbit about tails)
 					if (turn < 0) { muscles(0).makePuller(); muscles(1).makePusher();} //L 
@@ -213,7 +226,7 @@ namespace Bubbles{
 			}
 		
 			int priorPushPull;
-			List<Node> sourceList, targetList;
+			List<Node> targetList;
 
 			private Push1Pull2Servo( Node source0, List<Node> targetList0):base(source0){
 
@@ -222,8 +235,6 @@ namespace Bubbles{
 				priorPushPull = 0;
 
 				for (int i=0; i< targetList.Count; i++) addMuscle(targetList[i]);
-
-				sourceList = nodeList(source);
 
 				source.setState ("push1Pull2",2);
 				source.setState ("forward0Reverse1",0);
@@ -252,11 +263,15 @@ namespace Bubbles{
 						forwardReverse = source.getState ("forward0Reverse1");
 
 						if (push1Pull2 == 1 ){
-							Org.shiftBurden(forwardReverse,sourceList,targetList);
+							
+							shiftGrip (forwardReverse, source, targetList);
+
 							for (int i=0; i< musclesCount; i++) muscles(i).makePusher();
 							
 						}else if (push1Pull2 == 2){
-							Org.shiftBurden(1-forwardReverse,sourceList,targetList);
+							
+							shiftGrip (1 - forwardReverse, source, targetList);
+
 							for (int i=0; i< musclesCount; i++) muscles(i).makePuller();
 						}
 					}
@@ -339,7 +354,7 @@ namespace Bubbles{
 			}
 
 			int priorPushPull;
-			List<Node> sourceList, targetList;
+			List<Node> targetList;
 
 			private BonePullServo( Node source0, List<Node> targetList0):base(source0){
 
@@ -350,8 +365,6 @@ namespace Bubbles{
 				for (int i=0; i< targetList.Count; i++) addMuscle(targetList[i]);
 
 				for (int i=0; i< musclesCount; i++) muscles(i).makePuller().enable(300);
-
-				sourceList = nodeList(source);
 
 				source.setState ("push1Pull2",2);
 				source.setState ("forward0Reverse1",0);
@@ -381,11 +394,11 @@ namespace Bubbles{
 
 						if (push1Pull2 == 1 ){
 							disableMuscles (); //let bone push back to starting length
-							Org.shiftBurden(forwardReverse,sourceList,targetList);
+							shiftGrip(forwardReverse,source,targetList);
 
 						}else if (push1Pull2 == 2){
 							reEnableMuscles(); //pull compress bone
-							Org.shiftBurden(1-forwardReverse,sourceList,targetList);
+							shiftGrip(1-forwardReverse,source,targetList);
 						}
 					}
 
@@ -595,7 +608,7 @@ namespace Bubbles{
 		//unused
 		public class SegmentPushPullServo: Rule {
 
-			//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
+			//tapeworm segment, muscles go from head to tail
 			public static void install(Node source0, Node target0, int n){
 				if (source0 == null || target0 == null ) return;
 				source0.rules.Add (new SegmentPushPullServo(source0, target0, n));
@@ -612,7 +625,7 @@ namespace Bubbles{
 			
 			public override void accion() {
 
-				if (source.org.isStrippedServant ()) return; //can't use offload/restore burden when stripped
+				if (source.org.isStrippedServant ()) return; //can't use naiveGrip when stripped
 					
 				int forward0Reverse1; //for now simplify things
 				int push1Pull2 = source.getState ("push1Pull2");
@@ -628,17 +641,17 @@ namespace Bubbles{
 					forward0Reverse1 = source.getState ("forward0Reverse1");
 
 					if (push1Pull2 == 1) {
-						if (forward0Reverse1 == 0) source.offloadBurden(); else source.restoreNaiveBurden();
+						if (forward0Reverse1 == 0) source.grip = source.minGrip; else source.grip = source.naiveGrip;
 						muscles(0).makePusher();
 
 					} else if (push1Pull2 == 2) {
-							if (forward0Reverse1 == 0) source.restoreNaiveBurden(); else source.offloadBurden();
+						if (forward0Reverse1 == 0) source.grip = source.naiveGrip; else source.grip = source.minGrip;
 						muscles(0).makePuller();
 					}
 				}
 	//			bubbleServer.debugDisplay (
 	//				source.id+" "+ push1Pull2+(muscles(0).isPuller()?"pulls ":"pushes ")+target.id+" "
-	//				+ source.burden +":"+target.burden);
+	//				+ source.grip +":"+target.grip);
 				                          
 			}
 		}
@@ -648,7 +661,7 @@ namespace Bubbles{
 		
 		public class SegmentPulltokenServo: Rule {
 
-			//tapeworm segment, muscles go from head to tail, last tail should be small because it has no one to give its burden to.
+			//tapeworm segment, muscles go from head to tail
 			public static void install(Node source0, Node target0){
 				if (source0 == null || target0 == null) return;
 				source0.rules.Add (new SegmentPulltokenServo(source0, target0));
@@ -666,10 +679,10 @@ namespace Bubbles{
 				else source.setState("push1Pull2",0);
 			}
 
-			//someday add forward0Reverse1 to these considerations, will reverse giveBurden/retakeBurden
+			//someday add forward0Reverse1 to these considerations, will reverse minGrip/naiveGrip
 			public override void accion() {
 
-				if (source.org.isStrippedServant ()) return; //can't use offload/restore burden when stripped
+				if (source.org.isStrippedServant ()) return; //can't use naive grip when stripped
 
 				int push1Pull2 = source.getState ("push1Pull2");
 
@@ -679,7 +692,7 @@ namespace Bubbles{
 
 					//I am the puller. Check for transition
 					if (muscl.relativeLength() < 1) {
-						target.restoreNaiveBurden();
+						target.grip = target.naiveGrip ;
 						source.setState("push1Pull2",0);
 						//pass the token to next, but not to the tail which has no rule at all
 						if (target.getState("push1Pull2")==0){
@@ -689,7 +702,7 @@ namespace Bubbles{
 						}
 					}
 					else { //normal pulling
-						target.offloadBurden(); //make target light
+						target.grip = target.minGrip; //make target light
 						muscl.makePuller().reEnable();
 					}
 					return;
@@ -699,12 +712,12 @@ namespace Bubbles{
 
 					//check for transition to pull
 					if (muscl.relativeLength () > 10){
-						source.restoreNaiveBurden();
+						source.grip = source.naiveGrip;
 						source.setState("push1Pull2",2);
 
 					}
 					else { //normal pushing
-						source.offloadBurden ();
+						source.grip = source.minGrip;
 						muscl.makePusher().reEnable();
 					}
 				}
@@ -818,7 +831,6 @@ namespace Bubbles{
 				angleToGoal = angleToGoal>0?Mathf.PI-angleToGoal:-(Mathf.PI+angleToGoal); //does not change sign of angleToGoal
 				
 				SteeringStruct ss = source.bestSteeringNeighbor();
-	//			ss.sideEffect *= source.naiveBurden/source.burden; //muscle power (demand) will have more effect if burden's been shifted off me
 		
 				if (ss.target == null || ss.sideEffect < 0.01) muscl.disable();
 				else {

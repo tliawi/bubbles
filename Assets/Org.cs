@@ -4,103 +4,6 @@ using System.Collections.Generic;
 
 namespace Bubbles{
 	public class Org {
-		
-		// aNodes and bNodes are lists of nodes, all of whom must belong to the same org else the whole operation fails.
-		// Preserves total burden within the org.
-		// Some nodes may be in both aNodes and bNodes.
-		// 0 <= fraction <=1
-		// Attempts to put fraction of the total burden in aNodes, and (1-fraction) thereof in bNodes.
-		// Does nothing if either list is empty, or if fraction out of bounds.
-		// Will never set any node's burden below its minBurden even if fraction would call for that,
-		// choosing in that case to shift as much as possible, but no more. 
-		// So it's safe to call with fraction == 0 or 1.
-		public static void shiftBurden(float fraction, List<Node> aNodes, List<Node> bNodes){ 
-			float leftovers = 0, aPart, bPart;
-
-			if (aNodes.Count == 0 || bNodes.Count == 0) return;
-			if (fraction < 0 || fraction > 1) return;
-
-			Node firstNode = aNodes[0];
-			//all must belong to the same org
-			foreach (Node n in aNodes) if (firstNode.org != n.org) return; 
-			foreach (Node n in bNodes) if (firstNode.org != n.org) return;
-
-			foreach(Node n in aNodes) {leftovers+= n.burden - n.minBurden; n.burden = n.minBurden ;}
-
-			//any node in both aNodes and bNodes already has its minburden, so contributes nothing further to leftovers
-			foreach(Node n in bNodes) {leftovers+= n.burden - n.minBurden; n.burden = n.minBurden;}
-
-			//what to distribute to each node
-			aPart = leftovers*fraction/aNodes.Count;
-			bPart = leftovers*(1.0f-fraction)/bNodes.Count;
-
-			foreach(Node n in aNodes) n.burden += aPart;
-			foreach(Node n in bNodes) n.burden += bPart; // += so any shared node gets both loads
-
-		}
-
-		float availableBurden(){
-			float sum = 0;
-			for (int i = 0; i < members.Count; i++) {
-				sum += members [i].availableBurden() ;
-			}
-			return sum;
-		}
-
-		float burden(){
-			float sum = 0;
-			for (int i = 0; i < members.Count; i++) {
-				sum += members [i].burden;
-			}
-			return sum;
-		}
-
-		//transfer all org availableburden to master
-		private void stripAvailableBurden (){
-			if (master == null) return;
-
-			float orgAvailableBurden = availableBurden (); //this is the same as sum of member's naiveBurden-minBurden, i.e. available burden is wholly lost or wholly restored, never in part.
-
-
-			float masterBurden = master.burden ();
-
-			for (int i = 0; i < members.Count; i++) members [i].burden = members[i].minBurden; //remove all available burden here
-
-			//distribute destroyed orgAvailableBurden to nodes of master org, in proportion so master's dynamics aren't overly changed
-			for (int i=0; i< master.members.Count; i++) master.members[i].burden += orgAvailableBurden* master.members[i].burden/masterBurden;
-
-		}
-		//repatriates this orgs naiveBurden from the master
-		//undoes stripAvailableBurden, save that if burden within this org had been redistributed within the org at the time it was stripped, this restores each node's naiveBurden to it.
-		//when this is called, all nodes must be at minburden
-		private void restoreNaiveBurden(){
-
-			if (master == null)
-				return;
-			
-			float orgRestoredBurden = 0;
-			foreach (var member in members) {
-				if (Debug.isDebugBuild) Debug.Assert (member.burden == member.minBurden);
-				orgRestoredBurden += member.naiveBurden - member.minBurden;
-				member.burden = member.naiveBurden;
-			}
-
-			List<float> excessMasterBurden = new List<float> ();
-			foreach (var member in master.members)
-				excessMasterBurden.Add (Mathf.Max (0f, member.burden - member.naiveBurden));
-			
-			float sumExcessBurden = 0; foreach (var x in excessMasterBurden)
-				sumExcessBurden += x;
-
-			if (Debug.isDebugBuild) Debug.Assert (sumExcessBurden > orgRestoredBurden - 0.00001f);
-				
-			for (int i = 0; i < master.members.Count; i++) {
-				master.members [i].burden =  Mathf.Max(master.members[i].naiveBurden, master.members[i].burden - orgRestoredBurden * (excessMasterBurden [i] / sumExcessBurden));
-			}
-
-
-		}
-
 
 		public List<Node> members; //this has Count of at least 1, and its first member is considered the head of the org for directional purposes
 		public Node head { get; private set; } //convenience for members[0]
@@ -130,9 +33,26 @@ namespace Bubbles{
 			if (master == null && master0!=this) master = master0; //all this photosynthesis will go to master0.head
 		}
 
+		public void dropGrip(){
+			foreach (var n in members)
+				n.grip = n.minGrip;
+		}
+
+		public void raiseGrip(){
+			foreach (var n in members)
+				n.grip = n.naiveGrip;
+		}
+
+		public bool isStripped(){
+			foreach (var n in members)
+				if (n.grip > n.minGrip)
+					return false;
+			return true;
+		}
+
 		public void makeStrippedServant(Org master0) {
 			makeServant (master0);
-			if (isServant ()) stripAvailableBurden ();
+			if (isServant ()) dropGrip();
 		}
 
 		public void makeShackledStrippedServant(Org master0){
@@ -143,9 +63,9 @@ namespace Bubbles{
 			}
 		}
 
-		public bool isServant(){ return master != null; } //at a minimum, all photosynth of this org is fed to master. May also be stripped of burden, and may also be hitched.
+		public bool isServant(){ return master != null; } //at a minimum, all photosynth of this org is fed to master. May also be stripped of grip, and may also be hitched.
 
-		public bool isStrippedServant() { return isServant () && availableBurden () == 0; }
+		public bool isStrippedServant() { return isServant () && isStripped(); }
 
 		//the external link added to head is informally called the 'shackle'. All external bones are shackles.
 		public bool isShackledStrippedServant() {
@@ -155,7 +75,7 @@ namespace Bubbles{
 		public void liberate(){ 
 			if (isServant()) {
 				if (isShackledStrippedServant ()) head.removeBone (head.bones.Count - 1);
-				if (isStrippedServant ()) restoreNaiveBurden ();
+				if (isStrippedServant ()) raiseGrip();
 				master = null;
 			}
 		}
@@ -240,7 +160,7 @@ namespace Bubbles{
 			
 			liberatePrisoners(); //liberate any prisoners--those shackled to my hitch by an external bone
 
-			liberate(); //liberate org from being a prisoner, breaking its external bone, and from being a burden-stripped servant, or even just an oomph-feeding servant
+			liberate(); //liberate org from being a prisoner, breaking its external bone, and from being a grip-stripped servant, or even just an oomph-feeding servant
 
 			//take out all muscles attacking me
 			List<Muscle> attackers = new List<Muscle>(enemyMuscles);

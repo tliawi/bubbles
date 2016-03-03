@@ -78,15 +78,15 @@ public class Muscle {
 
 	//		// friction narrative: the force of a link operates independently on both ends. 
 	//		// A better way of putting it: each end gets half the oomph expended on it. That way, the amount one end moves
-	//		// is independent of how much the other end moves--it all depends on their individual burdens.
-	//		// The unit of oomph is a burden meter
+	//		// is independent of how much the other end moves--it all depends on their individual grips.
+	//		// The unit of oomph is a grip meter
 	//		// So total amount of lengthening or shortening is
 	//		private float oomphToDisplacement(float omp){
-	//			return 0.5f*omp*(1/source.burden + 1/target.burden);
+	//			return 0.5f*omp*(1/source.grip + 1/target.grip);
 	//		}
 	//		
 	//		private float displacementToOomph(float disp){
-	//			return 2*disp/(1/source.burden + 1/target.burden);
+	//			return 2*disp/(1/source.grip + 1/target.grip);
 	//		}
 
 
@@ -113,15 +113,15 @@ public class Muscle {
 		// friction narrative: the force of a link operates independently on both ends. 
 		// A better way of putting it: energy of action == energy of reaction, i.e.
 		// each end gets half the oomph expended on it. That way, the amount one end moves
-		// is independent of how much the other end moves--it all depends on their individual burdens.
-		// The unit of oomph is a burden meter
+		// is independent of how much the other end moves--it all depends on their individual grips.
+		// The unit of oomph is a grip meter
 
 		// Effect on one end is independent of effect on the other.
-		// Each experiences the same 'force', they react to it in inverse proportion to their burden.
-		// oomph is displacement of a unit burden,
-		// but in general both ends don't have unit burden
+		// Each experiences the same 'force', they react to it in inverse proportion to their grip.
+		// oomph is displacement of a unit grip,
+		// but in general both ends don't have unit grip
 		// Net: gap between them will shorten (puller) by displacement, where
-		displacement = 0.5f*deliveredOomph/source.burden + 0.5f*deliveredOomph/target.burden;
+		displacement = 0.5f*deliveredOomph/source.grip + 0.5f*deliveredOomph/target.grip;
 
 		// insure that puller doesn't overshoot zero.
 		// Further, ensure that length stays north of an epsilon:
@@ -144,18 +144,18 @@ public class Muscle {
 		}
 
 		source.pushedMinusPulled += displacement; // accumulate positive if pushed, negative if pulled
-		target.pushedMinusPulled += displacement; // gravity question: should this be weighted (as below) by inverse burden?
+		target.pushedMinusPulled += displacement; // gravity question: should this be weighted (as below) by inverse grip?
 
-		//change units from oomph = burden*meter to burden*meter/meter, i.e. burden * fraction of length, and cut it in half to equally apply it to both ends
-		effect = deliveredOomph/(2*len); //so effect/burden is dimensionless
+		//change units from oomph = grip*meter to grip*meter/meter, i.e. grip * fraction of length, and cut it in half to equally apply it to both ends
+		effect = deliveredOomph/(2*len); //so effect/grip is dimensionless
 
-		// has full effect on unit burden
-		//A smaller burden moves more than a bigger burden.
-		source.nx -= dx*effect/source.burden;
-		source.ny -= dy*effect/source.burden;
+		// has full effect on unit grip
+		//A smaller grip moves more than a bigger grip.
+		source.nx -= dx*effect/source.grip;
+		source.ny -= dy*effect/source.grip;
 
-		target.nx += dx*effect/target.burden;
-		target.ny += dy*effect/target.burden;
+		target.nx += dx*effect/target.grip;
+		target.ny += dy*effect/target.grip;
 
 	}
 	}}

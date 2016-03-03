@@ -146,8 +146,8 @@ namespace Bubbles{
 				Rules.SegmentPulltokenServo.install(priorTail,tail);
 			}
 
-			//make final tail tiny, so is light to pull, since that weight won't be shifted off it
-			tail.setRadius(radius/5);
+			//make final tail small for interest, will never have to pull on anything
+			tail.setRadius(radius/4);
 
 			if (clan != "") head.org.clan = "clan";
 
@@ -250,7 +250,7 @@ namespace Bubbles{
 	//			}
 	//	}
 
-		//reversal effect: push pull servo shifts burden to determine which end moves more during push bzw pull
+		//reversal effect: push pull servo shifts grip to determine which end moves more during push bzw pull
 		//0 means forward, 1 means reverse. Anything else means toggle.
 		//subsumed by "onSpeed"
 	//	public static void onForward0Reverse1(int sourceId, int forward0Reverse1){
@@ -641,8 +641,11 @@ namespace Bubbles{
 			one.addBone(center); two.addBone(center); three.addBone(center);
 			center.addBone(crankA);center.addBone(crankB); center.addBone(crankC);
 			crankA.addBone(crankB);crankB.addBone(crankC);crankC.addBone(crankA);
-			//put all weight in the support triangle
-			Org.shiftBurden(0,Rules.nodeList(crankA,crankB,crankC),Rules.nodeList(one,two,three));
+
+			//take all grip off the cranks
+			crankA.grip = crankA.minGrip;
+			crankB.grip = crankB.minGrip;
+			crankC.grip = crankC.minGrip;
 
 			Rules.TurmDefender.install(crankA,5*rad);
 			Rules.TurmDefender.install(crankB,5*rad);
@@ -727,7 +730,8 @@ namespace Bubbles{
 			//Weakness: Makes turm points heavier, but makes feeders easy to steal.
 			feeder1.org.clan = goal.org.clan; feeder2.org.clan = goal.org.clan; feeder3.org.clan = goal.org.clan; //so turm won't repel feeders
 			//make feeders prisoner, so that they feed the goal,
-			//and move the feeders burden into goal org. Note there's no bones involved, so light,unburdened feeders can be pulled out by tractor beams
+
+			//Note there's no bones involved, so light, ungripped feeders can be pulled out by tractor beams
 			feeder1.org.makeStrippedServant (goal.org);
 			feeder2.org.makeStrippedServant (goal.org);
 			feeder3.org.makeStrippedServant (goal.org);
@@ -811,7 +815,7 @@ namespace Bubbles{
 			//Weakness: Makes turm points heavier, but makes feeders easy to steal.
 			feeder1.org.clan = goal.org.clan; feeder2.org.clan = goal.org.clan; feeder3.org.clan = goal.org.clan; //so turm won't repel feeders
 			//make feeders prisoner, so that they feed the goal. 
-			//install unburdens the feeders Note there's no bones involved, so unburdened feeders can be stolen and dragged away
+			//there's no bones involved, so ungripped feeders can be stolen and dragged away
 			feeder1.org.makeStrippedServant (goal.org);
 			feeder2.org.makeStrippedServant (goal.org);
 			feeder3.org.makeStrippedServant (goal.org);
@@ -846,7 +850,7 @@ namespace Bubbles{
 			//Weakness: Makes turm points heavier, but makes feeders easy to steal.
 			feeder11.org.clan = goal1.org.clan; feeder21.org.clan = goal1.org.clan; feeder31.org.clan = goal1.org.clan; //so turm won't repel feeders
 			//make feeders prisoner, so that they feed the goal. 
-			//install unburdens the feeders Note there's no bones involved, so unburdened feeders can be stolen and dragged away
+			//there's no bones involved, so ungripped feeders can be stolen and dragged away
 			feeder11.org.makeStrippedServant (goal1.org);
 			feeder21.org.makeStrippedServant (goal1.org);
 			feeder31.org.makeStrippedServant (goal1.org);
@@ -930,7 +934,7 @@ namespace Bubbles{
 			pushVegNode(new Vector2(20,20)*norm,norm);
 			pushVegNode(new Vector2(40,20)*norm,large);
 
-			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].minBurden;
+			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/10;
 
 			pushVegNode(new Vector2(17.5f,40)*norm,small);
 			pushVegNode(new Vector2(20,40)*norm,norm);
@@ -956,7 +960,7 @@ namespace Bubbles{
 			pushVegNode(new Vector2(70+20,20)*abnorm,norm).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true);
 			pushVegNode(new Vector2(70+40,20)*abnorm,large).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true);
 			
-			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].minBurden;
+			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/10;
 			
 			pushVegNode(new Vector2(70+17.5f,40)*abnorm,small).setDna(CScommon.eaterBit,true);
 			pushVegNode(new Vector2(70+20,40)*abnorm,norm).setDna(CScommon.eaterBit,true);

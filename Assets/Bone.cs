@@ -55,13 +55,13 @@ namespace Bubbles{
 			//no upper bound if bone is stretched
 
 			// Effect on one end is independent of effect on the other.
-			// Each experiences the same 'force', they react to it in inverse proportion to their burden.
-			//A smaller burden moves more than a bigger burden. Bone force is not per unit of burden,
+			// Each experiences the same 'force', they react to it in inverse proportion to their grip.
+			//A smaller grip moves more than a bigger grip. Bone force is not per unit of grip,
 			//it is structural, i.e. bones between large masses are, in muscle terms, much stronger than
-			//bones between small burdens.
+			//bones between small grips.
 
-			sourceEffect = effect * target.burden / (source.burden + target.burden);
-			targetEffect = effect * source.burden / (source.burden + target.burden);
+			sourceEffect = effect * target.grip / (source.grip + target.grip);
+			targetEffect = effect * source.grip / (source.grip + target.grip);
 
 			source.nx -= sourceEffect * dx/dist;
 			source.ny -= sourceEffect * dy/dist;
