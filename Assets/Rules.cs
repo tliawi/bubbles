@@ -960,5 +960,41 @@ namespace Bubbles{
 			}
 		}
 
+		//rocks like to be a nice hexagonal packing at a distance proprotional to their radii.
+		//Far from that pattern they are 'stressed', i.e. spend energy trying to get there
+		//Thus they are more productive of oomph (for farming) if they are unstressed...
+		public class RockStress: Rule { 
+
+			public static void install(Node source0){ 
+				if (source0 == null || source0.org.head != source0 ) return;
+				source0.rules.Add (new RockStress(source0));
+			}
+
+			Muscle muscl;
+
+			private RockStress(Node source0):base(source0){
+				muscl = addMuscle(source0); //a cut muscle, disabled
+				//muscle just convenience for muscles(0)
+			}
+
+			override public void accion(){
+				float dist,  desiredDist;
+				if (source.mounted ()) { muscl.cut(); return;}
+
+				Node rock = source.estRock (Engine.tickCounter % 2 == 0); //alternate nearest with farthest rock
+				if (rock == null) { muscl.cut(); return; }
+				desiredDist = 5.0f * (source.radius + rock.radius);
+				dist = source.distance (rock);
+				muscl.reTarget (rock);
+				if (dist > desiredDist) {
+					muscl.makePuller ();
+					muscl.enable (Mathf.RoundToInt(100f * (1 - desiredDist / dist)));
+				} else {
+					muscl.makePusher ();
+					muscl.enable (Mathf.RoundToInt(100f * (1 - dist / desiredDist)));
+				}
+			}
+		}
+
 	}
 }

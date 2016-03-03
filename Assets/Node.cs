@@ -479,6 +479,23 @@ namespace Bubbles{
 			}
 		}
 
+		//nearest or farthest rock, depending on bool parameter. If surrounded by non-rocks, may return null
+		public Node estRock(bool nearTfarF){
+			Node est = null; float estDistance=0; 
+			Node nbor;
+			for (int i = 0; i < site.neighborsCount (); i++) {
+				nbor = site.neighbors (i);
+				if (nbor.org.members.Count == 1) { //if it's a rock
+					float d = distance (nbor);
+					if (est == null || (nearTfarF?d < estDistance : d > estDistance)){
+						est = nbor; estDistance = d;
+					}
+				}
+			}
+			return est;
+		}
+
+
 		public Node closestStranger(){
 			Node closest = null; Node nbor;
 			float closestDistance = float.MaxValue;

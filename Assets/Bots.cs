@@ -524,7 +524,7 @@ namespace Bubbles{
 			head.setDna (CScommon.snarkBit,true);
 			ls = head;
 
-			for (int i=0; i<popcorn; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm);
+			for (int i=0; i<popcorn; i++) Rules.RockStress.install(plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm));
 
 			for (int i = 0; i<popcorn/3; i++) {
 				head = spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn");
@@ -585,7 +585,7 @@ namespace Bubbles{
 				new Vector2(2,0), abnorm*1f, true,"t2"); //nodes 19,20
 			setUpPlayer(head,2,"Hank",goal);
 
-			for (int i=0; i<popcorn; i++) pushVegNode( randomRectPosition(0.17f),Random.Range(0.5f, 2.0f)*norm); //random clans
+			for (int i=0; i<popcorn; i++) Rules.RockStress.install(pushVegNode( randomRectPosition(0.17f),Random.Range(0.5f, 2.0f)*norm)); //random clans
 			
 			for (int i = 0; i < 7; i++) {
 				head = spawnRandomInchworm (abnorm * Random.Range (0.6f, 0.7f), true, true, "pest");
@@ -667,7 +667,7 @@ namespace Bubbles{
 			Rules.Crank.install(two,center, crankC, true);
 			Rules.Crank.install(three,center,crankC, true);
 
-			for (int i=0; i<(popcorn*3)/4; i++) plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm);
+			for (int i=0; i<(popcorn*3)/4; i++) Rules.RockStress.install(plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm));
 
 			for (int i = 0; i<popcorn/4; i++) {
 				Rules.GoalSeeker.install(spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn"),center);
@@ -863,7 +863,7 @@ namespace Bubbles{
 
 			//beware, this becomes an infinite loop as turmRad approaches worldRadius
 			while (Engine.nodes.Count - startCount < popcorn){
-				plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+				Rules.RockStress.install(plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm)));
 				if (Engine.nodes[Engine.nodes.Count - 1].distance(goal) < turmRad) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
 				if (Engine.nodes[Engine.nodes.Count - 1].distance(goal1) < turmRad1) Engine.nodes.RemoveAt (Engine.nodes.Count-1);
 			}
@@ -924,53 +924,53 @@ namespace Bubbles{
 
 			float small = norm/8;  float large = norm*8;
 
-			pushVegNode(new Vector2(17.5f,0)*norm,small);
-			pushVegNode(new Vector2(20,0)*norm,norm);
-			pushVegNode(new Vector2(40,0)*norm,large);
+			Rules.RockStress.install(pushVegNode(new Vector2(17.5f,0)*norm,small));
+			Rules.RockStress.install(pushVegNode(new Vector2(20,0)*norm,norm));
+			Rules.RockStress.install(pushVegNode(new Vector2(40,0)*norm,large));
 
 			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = 0;
 
-			pushVegNode(new Vector2(17.5f,20)*norm,small);
-			pushVegNode(new Vector2(20,20)*norm,norm);
-			pushVegNode(new Vector2(40,20)*norm,large);
+			Rules.RockStress.install(pushVegNode(new Vector2(17.5f,20)*norm,small));
+			Rules.RockStress.install(pushVegNode(new Vector2(20,20)*norm,norm));
+			Rules.RockStress.install(pushVegNode(new Vector2(40,20)*norm,large));
 
 			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/10;
 
-			pushVegNode(new Vector2(17.5f,40)*norm,small);
-			pushVegNode(new Vector2(20,40)*norm,norm);
-			pushVegNode(new Vector2(40,40)*norm,large);
+			Rules.RockStress.install(pushVegNode(new Vector2(17.5f,40)*norm,small));
+			Rules.RockStress.install(pushVegNode(new Vector2(20,40)*norm,norm));
+			Rules.RockStress.install(pushVegNode(new Vector2(40,40)*norm,large));
 
 			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/2;
 
-			pushVegNode(new Vector2(17.5f,60)*norm,small);
-			pushVegNode(new Vector2(20,60)*norm,norm);
-			pushVegNode(new Vector2(40,60)*norm,large);
+			Rules.RockStress.install(pushVegNode(new Vector2(17.5f,60)*norm,small));
+			Rules.RockStress.install(pushVegNode(new Vector2(20,60)*norm,norm));
+			Rules.RockStress.install(pushVegNode(new Vector2(40,60)*norm,large));
 
 			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph;
 
 			/////animal
 
-			pushVegNode(new Vector2(70+17.5f,0)*abnorm,small).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true);
-			pushVegNode(new Vector2(70+20,0)*abnorm,norm).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true);
-			pushVegNode(new Vector2(70+40,0)*abnorm,large).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true);
+			Rules.RockStress.install(pushVegNode(new Vector2(70+17.5f,0)*abnorm,small).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true));
+			Rules.RockStress.install(pushVegNode(new Vector2(70+20,0)*abnorm,norm).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true));
+			Rules.RockStress.install(pushVegNode(new Vector2(70+40,0)*abnorm,large).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true));
 			
 			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = 0;
 			
-			pushVegNode(new Vector2(70+17.5f,20)*abnorm,small).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true);
-			pushVegNode(new Vector2(70+20,20)*abnorm,norm).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true);
-			pushVegNode(new Vector2(70+40,20)*abnorm,large).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true);
+			Rules.RockStress.install(pushVegNode(new Vector2(70+17.5f,20)*abnorm,small).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true));
+			Rules.RockStress.install(pushVegNode(new Vector2(70+20,20)*abnorm,norm).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true));
+			Rules.RockStress.install(pushVegNode(new Vector2(70+40,20)*abnorm,large).setDna(CScommon.eaterBit,true).setDna(CScommon.playerBit, true));
 			
 			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/10;
 			
-			pushVegNode(new Vector2(70+17.5f,40)*abnorm,small).setDna(CScommon.eaterBit,true);
-			pushVegNode(new Vector2(70+20,40)*abnorm,norm).setDna(CScommon.eaterBit,true);
-			pushVegNode(new Vector2(70+40,40)*abnorm,large).setDna(CScommon.eaterBit,true);
+			Rules.RockStress.install(pushVegNode(new Vector2(70+17.5f,40)*abnorm,small).setDna(CScommon.eaterBit,true));
+			Rules.RockStress.install(pushVegNode(new Vector2(70+20,40)*abnorm,norm).setDna(CScommon.eaterBit,true));
+			Rules.RockStress.install(pushVegNode(new Vector2(70+40,40)*abnorm,large).setDna(CScommon.eaterBit,true));
 			
 			for (int i = Engine.nodes.Count - 3;i<Engine.nodes.Count;i++)Engine.nodes[i].oomph = Engine.nodes[i].maxOomph/2;
 			
-			pushVegNode(new Vector2(70+17.5f,60)*abnorm,small).setDna(CScommon.eaterBit,true);
-			pushVegNode(new Vector2(70+20,60)*abnorm,norm).setDna(CScommon.eaterBit,true);
-			pushVegNode(new Vector2(70+40,60)*abnorm,large).setDna(CScommon.eaterBit,true);
+			Rules.RockStress.install(pushVegNode(new Vector2(70+17.5f,60)*abnorm,small).setDna(CScommon.eaterBit,true));
+			Rules.RockStress.install(pushVegNode(new Vector2(70+20,60)*abnorm,norm).setDna(CScommon.eaterBit,true));
+			Rules.RockStress.install(pushVegNode(new Vector2(70+40,60)*abnorm,large).setDna(CScommon.eaterBit,true));
 
 			return new CScommon.TeamStruct[0];
 		}
@@ -1060,6 +1060,7 @@ namespace Bubbles{
 			//beware, this becomes an infinite loop as goal radius approaches worldRadius
 			while (Engine.nodes.Count - startCount < popcorn/2){
 				head = plantRandomVeg(Random.Range(0.5f*norm, 2f*norm));
+				Rules.RockStress.install (head);
 				if (head.distance(goal1) < 2*goal1.radius) removeTopNodes(1);
 				else if (head.distance(goal2) < 2*goal2.radius) removeTopNodes(1);
 			}
