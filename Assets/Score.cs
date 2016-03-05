@@ -14,15 +14,14 @@ namespace Bubbles{
 		public static int[] teamScores = new int[3]; // only use 1,2. team 0 means no team
 
 		public static void newGame(){
-			for (int i = 0; i < teamScores.Length; i++)
-				teamScores [i] = 0;
-			newRound ();
+			
+			for (int i = 0; i < teamScores.Length; i++) teamScores [i] = 0;
+			
+			clearPerformance();
 		}
 
-		public static void newRound(){
-			foreach (var nodeId in nodeIdPlayerInfo.Keys) {
-				nodeIdPlayerInfo [nodeId].data.productivity = 0;
-			}
+		public static void clearPerformance(){
+			foreach (var nodeId in nodeIdPlayerInfo.Keys) nodeIdPlayerInfo [nodeId].clearScore ();
 		}
 
 		public static int teamNumber(int nodeId){
@@ -89,7 +88,7 @@ namespace Bubbles{
 
 		public static List<int> teamNodeIds(int teamNum){
 			List<int> tids = new List<int> ();
-			foreach (var nodeId in nodeIdPlayerInfo.Keys) if (teamNumber(nodeId) == teamNum) tids.Add(nodeId);
+			foreach (var nodeId in nodeIdPlayerInfo.Keys) if (teamNumber(nodeId) == teamNum && !Engine.nodes[nodeId].testDna(CScommon.goalBit)) tids.Add(nodeId);
 			return tids;
 		}
 
@@ -101,6 +100,7 @@ namespace Bubbles{
 			List<int> team2 = teamNodeIds (2);
 
 			float sum = 0;
+			//note productivities are artificially kept >= 0
 			foreach (var nid in team1) sum += nodeIdPlayerInfo [nid].data.productivity;
 			foreach (var nid in team2) sum += nodeIdPlayerInfo [nid].data.productivity;
 
@@ -114,8 +114,12 @@ namespace Bubbles{
 
 			List<int> bonusTeam = teamNum == 1 ? team1 : team2;
 			foreach (var nid in bonusTeam) {
-				nodeIdPlayerInfo [nid].data.level += 0.1f * Mathf.Sqrt (sum);
+				nodeIdPlayerInfo [nid].data.level += 0.1f;
 			}
+
+			foreach (var nodeId in nodeIdPlayerInfo.Keys) nodeIdPlayerInfo [nodeId].data.productivity = 0;
+			
+			bubbleServer.newRound = true;
 
 		}
 
@@ -127,9 +131,10 @@ namespace Bubbles{
 		}
 
 		//can be called with a negative amount to debit productivity
-		public static void addToProductivity(int nodeId, float amount){
+		public static void addToProductivity(int nodeId, float amountOomph){
 			if (nodeIdPlayerInfo.ContainsKey (nodeId)) {
-				nodeIdPlayerInfo [nodeId].data.productivity += amount;
+				nodeIdPlayerInfo [nodeId].data.productivity += amountOomph/1000; // reduce to keep things in appropriate numbers
+				if (nodeIdPlayerInfo [nodeId].data.productivity < 0) nodeIdPlayerInfo [nodeId].data.productivity = 0;
 				bubbleServer.scheduledScores [nodeId] = true;
 			}
 		}

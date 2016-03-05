@@ -33,7 +33,8 @@ namespace Bubbles{
 
 		//private bool xing = false;
 
-		private  bool paused = true;
+		public static bool paused = true;
+		public static bool stepping = false;
 
 		private  int normScaleI, abnormScaleI, photoYieldI, baseMetabolicRateI, worldRadiusI;
 		private  float vegStartFuel, nonvegStartFuel;
@@ -206,7 +207,7 @@ namespace Bubbles{
 			reminderText = GameObject.FindWithTag ("betweenGames").GetComponent<Text>();
 			displayGrid = true;
 
-			timers = new Dictionary<int,System.Timers.Timer>();
+//			timers = new Dictionary<int,System.Timers.Timer>();
 
 	//		networkMatch = gameObject.AddComponent<NetworkMatch>();
 	//
@@ -274,7 +275,6 @@ namespace Bubbles{
 
 			if (newRound) { 
 				remountEverybody ();
-				Score.newRound ();
 			} else {
 				Score.newGame ();
 			}
@@ -362,8 +362,10 @@ namespace Bubbles{
 
 			if (Input.GetKeyDown (KeyCode.S) && paused){ //step
 				togglePause();
+				stepping = true;
 				Engine.step ();
 				execute();
+				stepping = false;
 				togglePause ();
 			}
 
@@ -447,7 +449,7 @@ namespace Bubbles{
 					sendUpdateMsg();
 					checkForInitRevisions();
 					if (sendLinks) checkForLinkRevisions();
-					sendScheduledMounts ();
+//					sendScheduledMounts ();
 					sendScheduledScores ();
 
 				}
@@ -559,12 +561,12 @@ namespace Bubbles{
 			//Network.CloseConnection(Network.connections[netMsg.conn.connectionId],false); //network.connections is [] of NetworkPlayers, whereas netMsg.conn is a NetworkConnection...
 
 			int nodeId = connectionIdPlayerInfo[cId].data.nodeId;
-			Bots.dismount(nodeId);
+			Mount.dismount(nodeId);
 
 			connectionIdPlayerInfo.Remove(cId);
-			Score.nodeIdPlayerInfo.Remove (nodeId);
-			
-			send1or2NodeNamesToAll(nodeId, "");
+
+			Score.nodeIdPlayerInfo[nodeId].name = "B" + nodeId;
+			send1or2NodeNamesToAll(nodeId, "B"+nodeId);
 
 			checkForInitRevisions();//dismount changes dna
 		}
@@ -664,43 +666,66 @@ namespace Bubbles{
 			connectionIdPlayerInfo[netMsg.conn.connectionId].name = strMsg.value;
 			sendWorldToClient(netMsg.conn.connectionId);
 
-			scheduleRequestNodeId (netMsg.conn.connectionId);
+			int nodeId = connectionIdPlayerInfo [netMsg.conn.connectionId].data.nodeId; //Player keeps node assignment during newRound
+			if (nodeId < 0)
+				assignMount(netMsg.conn.connectionId);
+			else
+				sendNodeIdMsg(netMsg.conn.connectionId, nodeId); //newRound, they get their old one
 		}
 
 
-		private Dictionary<int,System.Timers.Timer> timers;//one per connectionId
+//		private Dictionary<int,System.Timers.Timer> timers;//one per connectionId
+//
+//		private void scheduleRequestNodeId(int conId){
+//			System.Timers.Timer aTimer = new System.Timers.Timer (500); //may replace an old one
+//			aTimer.Elapsed += delegate { scheduledMounts.Add(conId); };
+//			aTimer.AutoReset = false; //one shot
+//			aTimer.Enabled = true;
+//			timers [conId] = aTimer;
+//		}
+//
+//		public void sendScheduledMounts(){
+//
+//			foreach (int conId in scheduledMounts) {
+//				
+//				int nid = Mount.idFromLargestTeam ();//after the timer fires, otherwise someone else could mount during the wait
+//
+//				if (Debug.isDebugBuild)
+//					Debug.Log ("giveMount " + nid + " mountable:" + Mount.mountable (nid));
+//
+//				changeMounts (-1, nid, conId); 
+//
+//				sendNodeIdMsg (conId, nid);
+//			}
+//
+//			scheduledMounts.Clear ();
+//
+//		}
 
-		private void scheduleRequestNodeId(int conId){
-			System.Timers.Timer aTimer = new System.Timers.Timer (500); //may replace an old one
-			aTimer.Elapsed += delegate { scheduledMounts.Add(conId); };
-			aTimer.AutoReset = false; //one shot
-			aTimer.Enabled = true;
-			timers [conId] = aTimer;
+		public void assignMount(int conId){
+			int nid = Mount.idFromLargestTeam ();//after the timer fires, otherwise someone else could mount during the wait
+
+			if (Debug.isDebugBuild)
+				Debug.Log ("assignMount " + nid + " mountable:" + Mount.mountable (nid));
+
+			changeMounts (-1, nid, conId); 
+
+			sendNodeIdMsg (conId, nid);
 		}
 
-		public void sendScheduledMounts(){
+		private void sendNodeIdMsg(int conId, int nodeId){
 			CScommon.intMsg nixMsg = new CScommon.intMsg ();
-
-			foreach (int conId in scheduledMounts) {
-				
-				nixMsg.value = Bots.idFromLargestTeam ();//after the timer fires, otherwise someone else could mount during the wait
-
-				if (Debug.isDebugBuild)
-					Debug.Log ("giveMount " + nixMsg.value + " mountable:" + Bots.mountable (nixMsg.value));
-
-				changeMounts (-1, nixMsg.value, conId); 
-
-				checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
-			}
-
-			scheduledMounts.Clear ();
-
+			nixMsg.value = nodeId;
+			checkSendToClient (conId, CScommon.nodeIdMsgType, nixMsg);
 		}
+
 
 		private void remountEverybody(){
+			//Bots.dumpUnmountedTeams ();
 			foreach (int conId in connectionIdPlayerInfo.Keys) {
-				Bots.mount (connectionIdPlayerInfo [conId].data.nodeId);
+				Mount.mount (connectionIdPlayerInfo [conId].data.nodeId);
 			}
+			//Bots.dumpUnmountedTeams ();
 		}
 
 		private void onRequestNodeId(NetworkMessage netMsg){
@@ -717,7 +742,7 @@ namespace Bubbles{
 				newNodeId = Engine.nodes [nixMsg.value].org.head.id; // move to the id of the head of that organism
 
 			//enforce that only one player can mount a node.
-			if (!Bots.mountable (newNodeId))
+			if (!Mount.available(newNodeId))
 				return;
 
 			nixMsg.value = newNodeId;
@@ -739,12 +764,12 @@ namespace Bubbles{
 
 			if (oldNodeId >= 0) {
 				Score.nodeIdPlayerInfo.Remove (oldNodeId);
-				if (!Bots.dismount(oldNodeId)) if (Debug.isDebugBuild) Debug.Log("Error, onRequestNodeId oldNodeId not mounted");
+				if (!Mount.dismount(oldNodeId)) if (Debug.isDebugBuild) Debug.Log("Error, onRequestNodeId oldNodeId not mounted");
 			}
 
 			if (newNodeId >= 0) {
 				Score.nodeIdPlayerInfo[newNodeId] = connectionIdPlayerInfo[conId]; //adopt name and score
-				if (!Bots.mount (newNodeId)) if (Debug.isDebugBuild) Debug.Log("Error, failed attempt to mount unmountable node.");
+				if (!Mount.mount (newNodeId)) if (Debug.isDebugBuild) Debug.Log("Error, failed attempt to mount unmountable node.");
 			}
 
 			//case where both == -1 not treated, see Assertion above
@@ -786,8 +811,6 @@ namespace Bubbles{
 		private void sendInitToClient(int connectionId){
 			int start = 0;
 			int segmentLength = 100;
-
-
 			
 			while ( start+segmentLength <= Engine.nodes.Count ){
 				checkSendToClient(connectionId, CScommon.initMsgType, fillInInitMsg(allocateInitMsg(segmentLength),start));

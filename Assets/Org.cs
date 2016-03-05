@@ -13,7 +13,7 @@ namespace Bubbles{
 		public Dictionary<string,int> states; //Keys are independent state dimensions.
 
 		public Node hitch { get; private set; }  //a member of this org
-		public Org master; //not this org.
+		public Node master; //the head of some other org
 
 		public Org (Node firstMember){
 			members = new List<Node>();
@@ -29,8 +29,8 @@ namespace Bubbles{
 			return this;
 		}
 
-		public void makeServant( Org master0) {
-			if (master == null && master0!=this) master = master0; //all this photosynthesis will go to master0.head
+		public void makeServant( Node master0) {
+			if (master == null && master0 != this.head) master = master0; //all this photosynthesis will go to master0
 		}
 
 		public void dropGrip(){
@@ -50,16 +50,16 @@ namespace Bubbles{
 			return true;
 		}
 
-		public void makeStrippedServant(Org master0) {
+		public void makeStrippedServant(Node master0) {
 			makeServant (master0);
 			if (isServant ()) dropGrip();
 		}
 
-		public void makeShackledStrippedServant(Org master0){
-			if (master0.hasHitch ()) {
+		public void makeShackledStrippedServant(Node master0){
+			if (master0.org.hasHitch ()) {
 				makeStrippedServant (master0);
-				//put a shackle, an external bone, between this.head and master0.hitch
-				head.addBone(master0.hitch); //master0's servants are at the otherEnd of all external bones out of master0.hitch
+				//put a shackle, an external bone, between this.head and master0.org.hitch
+				head.addBone(master0.org.hitch); //master0's servants are at the otherEnd of all external bones out of master0.hitch
 			}
 		}
 
@@ -69,10 +69,11 @@ namespace Bubbles{
 
 		//the external link added to head is informally called the 'shackle'. All external bones are shackles.
 		public bool isShackledStrippedServant() {
-			return isStrippedServant () && head.bones.Count > 0 && head.bones [head.bones.Count - 1].otherEnd(head).org == master;
+			return isStrippedServant () && head.bones.Count > 0 && head.bones [head.bones.Count - 1].otherEnd(head) == master.org.hitch;
 		}
 
 		public void liberate(){ 
+			//Debug.Log("liberate "+head.id+" from"+(master == null?" null":" "+master.id)+": "+isServant()+" "+isStrippedServant()+" "+isShackledStrippedServant());
 			if (isServant()) {
 				if (isShackledStrippedServant ()) head.removeBone (head.bones.Count - 1);
 				if (isStrippedServant ()) raiseGrip();
@@ -204,7 +205,7 @@ namespace Bubbles{
 			if (victim.members.Count > 1) return; //we're only picking up rocks
 			if (!hasHitch()) return;
 			//if (prisoners().Count > 0) return; //we're only picking up one rock
-			victim.makeShackledStrippedServant(this);
+			victim.makeShackledStrippedServant(this.head);
 
 		}
 

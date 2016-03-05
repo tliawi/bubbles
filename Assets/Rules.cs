@@ -832,11 +832,11 @@ namespace Bubbles{
 				
 				SteeringStruct ss = source.bestSteeringNeighbor();
 		
-				if (ss.target == null || ss.sideEffect < 0.01) muscl.disable();
+				if (ss.target == null ) muscl.disable(); //|| Mathf.Abs(ss.sideEffect) < 0.001 
 				else {
 					if (muscl.target != ss.target) muscl.reTarget(ss.target);
 					if (ss.sideEffect*angleToGoal > 0) muscl.makePuller(); else muscl.makePusher();
-					muscl.enable(Mathf.RoundToInt(46*Mathf.Abs(angleToGoal/ss.sideEffect))); //coefficient tuned
+					muscl.enable (70); //(Mathf.RoundToInt(96*Mathf.Abs(angleToGoal/ss.sideEffect))); //coefficient tuned 0 - 300
 				}
 			}
 		}
@@ -855,7 +855,7 @@ namespace Bubbles{
 				
 
 			private Node leastSupplied(){
-				List<Node> myTeam = Bots.teams[source.teamNumber];
+				List<Node> myTeam = Mount.teams[source.teamNumber];
 				Node worstSupplied = myTeam[0];
 				for (int i = 1; i < myTeam.Count; i++) {
 					if (myTeam[i].fuelGauge < worstSupplied.fuelGauge ) worstSupplied = myTeam[i];
@@ -874,10 +874,8 @@ namespace Bubbles{
 
 				if (source.oomph > source.maxOomph * 0.99f) {
 					Score.scoreTeamWin (source.teamNumber);
-					bubbleServer.newRound = true;
 				} else if (source.oomph < source.maxOomph * 0.01f){
 					Score.scoreTeamLoss(source.teamNumber);
-					bubbleServer.newRound = true;
 				} else {
 					helpTheNeedy ();
 				}
@@ -903,7 +901,6 @@ namespace Bubbles{
 					int hisTeamNumber = nbr.teamNumber;
 					if (hisTeamNumber !=0 && hisTeamNumber != myTeamNumber && source.overlaps(nbr)) {
 						Score.scoreTeamWin (hisTeamNumber);
-						bubbleServer.newRound = true;
 					}
 				}
 			}
@@ -983,7 +980,7 @@ namespace Bubbles{
 
 				Node rock = source.estRock (Engine.tickCounter % 2 == 0); //alternate nearest with farthest rock
 				if (rock == null) { muscl.cut(); return; }
-				desiredDist = 5.0f * (source.radius + rock.radius);
+				desiredDist = 17.0f * (source.radius + rock.radius);
 				dist = source.distance (rock);
 				muscl.reTarget (rock);
 				if (dist > desiredDist) {

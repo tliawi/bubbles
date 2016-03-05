@@ -11,7 +11,7 @@ namespace Bubbles{
 
 		public static float norm, abnormScale;
 		public static string gameName = "";
-		public static CScommon.TeamStruct[] teamDefs;
+		public static CScommon.TeamStruct[] teamDefs; //an array, one element per team, w/ teamName and goalId
 		public static int popcorn;
 
 		private static float abnorm { get { return norm * abnormScale; } }
@@ -195,75 +195,13 @@ namespace Bubbles{
 
 			}
 		}
-	/*
-		public static void onXTarget(int sourceId, int targetId, CScommon.LinkType linkType){
-			if (sourceId >= 0 && sourceId < Engine.nodes.Count && targetId >= 0 && targetId < Engine.nodes.Count
-			    && mounts.ContainsKey(sourceId) && linkType != CScommon.LinkType.bone) {
-
-				Node source = Engine.nodes[sourceId]; 
-				int push1Pull2 = source.getState("push1Pull2");
-				if (push1Pull2 == int.MinValue) push1Pull2 = 2;
-
-				source.setState ("nearFarSwitch01", 0); //suppres nearFar cmdr
-
-				source.setState ("push1Pull2",push1Pull2==1?2:1); //toggle pushPull
-
-				Muscle muscle = mounts[sourceId]; //may be null
-				//protect from linking to a part of same organism. In fact, use this as a means of deleting the muscle
-				if (source.trusts(Engine.nodes[targetId])) {
-					source.removeMuscle(muscle); //does nothing if null
-					mounts[sourceId] = null;
-				} 
-				else {
-					if (muscle == null) muscle = mounts[sourceId] = source.addMuscle(Engine.nodes[targetId]);
-					muscle.target = Engine.nodes[targetId];
-					if (linkType == CScommon.LinkType.pusher) muscle.makePusher(); 
-					else if (linkType == CScommon.LinkType.puller) muscle.makePuller();
-				}
-			}
-		}
-	*/
 
 		public static void togglePushPull(Node source){
 			int push1Pull2 = source.getState ("push1Pull2");
 			if (push1Pull2 == 2) source.setState ("push1Pull2",1);
 			else if (push1Pull2 == 1) source.setState ("push1Pull2",2); 
 		}
-
-		//manual push/pull 1:push, 2:Pull, 3. togglePushPull, 0. return to automatic pushPull
-	//	public static void onPush1Pull2(int sourceId, int push1Pull2){
-	//	
-	//		switch (push1Pull2) {
-	//		
-	//			case 0:  
-	//				Engine.nodes[sourceId].setState ("nearFarSwitch01", 1); //enable automatic nearFar cmdr
-	//				break;
-	//			case 1:
-	//			case 2:
-	//				Engine.nodes[sourceId].setState ("nearFarSwitch01", 0); //disable automatic cmdr
-	//				Engine.nodes[sourceId].setState ("push1Pull2",push1Pull2); 
-	//				break;
-	//			case 3: 
-	//				Engine.nodes[sourceId].setState ("nearFarSwitch01", 0); //disable automatic cmdr
-	//				togglePushPull(Engine.nodes[sourceId]);
-	//				break;
-	//			}
-	//	}
-
-		//reversal effect: push pull servo shifts grip to determine which end moves more during push bzw pull
-		//0 means forward, 1 means reverse. Anything else means toggle.
-		//subsumed by "onSpeed"
-	//	public static void onForward0Reverse1(int sourceId, int forward0Reverse1){
-	//		int pre = Engine.nodes[sourceId].getState("forward0Reverse1");
-	//
-	//		if (forward0Reverse1 == 0 || forward0Reverse1 == 1)	Engine.nodes[sourceId].setState("forward0Reverse1",forward0Reverse1);
-	//		else Engine.nodes[sourceId].setState("forward0Reverse1",Engine.nodes[sourceId].checkState("forward0Reverse1",1)?0:1);
-	//		
-	//		//compare pre to post
-	//		if (pre != Engine.nodes[sourceId].getState("forward0Reverse1")) togglePushPull(Engine.nodes[sourceId]); //so has immediate effect
-	//
-	//		//if (Debug.isDebugBuild) bubbleServer.debugDisplay ("fr "+forward0Reverse1+" "+Engine.nodes[sourceId].getState ("forward0Reverse1"));
-	//	}
+			
 
 		//changes the metabolic rate (power) of internal muscles of the given mount
 		public static void onSpeed(Node mount, int speed){
@@ -294,92 +232,6 @@ namespace Bubbles{
 		}
 
 
-
-		//Mounting and dismounting.
-
-		//returns whether or not there was anything to dismount
-		public static bool dismount(int nodeId){
-			if (nodeId < 0 || nodeId >= Engine.nodes.Count) return false;
-			Node node = Engine.nodes [nodeId];
-			if (!node.testDna(CScommon.playerPlayingBit)) return false;
-			if (node != node.org.head) return false; //can only mount org heads
-
-			node.setDna(CScommon.playerPlayingBit, false);
-			pushTeamIdBack (nodeId);
-
-			return true;
-		}
-
-		//returns whether nodeId head of mountable org
-		public static bool mountable(int nodeId ){
-			if (nodeId < 0 || nodeId >= Engine.nodes.Count) return false;
-			Node node = Engine.nodes [nodeId];
-//			if (Debug.isDebugBuild) Debug.Log (nodeId + " " + node.testDna (CScommon.playerBit) + " " + node.testDna (CScommon.playerPlayingBit) +
-//				" " + (node == node.org.head) + " " + node.teamNumber + " " + node.testDna (CScommon.goalBit));
-			if (!node.testDna(CScommon.playerBit)) return false;
-			if (node.testDna(CScommon.playerPlayingBit)) return false; //already mounted
-			if (node != node.org.head) return false; //has to be org head
-			if (node.teamNumber == 0) return false; // team 0 orgs can't be mounted
-			if (node.testDna(CScommon.goalBit)) return false; //goals can't be mounted
-			return true;
-		}
-
-		//when a player mounts a node, they get the ability to command any pushPullServo that may be on the node,
-		//and they get the ability to flee/attack via targeting
-		public static bool mount(int nodeId){
-			if (mountable(nodeId))  {
-				
-				Engine.nodes[nodeId].setDna(CScommon.playerPlayingBit, true);
-				pullFromTeam (nodeId);
-
-				return true;
-			}
-			return false;
-		}
-	
-		public static List<Node>[] teams = new List<Node>[4]; //lists of team members (org heads), does not change after makeTeamLists sets it up.
-		private static List<int>[] unmountedTeams = new List<int>[4]; //dynamic lists of ids of team members not yet mounted
-
-		static void makeTeamLists(){
-			
-			//if (Debug.isDebugBuild) Debug.Log ("makeTeamLists " + teams.Length);
-
-			for (int i = 0; i < teams.Length; i++) {
-				teams [i] = new List<Node> ();
-				unmountedTeams [i] = new List<int> ();
-			}
-
-			for (int id=0; id < Engine.nodes.Count; id++) {
-				//i == Engine.nodes [i].id;
-				if (mountable(id)) { // mountables don't have teamNumber 0, so teams[0].Count is always 0 ,as is unmountedTeams[0].Count.
-					//if (Debug.isDebugBuild) Debug.Log ("node "+id+" team " + Engine.nodes[id].teamNumber + ": " + teams [Engine.nodes[id].teamNumber].Count);
-					teams [Engine.nodes[id].teamNumber].Add (Engine.nodes[id]); 
-					unmountedTeams[Engine.nodes[id].teamNumber].Add (id);
-				}
-			}
-			//at this point teams and unmountedTeams refer to the same nodes in the same order, the latter by node.id
-		}
-			
-
-		//the following three use the private unmountedTeams to keep track of which team members are still available for mounting
-		public static int idFromLargestTeam(){
-			int nodeId, longest = 0;
-			for (int i=0;i<unmountedTeams.Length;i++) if (unmountedTeams[i].Count > unmountedTeams[longest].Count) longest = i;
-
-			if (unmountedTeams [longest].Count == 0) return -1;
-			nodeId = unmountedTeams [longest] [0];
-			unmountedTeams [longest].RemoveAt (0);
-			return nodeId;
-		}
-
-		static void pullFromTeam (int id){
-			unmountedTeams [Engine.nodes[id].teamNumber].Remove(id);
-		}
-
-		//for putting back ones that have been popped off
-		static void pushTeamIdBack( int id){
-			unmountedTeams [Engine.nodes[id].teamNumber].Add(id);
-		}
 
 
 		// initialization
@@ -437,7 +289,7 @@ namespace Bubbles{
 				break;
 			}
 
-			makeTeamLists();
+			Mount.makeTeamLists();
 		}
 
 
@@ -468,7 +320,7 @@ namespace Bubbles{
 			Rules.HunterPCRule.install(head,0);
 			Rules.HunterPCRule.install(head,1);
 
-			if (name == "") name = "B"+head.id+"T";
+			if (name == "") name = "B"+head.id;
 			Score.registerNPC(head.id, name);
 
 			return head;
@@ -524,7 +376,11 @@ namespace Bubbles{
 			head.setDna (CScommon.snarkBit,true);
 			ls = head;
 
-			for (int i=0; i<popcorn; i++) Rules.RockStress.install(plantRandomVeg(Random.Range(0.22f, 0.9f)*Random.Range(0.22f, 0.9f)*norm));
+			for (int i = 0; i < popcorn; i++) {
+				Rules.RockStress.install (plantRandomVeg (Random.Range (0.22f, 0.9f) * Random.Range (0.22f, 0.9f) * norm));
+				Engine.nodes [Engine.nodes.Count - 1].x /= 100;
+				Engine.nodes [Engine.nodes.Count - 1].y /= 100;
+			}
 
 			for (int i = 0; i<popcorn/3; i++) {
 				head = spawnRandomInchworm(norm*Random.Range (0.48f,0.52f),true,true,"popcorn");
@@ -732,9 +588,9 @@ namespace Bubbles{
 			//make feeders prisoner, so that they feed the goal,
 
 			//Note there's no bones involved, so light, ungripped feeders can be pulled out by tractor beams
-			feeder1.org.makeStrippedServant (goal.org);
-			feeder2.org.makeStrippedServant (goal.org);
-			feeder3.org.makeStrippedServant (goal.org);
+			feeder1.org.makeStrippedServant (goal);
+			feeder2.org.makeStrippedServant (goal);
+			feeder3.org.makeStrippedServant (goal);
 
 			return goal;
 		}
@@ -816,9 +672,9 @@ namespace Bubbles{
 			feeder1.org.clan = goal.org.clan; feeder2.org.clan = goal.org.clan; feeder3.org.clan = goal.org.clan; //so turm won't repel feeders
 			//make feeders prisoner, so that they feed the goal. 
 			//there's no bones involved, so ungripped feeders can be stolen and dragged away
-			feeder1.org.makeStrippedServant (goal.org);
-			feeder2.org.makeStrippedServant (goal.org);
-			feeder3.org.makeStrippedServant (goal.org);
+			feeder1.org.makeStrippedServant (goal);
+			feeder2.org.makeStrippedServant (goal);
+			feeder3.org.makeStrippedServant (goal);
 
 
 			goal1 = pushVegNode(new Vector2(-worldRadius/2f, -worldRadius/4f),norm/4);
@@ -851,9 +707,9 @@ namespace Bubbles{
 			feeder11.org.clan = goal1.org.clan; feeder21.org.clan = goal1.org.clan; feeder31.org.clan = goal1.org.clan; //so turm won't repel feeders
 			//make feeders prisoner, so that they feed the goal. 
 			//there's no bones involved, so ungripped feeders can be stolen and dragged away
-			feeder11.org.makeStrippedServant (goal1.org);
-			feeder21.org.makeStrippedServant (goal1.org);
-			feeder31.org.makeStrippedServant (goal1.org);
+			feeder11.org.makeStrippedServant (goal1);
+			feeder21.org.makeStrippedServant (goal1);
+			feeder31.org.makeStrippedServant (goal1);
 
 
 			//plant a bunch of munchies, but not within turm
@@ -987,14 +843,14 @@ namespace Bubbles{
 			List<Node> shirts = spawnRandomTeam (true, abnorm, 0, 1, 0, 1, "archons"); //don't do goal here, don't want any goalSeeker installed
 			foreach (var n in shirts){
 				Rules.BlessGoal.install (n, goal1);
-				Rules.GoalSeeker.install(n,goal1, true); //install goal here, so that whileHasPrisonerOnly is true
+				Rules.GoalSeeker.install(n,goal1, true); //install goalSeeker here, so that whileHasPrisonerOnly is true
 				Rules.GivePrisoners.install(n.org,goal1.org);
 			}
 
 
-			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
-			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
-			plantRandomVeg(Random.Range(0.7f*norm, 1.4f*norm));
+			plantRandomVeg(1.2f*norm);
+			plantRandomVeg(norm);
+			plantRandomVeg(0.82f*norm);
 
 			CScommon.TeamStruct[] ts = new CScommon.TeamStruct[1];
 

@@ -283,10 +283,10 @@ namespace Bubbles{
 			oomph +=  photoYield*radius2 * (maxOomph - oomph )/maxOomph; //oomph will never quite attain maxOomph, photosyn gets more inefficient as it approaches maxOomph
 		
 			if (org.isServant()) {
-				float canTransfer = Mathf.Min (org.master.head.hunger(), oomph);
+				float canTransfer = Mathf.Min (org.master.hunger(), oomph);
 				oomph -= canTransfer;
-				float transfer = canTransfer*linkEfficiency(this,org.master.head);
-				org.master.head.oomph += transfer;
+				float transfer = canTransfer*linkEfficiency(this,org.master);
+				org.master.oomph += transfer;
 
 				int donorId = org.head.getState ("donorId"); //int.MinValue if no donorId present
 				if (donorId >= 0) Score.addToProductivity(donorId,transfer);//donor gets credit for donated servant's work
@@ -458,7 +458,7 @@ namespace Bubbles{
 			{
 				if (!node.isEater() || this.oomph > node.oomph)
 				{
-					if (this.clan != node.clan && this.overlaps(node) && !(node.org.isServant() && node.org.master.clan == org.clan) ) //don't eat your own servants, indeed servants of anybody in your clan
+					if (this.clan != node.clan && this.overlaps(node) && !(node.org.isServant() && node.org.master.org.clan == org.clan) ) //don't eat your own servants, indeed servants of anybody in your clan
 					{
 						node.org.cutOut(); //liberate all node.orgs servants, liberate node.org breaking its shackle, cut all muscles attacking it, cut all its external muscles.
 							
@@ -529,17 +529,20 @@ namespace Bubbles{
 
 			for (int i=0;i<site.neighborsCount();i++)
 			{	them = site.neighbors(i);
-				if (them.org != org) { //don't try to steer by pushing on self
+				if (them.org != org && this != them.org.master ) { //don't try to steer by pushing on self, or on one's prisoners
 					float angl = Rules.signedAngle(this,cob,them); //positive to the left, negative to the right
-					sideEffect = Mathf.Sin(angl) * (them.grip/(them.grip+this.grip)) * linkEfficiency(this,them); // think pull or push orthogonal to the org orientation
+					sideEffect = Mathf.Sin(angl) * linkEfficiency(this,them); // think pull or push orthogonal to the org orientation //? * (them.grip/(them.grip+this.grip))
 					suitability = Mathf.Abs(sideEffect); //min value is 0
+					if (bubbleServer.stepping)Debug.Log( them.id+"."+sideEffect ); //gggg
 					if (suitability > bestSuitability) {
 						best.target = them;
 						best.sideEffect = sideEffect;
 						bestSuitability = suitability;
+						if (bubbleServer.stepping) Debug.Log ("better");
 					}
 				}
 			}
+			if (bubbleServer.stepping) Debug.Log ("best" + (best.target == null ? " null" : (" " + best.target.id)));
 			return best; //best.target may still be null
 		}
 
