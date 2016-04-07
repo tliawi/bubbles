@@ -129,7 +129,7 @@ public class Grid {
 
 		for (int i = 0; i<Engine.nodes.Count; i++) { //should display bones too
 			anode = Engine.nodes[i];
-			for (int j = 0; j<anode.rules.Count; j++) {
+				for (int j = 0; j<anode.rules.Count; j++) if (anode.rules[j].visibleMuscles()) {
 				for (int k = 0; k<anode.rules[j].musclesCount; k++){
 					if (anode.rules[j].muscles(k).enabled ){
 						targetNode = anode.rules[j].muscles(k).target;

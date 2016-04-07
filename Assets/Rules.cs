@@ -140,6 +140,10 @@ namespace Bubbles{
 				for (int i = 0; i<_muscles.Count; i++)_muscles[i].action(fraction);
 			}
 
+			virtual public bool visibleMuscles(){
+				return true;
+			}
+
 			protected Rule(Node source0) {
 				source = source0;
 				_muscles = new List<Muscle>();
@@ -963,7 +967,7 @@ namespace Bubbles{
 		public class RockStress: Rule { 
 
 			public static void install(Node source0){ 
-				if (source0 == null || source0.org.head != source0 ) return;
+				if (source0 == null || source0.org.head != source0 || !bubbleServer.rockStress ) return;
 				source0.rules.Add (new RockStress(source0));
 			}
 
@@ -976,7 +980,7 @@ namespace Bubbles{
 
 			override public void accion(){
 				float dist,  desiredDist;
-				if (source.mounted ()) { muscl.cut(); return;}
+				if (source.mounted () || source.org.isServant()) { muscl.cut(); return;}
 
 				Node rock = source.estRock (Engine.tickCounter % 2 == 0); //alternate nearest with farthest rock
 				if (rock == null) { muscl.cut(); return; }
@@ -991,6 +995,11 @@ namespace Bubbles{
 					muscl.enable (Mathf.RoundToInt(100f * (1 - dist / desiredDist)));
 				}
 			}
+
+			override public bool visibleMuscles(){
+				return false;
+			}
+
 		}
 
 	}

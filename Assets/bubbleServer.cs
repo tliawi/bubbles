@@ -17,6 +17,7 @@ namespace Bubbles{
 
 		public static bool plainMuscles = false;
 		public static bool sendLinks = true;
+		public static bool rockStress = true;
 
 		public static List<int> scheduledMounts = new List<int>();
 
@@ -316,7 +317,7 @@ namespace Bubbles{
 
 
 		string reminder(){
-			string s = Bots.gameName+": arrows Zz s kl g 1 2 3 4 +- 0";
+			string s = Bots.gameName+": arrows Zz s klr g 1..9 0";
 			foreach (var v in connectionIdPlayerInfo) s += " "+v.Key+":"+v.Value.data.nodeId;
 			s += "  "+(paused?"(PAUSED)":"")+scaleString();
 			return s;
@@ -375,6 +376,11 @@ namespace Bubbles{
 
 			if (Input.GetKeyDown(KeyCode.K)){
 				sendLinks = !sendLinks;
+			}
+
+			if (Input.GetKeyDown(KeyCode.R)){
+				rockStress = !rockStress;
+				restartGame (-1);
 			}
 				
 			if (Input.GetKeyDown (KeyCode.G)) { 
@@ -984,7 +990,7 @@ namespace Bubbles{
 			int linkCount = 0;
 			for (int i=0;i<Engine.nodes.Count;i++){
 				linkCount += Engine.nodes[i].bones.Count;
-				for (int j=0; j<Engine.nodes[i].rules.Count; j++)
+				for (int j=0; j<Engine.nodes[i].rules.Count; j++) if (Engine.nodes[i].rules[j].visibleMuscles())
 					linkCount += Engine.nodes[i].rules[j].musclesCount; 
 			}
 			return linkCount;
@@ -998,7 +1004,7 @@ namespace Bubbles{
 			int lnkcntr = 0;
 			for (int i=0; i<Engine.nodes.Count;i++) { 
 				for (int j = 0; j < Engine.nodes [i].rules.Count; j++) { 
-					for (int k = 0; k < Engine.nodes [i].rules [j].musclesCount; k++) {
+					for (int k = 0; k < Engine.nodes [i].rules [j].musclesCount; k++) if (Engine.nodes[i].rules[j].visibleMuscles()) {
 						Muscle muscle = Engine.nodes [i].rules [j].muscles (k);
 						aReferenceLinkMsg.links [lnkcntr].linkId = lnkcntr;
 						aReferenceLinkMsg.links [lnkcntr].linkData.enabled = muscle.enabled;

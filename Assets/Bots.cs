@@ -378,8 +378,12 @@ namespace Bubbles{
 
 			for (int i = 0; i < popcorn; i++) {
 				Rules.RockStress.install (plantRandomVeg (Random.Range (0.22f, 0.9f) * Random.Range (0.22f, 0.9f) * norm));
-				Engine.nodes [Engine.nodes.Count - 1].x /= 100;
-				Engine.nodes [Engine.nodes.Count - 1].y /= 100;
+				Engine.nodes [Engine.nodes.Count - 1].x  /= 5f;
+				Engine.nodes [Engine.nodes.Count - 1].y  /= 5f;
+				Engine.nodes [Engine.nodes.Count - 1].nx *= 2f;
+				Engine.nodes [Engine.nodes.Count - 1].ny *= 2f;
+				//The larger the disparity between the x,y and the nx,ny, 
+				//the larger the neat effect of smaller nodes more concentrated in the core, larger in periphery
 			}
 
 			for (int i = 0; i<popcorn/3; i++) {
